@@ -12,13 +12,7 @@
           t('common.selectAll')
         }}</span>
       </div>
-      <div
-        v-for="i in 5"
-        :key="i"
-        class="card p-4"
-        data-loading-skeleton
-        aria-hidden="true"
-      >
+      <div v-for="i in 5" :key="i" class="card p-4" data-loading-skeleton aria-hidden="true">
         <div class="space-y-3">
           <div v-if="selectable" class="flex justify-end">
             <Skeleton :width="16" :height="16" />
@@ -238,9 +232,7 @@
           </th>
         </tr>
       </thead>
-      <tbody
-        class="table-body divide-y divide-[#f0eee6] bg-transparent dark:divide-white/[0.06]"
-      >
+      <tbody class="table-body divide-y divide-[#f0eee6] bg-transparent dark:divide-white/[0.06]">
         <!-- Loading cells retain the same column order, sticky positions, and padding as data cells. -->
         <tr v-if="loading" v-for="i in 5" :key="i" aria-hidden="true" data-loading-skeleton>
           <td v-if="selectable" class="table-selection-cell py-3">

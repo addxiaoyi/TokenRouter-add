@@ -1,6 +1,7 @@
 import { shallowMount, enableAutoUnmount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { nextTick } from 'vue'
+import { nextTick, ref } from 'vue'
+import { createPinia } from 'pinia'
 import postcss from 'postcss'
 import ts from 'typescript'
 import {
@@ -33,8 +34,16 @@ const state = vi.hoisted(() => ({
   settings: {} as Record<string, boolean>, // Public navigation feature flags.
   closeMobile: vi.fn(), // Shared mobile-drawer close observation.
 }))
-vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
-vi.mock('vue-router', () => ({ useRoute: () => ({ path: '/dashboard', fullPath: '/dashboard' }) }))
+// Preserve i18n initialization used by badge and balance imports while keeping
+// sidebar translations deterministic for navigation assertions.
+vi.mock('vue-i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('vue-i18n')>()),
+  useI18n: () => ({ t: (key: string) => key, locale: ref('en') }),
+}))
+vi.mock('vue-router', () => ({
+  useRoute: () => ({ path: '/dashboard', fullPath: '/dashboard' }),
+  useRouter: () => ({ push: vi.fn() }),
+}))
 vi.mock('@/stores/plugins', () => ({ usePluginsStore: () => ({ plugins: state.plugins }) }))
 vi.mock('@/stores', () => ({
   useAppStore: () => ({
@@ -75,10 +84,16 @@ const sidebar = parseVue('components/layout/AppSidebar.vue')
 const layout = parseVue('components/layout/AppLayout.vue')
 const styles = postcss.parse(readSource('style.css'))
 
-// mountSidebar keeps navigation slot contents visible and replaces routing with inert link stubs.
+// mountSidebar renders navigation slots with inert routing and a fresh Pinia
+// context. The context supplies the injection required by balance formatting,
+// while store mocks keep navigation fixtures independent of account requests.
 function mountSidebar() {
   return shallowMount(AppSidebar, {
-    global: { renderStubDefaultSlot: true, stubs: { RouterLink: true } },
+    global: {
+      plugins: [createPinia()],
+      renderStubDefaultSlot: true,
+      stubs: { RouterLink: true },
+    },
   })
 }
 
@@ -92,8 +107,9 @@ describe('AppSidebar layout controls', () => {
     await wrapper.get('[to="/admin/mcp"]').trigger('click')
     expect(state.closeMobile).toHaveBeenCalledWith(false)
   })
-  // Expanded and collapsed sidebars use the shared width tokens. The content
-  // column references the corresponding margin tokens so the two widths agree.
+  // Expanded and collapsed sidebars use shared width tokens while retaining their
+  // theme and collapse controls. The content column references matching margin
+  // tokens so the two widths agree.
   it.each([false, true])('uses shared widths when collapsed=%s', (collapsed) => {
     state.collapsed = collapsed
     const wrapper = mountSidebar()
@@ -108,43 +124,38 @@ describe('AppSidebar layout controls', () => {
     expect(cssRules(styles, '.sidebar').flatMap((rule) => declarations(rule, 'width'))).toContain(
       'var(--sidebar-w)',
     )
-    expect(
-      sidebar.elements.some((element) =>
-        ['toggleTheme', 'toggleSidebar'].includes(directive(element, 'on', 'click') ?? ''),
-      ),
-    ).toBe(false)
+    expect(sidebar.elements.map((element) => directive(element, 'on', 'click'))).toEqual(
+      expect.arrayContaining(['toggleTheme', 'appStore.toggleSidebar()']),
+    )
   })
 
-  // Sidebar branding stays in the global header, where it shares the fixed
-  // header layer. No sidebar element should introduce a decorative glow class.
-  it('keeps branding and outer glows out of the sidebar', () => {
-    expect(sidebar.elements.flatMap(classes)).not.toContain('sidebar-header')
-    expect(sidebar.elements.flatMap(classes)).not.toContain('sidebar-brand')
+  // The full-height rail owns branding while the contextual header stays in the
+  // main column. Branding remains free of decorative glow classes.
+  it('keeps branding in the sidebar without decorative glows', () => {
+    expect(
+      sidebar.elements.some(
+        (element) => element.tag === 'router-link' && attribute(element, 'to') === '/home',
+      ),
+    ).toBe(true)
+    expect(sidebar.elements.some((element) => element.tag === 'VersionBadge')).toBe(true)
     expect(sidebar.elements.flatMap(classes)).not.toContain('shadow-glow')
     const tags = layout.elements.map((element) => element.tag)
     expect(tags.indexOf('AppHeader')).toBeGreaterThanOrEqual(0)
     expect(tags.indexOf('AppSidebar')).toBeGreaterThan(tags.indexOf('AppHeader'))
   })
 
-  // The mobile scrim begins below the fixed header, and content scrolls under
-  // its higher layer. The overlay uses the shared fade transition's timing rules.
-  it('keeps the mobile overlay and content below the header', () => {
+  // The mobile scrim covers the viewport behind the full-height rail. Main
+  // content keeps its header offset, and the scrim uses the shared fade timing.
+  it('covers the viewport with the mobile scrim and offsets main content', () => {
     const overlay = sidebar.elements.find((element) =>
       classes(element).includes('z-sidebar-overlay'),
     )!
     expect(classes(overlay)).toEqual(
-      expect.arrayContaining([
-        'fixed',
-        'inset-x-0',
-        'bottom-0',
-        'top-[var(--header-h)]',
-        'bg-black/50',
-        'lg:hidden',
-      ]),
+      expect.arrayContaining(['fixed', 'inset-0', 'bg-black/50', 'lg:hidden']),
     )
-    expect(classes(overlay)).not.toContain('inset-0')
-    const transition = sidebar.elements.find((element) => element.tag === 'MotionTransition')!
-    expect(attribute(transition, 'name')).toBe('fade')
+    const transition = sidebar.elements.find(
+      (element) => element.tag === 'MotionTransition' && attribute(element, 'name') === 'fade',
+    )!
     expect(transition.children).toContain(overlay)
     const column = layout.elements.find((element) => classes(element).includes('duration-layout'))!
     expect(classes(column)).toEqual(
@@ -197,11 +208,11 @@ describe('AppSidebar layout controls', () => {
 })
 
 describe('AppSidebar styling', () => {
-  // Navigation labels need opaque foreground colors in both themes. The stronger
-  // muted text override applies specifically to the light document root selector.
-  it('uses opaque labels and a light-only muted text override', () => {
+  // Navigation labels use neutral ink in both themes. The warm muted text
+  // override applies only to light documents, preserving component-owned dark colors.
+  it('uses neutral labels and a light-only muted text override', () => {
     const tokens = cssRules(styles, '.sidebar-link').flatMap(applyTokens)
-    expect(tokens).toEqual(expect.arrayContaining(['text-primary-900', 'dark:text-dark-100']))
+    expect(tokens).toEqual(expect.arrayContaining(['text-gray-800/85', 'dark:text-dark-200/85']))
     expect(tokens).not.toContain('text-primary-900/75')
     const lightRules: postcss.Rule[] = []
     styles.walkRules((rule) => {
@@ -212,7 +223,7 @@ describe('AppSidebar styling', () => {
         (rule) =>
           rule.selector.includes('.text-gray-500') &&
           rule.selector.includes('.text-primary-900\\/65') &&
-          declarations(rule, 'color').includes('#426177'),
+          declarations(rule, 'color').includes('rgb(24 23 21 / 0.62)'),
       ),
     ).toBe(true)
   })

@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { RouterView, useRouter, useRoute } from 'vue-router'
-import { computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import Toast from '@/components/common/Toast.vue'
 import NavigationProgress from '@/components/common/NavigationProgress.vue'
 import { resolveRouteDocumentTitle } from '@/router/title'
-import AnnouncementPopup from '@/components/announcements/AnnouncementPopup.vue'
-import GlobalSearchPalette from '@/components/layout/search/GlobalSearchPalette.vue'
+import { defineLazyComponent } from '@/components/common/asyncComponent'
+import { globalSearchOpen } from '@/components/layout/search/globalSearchState'
 import {
   useAppStore,
   useAuthStore,
@@ -19,8 +19,9 @@ import { updateFavicon } from '@/utils/branding'
 import { usePluginsStore } from '@/stores/plugins'
 
 // App.vue renders the routed page and shared progress, toast, announcement, and global
-// search surfaces. The search palette is mounted once here; header triggers on each page
-// open it through shared state.
+// search surfaces. Search downloads on its first opening and remains mounted so a
+// later opening retains its query. Announcement code waits for an actual queued popup;
+// the loaded instance remains available through closing transitions and queue changes.
 // It updates branding and document titles from reactive configuration, and refreshes
 // shared translated data when the locale changes. Announcement popups stay hidden on the
 // root destination and Home page.
@@ -28,7 +29,7 @@ import { usePluginsStore } from '@/stores/plugins'
 // Authentication changes start subscription polling and announcement reads, while logout
 // clears their local state and removes the visibility listener. A restored session reads
 // announcements immediately; a fresh login schedules a delayed forced read. The delay is
-// not cancelled by this component. Mounting checks installation status before loading
+// cancelled on logout and unmount. Mounting checks installation status before loading
 // public settings, and unmounting removes the window and document listeners installed by
 // this shell.
 
@@ -42,6 +43,38 @@ const subscriptionStore = useSubscriptionStore()
 const announcementStore = useAnnouncementStore()
 const adminSettingsStore = useAdminSettingsStore()
 const pluginsStore = usePluginsStore()
+
+// Optional surfaces share loading feedback and a recoverable chunk-failure notice.
+// Vue starts their imports only when their first-use gates mount the wrappers.
+const GlobalSearchPalette = defineLazyComponent(
+  () => import('@/components/layout/search/GlobalSearchPalette.vue'),
+  () => globalSearchOpen.value,
+)
+const AnnouncementPopup = defineLazyComponent(
+  () => import('@/components/announcements/AnnouncementPopup.vue'),
+  () => shouldShowAnnouncementPopup.value && !!announcementStore.currentPopup,
+)
+
+// First-use flags retain component state and leave-transition ownership after loading.
+// Delayed announcement reads belong to this shell and are cancelled before logout.
+const searchActivated = ref(false)
+const popupActivated = ref(false)
+let announcementTimer: ReturnType<typeof setTimeout> | null = null
+
+watch(
+  globalSearchOpen,
+  (open) => {
+    if (open) searchActivated.value = true
+  },
+  { immediate: true },
+)
+watch(
+  () => announcementStore.currentPopup,
+  (popup) => {
+    if (popup) popupActivated.value = true
+  },
+  { immediate: true },
+)
 
 // shouldShowAnnouncementPopup gates the global popup surface to console destinations
 // while leaving the root and named Home page without popup rendering.
@@ -115,6 +148,10 @@ function onVisibilityChange() {
 watch(
   () => authStore.isAuthenticated,
   (isAuthenticated, oldValue) => {
+    if (announcementTimer !== null) {
+      clearTimeout(announcementTimer)
+      announcementTimer = null
+    }
     if (isAuthenticated) {
       // Authentication starts subscription loading and polling; a failed initial read is
       // logged while the periodic poller can perform later refreshes.
@@ -125,7 +162,10 @@ watch(
       if (oldValue === false) {
         // A fresh sign-in delays forced announcement loading by three seconds; restored
         // sessions use the ordinary fetch path immediately during shell setup.
-        setTimeout(() => announcementStore.fetchAnnouncements(true), 3000)
+        announcementTimer = setTimeout(() => {
+          announcementTimer = null
+          announcementStore.fetchAnnouncements(true)
+        }, 3000)
       } else {
         announcementStore.fetchAnnouncements()
       }
@@ -142,7 +182,8 @@ watch(
   { immediate: true },
 )
 
-router.afterEach(() => {
+// removeNavigationListener releases this shell's announcement refresh callback on unmount.
+const removeNavigationListener = router.afterEach(() => {
   if (authStore.isAuthenticated) {
     announcementStore.fetchAnnouncements()
   }
@@ -153,6 +194,8 @@ onBeforeUnmount(() => {
   // events cannot invoke callbacks attached by this component instance.
   window.removeEventListener('locale-changed', onLocaleChanged)
   document.removeEventListener('visibilitychange', onVisibilityChange)
+  removeNavigationListener?.()
+  if (announcementTimer !== null) clearTimeout(announcementTimer)
 })
 
 onMounted(async () => {
@@ -175,7 +218,7 @@ onMounted(async () => {
 <template>
   <NavigationProgress />
   <RouterView />
-  <GlobalSearchPalette />
+  <GlobalSearchPalette v-if="searchActivated" />
   <Toast />
-  <AnnouncementPopup v-if="shouldShowAnnouncementPopup" />
+  <AnnouncementPopup v-if="shouldShowAnnouncementPopup && popupActivated" />
 </template>

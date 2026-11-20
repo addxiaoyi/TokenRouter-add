@@ -9,9 +9,10 @@ import {
 } from './source-analysis.mjs'
 
 // check-imports.mjs checks frontend imports against the ownership of application
-// layers and private page modules. Alias and relative imports are normalized to
-// frontend-relative paths before comparison. Type imports follow the same layer
-// rules, while API domain types may reference one another across API modules.
+// layers and private page modules. Native source filenames, aliases, and relative
+// imports are normalized to frontend-relative paths before comparison. Type imports
+// follow the same layer rules, while API domain types may reference one another
+// across API modules.
 
 // @project-doc docs/architecture/frontend_modules.md#dependency_ownership
 // PRIVATE_MODULES names implementation folders and their permitted page entry
@@ -124,9 +125,19 @@ export const IMPORT_EXCEPTIONS = [
 ]
 
 /**
+ * normalizeSourcePath expresses frontend-relative paths with forward slashes and
+ * removes dot segments. Both exported check entry points use this representation
+ * before directory, owner, exception, or layer comparisons.
+ */
+function normalizeSourcePath(path) {
+  return posix.normalize(path.replaceAll('\\', '/'))
+}
+
+/**
  * localTarget resolves source aliases and relative imports into frontend paths.
  * Package imports return null because their ownership is defined by package
- * dependencies. Extensionless paths remain extensionless for directory-level rules.
+ * dependencies. Importer paths already use forward slashes; extensionless targets
+ * remain extensionless for directory-level rules.
  */
 function localTarget(importer, specifier) {
   if (specifier.startsWith('@/')) return posix.normalize(`src/${specifier.slice(2)}`)
@@ -139,9 +150,12 @@ function localTarget(importer, specifier) {
  * importViolation returns the violated ownership rule, or null for allowed imports.
  * Private directories admit their own files and the declared owner entry points.
  * Router modules may import an exact declared page entry while its implementation
- * remains private to that page's directory.
+ * remains private to that page's directory. Native Windows separators receive the
+ * same normalized comparisons as POSIX paths, including forbidden layer edges.
  */
-export function importViolation(importer, target) {
+export function importViolation(importerPath, targetPath) {
+  const importer = normalizeSourcePath(importerPath)
+  const target = normalizeSourcePath(targetPath)
   if (
     IMPORT_EXCEPTIONS.some(
       (exception) => exception.importer === importer && exception.target === target,
@@ -180,11 +194,16 @@ export function importViolation(importer, target) {
   return null
 }
 
-/** checkImports reports forbidden static dependencies from parsed module references. */
+/**
+ * checkImports reports forbidden static dependencies from parsed module references.
+ * Native frontend-relative filenames are normalized before resolving relative imports
+ * or checking ownership, so Windows and POSIX runs enforce identical dependency rules.
+ */
 export function checkImports(text, filename) {
-  return parseSource(text, filename).imports.flatMap((reference) => {
-    const target = localTarget(filename, reference.value)
-    const message = target && importViolation(filename, target)
+  const importer = normalizeSourcePath(filename)
+  return parseSource(text, importer).imports.flatMap((reference) => {
+    const target = localTarget(importer, reference.value)
+    const message = target && importViolation(importer, target)
     return message
       ? [{ ...sourceLocation(text, reference.offset), message: `${message} (${reference.value})` }]
       : []

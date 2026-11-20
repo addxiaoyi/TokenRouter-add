@@ -47,6 +47,12 @@ vi.mock('@/composables/useRoutePrefetch', () => ({
 vi.mock('@/router/title', () => ({
   resolveRouteDocumentTitle: () => 'TokenRouter',
 }))
+// Navigation still resolves the real login route and guards. Its view is inert
+// because this test observes the redirect URL, not the sign-in form or its assets.
+vi.mock('@/views/auth/LoginView.vue', () => ({
+  __esModule: true,
+  default: { name: 'LoginView' },
+}))
 
 // activeRouter retains the router whose web-history listeners must be released
 // after each case before another application instance observes the browser URL.

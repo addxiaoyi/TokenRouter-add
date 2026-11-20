@@ -771,6 +771,9 @@ const handleClose = () => {
   emit('close')
 }
 
+watch(availableCredits, selectDefaultCredit)
+// Observe initial visibility after setup helpers exist so a lazily mounted
+// dialog initializes its first opening through the same watcher as later openings.
 watch(
   () => [props.show, props.provider?.id],
   ([visible]) => {
@@ -780,7 +783,6 @@ watch(
     }
     resetLocalState()
   },
+  { immediate: true },
 )
-
-watch(availableCredits, selectDefaultCredit)
 </script>

@@ -574,30 +574,6 @@ const selectedBatchModels = computed(() =>
   batch.models.filter((model) => batch.selected.has(model)),
 )
 
-// Cancel test requests before resetting dialog controls; catalog loading then repopulates model
-// choices for the opening provider selection.
-watch(
-  () => [props.show, props.provider?.id] as const,
-  async ([open]) => {
-    abortAll()
-    if (open && props.provider) {
-      selectedGroupId.value =
-        groupOptions.value.find((group) => group.value === props.initialGroupId)?.value ??
-        groupOptions.value[0]?.value
-      testScope.value = 'single'
-      testPrompt.value = ''
-      lastDefaultPrompt = ''
-      testMode.value = 'default'
-      testType.value = 'text'
-      updateDefaultPrompt()
-      testProtocol.value = defaultProviderTestProtocol(props.provider, protocolPlan.value)
-      resetProviderTestRun(singleRun)
-      batch.reset([])
-      await loadAvailableModels()
-    }
-  },
-)
-
 /**
  * updateDefaultPrompt replaces an empty or previously automatic prompt with the current
  * output-type default. A nonempty custom prompt remains intact when model selection or test
@@ -736,4 +712,30 @@ const startBatch = (targets: string[], retry: boolean) => {
 // Component teardown cancels test traffic even when the parent removes the dialog without first
 // emitting its close event.
 onBeforeUnmount(abortAll)
+// Observe initial visibility after setup helpers exist so a lazily mounted
+// dialog initializes its first opening through the same watcher as later openings.
+// Cancel test requests before resetting dialog controls; catalog loading then repopulates model
+// choices for the opening provider selection.
+watch(
+  () => [props.show, props.provider?.id] as const,
+  async ([open]) => {
+    abortAll()
+    if (open && props.provider) {
+      selectedGroupId.value =
+        groupOptions.value.find((group) => group.value === props.initialGroupId)?.value ??
+        groupOptions.value[0]?.value
+      testScope.value = 'single'
+      testPrompt.value = ''
+      lastDefaultPrompt = ''
+      testMode.value = 'default'
+      testType.value = 'text'
+      updateDefaultPrompt()
+      testProtocol.value = defaultProviderTestProtocol(props.provider, protocolPlan.value)
+      resetProviderTestRun(singleRun)
+      batch.reset([])
+      await loadAvailableModels()
+    }
+  },
+  { immediate: true },
+)
 </script>

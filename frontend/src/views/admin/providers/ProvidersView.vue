@@ -603,6 +603,7 @@
       /></template>
     </TablePageLayout>
     <CreateProviderModal
+      v-if="mountedModalKinds.has('create')"
       :show="activeModal?.kind === 'create'"
       :initial-platform="activeModal?.kind === 'create' ? activeModal.initialPlatform : undefined"
       :proxies="proxies"
@@ -611,6 +612,7 @@
       @created="reload"
     />
     <EditProviderModal
+      v-if="mountedModalKinds.has('edit')"
       :show="activeModal?.kind === 'edit'"
       :provider="activeModal?.kind === 'edit' ? activeModal.provider : null"
       :proxies="proxies"
@@ -619,34 +621,40 @@
       @updated="handleProviderUpdated"
     />
     <ReAuthProviderModal
+      v-if="mountedModalKinds.has('reauth')"
       :show="activeModal?.kind === 'reauth'"
       :provider="activeModal?.kind === 'reauth' ? activeModal.provider : null"
       @close="closeReAuthModal"
       @reauthorized="handleProviderUpdated"
     />
     <ProviderTestModal
+      v-if="mountedModalKinds.has('test')"
       :show="activeModal?.kind === 'test'"
       :provider="activeModal?.kind === 'test' ? activeModal.provider : null"
       :initial-group-id="Number(params.group) || undefined"
       @close="closeTestModal"
     />
     <ProviderStatsModal
+      v-if="mountedModalKinds.has('stats')"
       :show="activeModal?.kind === 'stats'"
       :provider="activeModal?.kind === 'stats' ? activeModal.provider : null"
       @close="closeStatsModal"
     />
     <AdvancedSchedulerScoreModal
+      v-if="mountedModalKinds.has('advancedSchedulerScore')"
       :show="activeModal?.kind === 'advancedSchedulerScore'"
       :provider="activeModal?.kind === 'advancedSchedulerScore' ? activeModal.provider : null"
       @close="closeAdvancedSchedulerScoreModal"
     />
     <CodexInviteResetModal
+      v-if="mountedModalKinds.has('inviteReset')"
       :show="activeModal?.kind === 'inviteReset'"
       :provider="activeModal?.kind === 'inviteReset' ? activeModal.provider : null"
       @close="closeInviteResetModal"
       @updated="enterAutoRefreshSilentWindow"
     />
     <ScheduledTestsPanel
+      v-if="mountedModalKinds.has('schedule')"
       :show="activeModal?.kind === 'schedule'"
       :provider-id="activeModal?.kind === 'schedule' ? activeModal.provider.id : null"
       :model-options="scheduleModelOptions"
@@ -672,16 +680,19 @@
       @delete="handleDelete"
     />
     <SyncFromCrsModal
+      v-if="mountedModalKinds.has('sync')"
       :show="activeModal?.kind === 'sync'"
       @close="closeActiveModal"
       @synced="handleExternalProvidersChanged"
     />
     <ImportDataModal
+      v-if="mountedModalKinds.has('importData')"
       :show="activeModal?.kind === 'importData'"
       @close="closeActiveModal"
       @imported="handleDataImported"
     />
     <BulkEditProviderModal
+      v-if="mountedModalKinds.has('bulkEdit')"
       :show="activeModal?.kind === 'bulkEdit'"
       :provider-ids="selIds"
       :selected-providers="visibleSelectedProviders"
@@ -694,6 +705,7 @@
       @updated="handleBulkUpdated"
     />
     <TempUnschedStatusModal
+      v-if="mountedModalKinds.has('tempUnsched')"
       :show="activeModal?.kind === 'tempUnsched'"
       :provider="activeModal?.kind === 'tempUnsched' ? activeModal.provider : null"
       @close="closeActiveModal"
@@ -743,14 +755,17 @@
       </label>
     </ConfirmDialog>
     <ErrorPassthroughRulesModal
+      v-if="mountedModalKinds.has('errorPassthrough')"
       :show="activeModal?.kind === 'errorPassthrough'"
       @close="closeActiveModal"
     />
     <TLSFingerprintProfilesModal
+      v-if="mountedModalKinds.has('tlsProfiles')"
       :show="activeModal?.kind === 'tlsProfiles'"
       @close="closeActiveModal"
     />
     <TLSFingerprintRoutersModal
+      v-if="mountedModalKinds.has('tlsRouters')"
       :show="activeModal?.kind === 'tlsRouters'"
       @close="closeActiveModal"
     />
@@ -766,7 +781,8 @@ import { useProviderUsage } from './useProviderUsage'
 import { useProviderSelection, type ProviderBulkEditTarget } from './useProviderSelection'
 
 import MotionTransition from '@/components/common/MotionTransition.vue'
-import { ref, reactive, computed, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
+import { defineLazyComponent } from '@/components/common/asyncComponent'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { adminAPI } from '@/api/admin'
@@ -788,22 +804,10 @@ import Toggle from '@/components/common/Toggle.vue'
 import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
-import CreateProviderModal from './create/CreateProviderModal.vue'
-import EditProviderModal from './edit/EditProviderModal.vue'
-import BulkEditProviderModal from './operations/BulkEditProviderModal.vue'
-import SyncFromCrsModal from './operations/SyncFromCrsModal.vue'
-import TempUnschedStatusModal from './operations/TempUnschedStatusModal.vue'
 import ProviderTableActions from '@/views/admin/providers/table/ProviderTableActions.vue'
 import ProviderTableFilters from '@/views/admin/providers/table/ProviderTableFilters.vue'
 import ProviderBulkActionsBar from '@/views/admin/providers/operations/ProviderBulkActionsBar.vue'
 import ProviderActionMenu from '@/views/admin/providers/table/ProviderActionMenu.vue'
-import ImportDataModal from '@/views/admin/providers/operations/ImportDataModal.vue'
-import ReAuthProviderModal from '@/views/admin/providers/operations/ReAuthProviderModal.vue'
-import ProviderTestModal from '@/views/admin/providers/testing/ProviderTestModal.vue'
-import ProviderStatsModal from '@/views/admin/providers/operations/ProviderStatsModal.vue'
-import AdvancedSchedulerScoreModal from '@/views/admin/providers/operations/AdvancedSchedulerScoreModal.vue'
-import CodexInviteResetModal from '@/views/admin/providers/operations/CodexInviteResetModal.vue'
-import ScheduledTestsPanel from '@/views/admin/providers/testing/ScheduledTestsPanel.vue'
 import type { SelectOption } from '@/components/common/Select.vue'
 import ProviderStatusIndicator from '@/views/admin/providers/table/ProviderStatusIndicator.vue'
 import ProviderUsageCell from '@/views/admin/providers/table/ProviderUsageCell.vue'
@@ -817,9 +821,6 @@ import ProviderGroupsCell from '@/views/admin/providers/table/ProviderGroupsCell
 import ProviderCapacityCell from '@/views/admin/providers/table/ProviderCapacityCell.vue'
 import PlatformTypeBadge from '@/components/common/PlatformTypeBadge.vue'
 import Icon from '@/components/icons/Icon.vue'
-import ErrorPassthroughRulesModal from '@/views/admin/providers/operations/ErrorPassthroughRulesModal.vue'
-import TLSFingerprintProfilesModal from '@/views/admin/providers/operations/TLSFingerprintProfilesModal.vue'
-import TLSFingerprintRoutersModal from '@/views/admin/providers/operations/TLSFingerprintRoutersModal.vue'
 import { formatDateTime, formatRelativeTime } from '@/utils/format'
 import { proxyExpiryBadgeClass, proxyExpiryLabelKey } from '@/utils/proxyExpiry'
 import { sanitizeUrl } from '@/utils/url'
@@ -846,6 +847,71 @@ import type { ClaudeModel } from '@/api/models.types'
 // admission pauses around menus, dialogs, and recent edits. Export runs through
 // step-up authorization, and bulk actions retain failed selections when the
 // server supplies enough detail for another attempt.
+// Dialog modules load on first opening and remain mounted afterward, allowing
+// their existing show watchers and closing transitions to retain ownership.
+
+// Modal boundaries defer forms, OAuth flows, charts, and testing tools until
+// requested. Shared loading and failure feedback keeps a slow module download visible.
+const CreateProviderModal = defineLazyComponent(
+  () => import('./create/CreateProviderModal.vue'),
+  () => activeModal.value?.kind === 'create',
+)
+const EditProviderModal = defineLazyComponent(
+  () => import('./edit/EditProviderModal.vue'),
+  () => activeModal.value?.kind === 'edit',
+)
+const BulkEditProviderModal = defineLazyComponent(
+  () => import('./operations/BulkEditProviderModal.vue'),
+  () => activeModal.value?.kind === 'bulkEdit',
+)
+const SyncFromCrsModal = defineLazyComponent(
+  () => import('./operations/SyncFromCrsModal.vue'),
+  () => activeModal.value?.kind === 'sync',
+)
+const TempUnschedStatusModal = defineLazyComponent(
+  () => import('./operations/TempUnschedStatusModal.vue'),
+  () => activeModal.value?.kind === 'tempUnsched',
+)
+const ImportDataModal = defineLazyComponent(
+  () => import('./operations/ImportDataModal.vue'),
+  () => activeModal.value?.kind === 'importData',
+)
+const ReAuthProviderModal = defineLazyComponent(
+  () => import('./operations/ReAuthProviderModal.vue'),
+  () => activeModal.value?.kind === 'reauth',
+)
+const ProviderTestModal = defineLazyComponent(
+  () => import('./testing/ProviderTestModal.vue'),
+  () => activeModal.value?.kind === 'test',
+)
+const ProviderStatsModal = defineLazyComponent(
+  () => import('./operations/ProviderStatsModal.vue'),
+  () => activeModal.value?.kind === 'stats',
+)
+const AdvancedSchedulerScoreModal = defineLazyComponent(
+  () => import('./operations/AdvancedSchedulerScoreModal.vue'),
+  () => activeModal.value?.kind === 'advancedSchedulerScore',
+)
+const CodexInviteResetModal = defineLazyComponent(
+  () => import('./operations/CodexInviteResetModal.vue'),
+  () => activeModal.value?.kind === 'inviteReset',
+)
+const ScheduledTestsPanel = defineLazyComponent(
+  () => import('./testing/ScheduledTestsPanel.vue'),
+  () => activeModal.value?.kind === 'schedule',
+)
+const ErrorPassthroughRulesModal = defineLazyComponent(
+  () => import('./operations/ErrorPassthroughRulesModal.vue'),
+  () => activeModal.value?.kind === 'errorPassthrough',
+)
+const TLSFingerprintProfilesModal = defineLazyComponent(
+  () => import('./operations/TLSFingerprintProfilesModal.vue'),
+  () => activeModal.value?.kind === 'tlsProfiles',
+)
+const TLSFingerprintRoutersModal = defineLazyComponent(
+  () => import('./operations/TLSFingerprintRoutersModal.vue'),
+  () => activeModal.value?.kind === 'tlsRouters',
+)
 
 // The translator and application store supply labels and notifications for page
 // actions, while domain controllers retain their own request state.
@@ -887,6 +953,16 @@ type ProviderActiveModal =
 const activeModal = ref<ProviderActiveModal | null>(null)
 const includeProxyOnExport = ref(true)
 const scheduleModelOptions = ref<SelectOption[]>([])
+
+// mountedModalKinds admits each dialog once per page lifetime. Closing changes
+// show without unmounting its component, preserving its exit transition and cleanup.
+const mountedModalKinds = reactive(new Set<ProviderActiveModal['kind']>())
+watch(
+  () => activeModal.value?.kind,
+  (kind) => {
+    if (kind) mountedModalKinds.add(kind)
+  },
+)
 
 // closeActiveModal dismisses the active page dialog and clears its bound target.
 const closeActiveModal = () => {

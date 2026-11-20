@@ -179,13 +179,14 @@ describe('admin ProvidersView Qoder create entry', () => {
   })
 
   // The page renders its standard creation control with no Qoder shortcut.
-  // Clicking that control opens the creation modal with an empty initial
-  // platform selection.
+  // Clicking loads creation with an empty initial platform; closing retains its
+  // instance so the modal owns its exit transition and cleanup.
   it('uses the standard create entry and does not render the Qoder shortcut', async () => {
     const wrapper = mountView()
     await flushPromises()
 
     expect(wrapper.find('[data-test="create-qoder-provider"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="create-provider-modal"]').exists()).toBe(false)
 
     await wrapper.get('[data-test="default-create"]').trigger('click')
     await flushPromises()
@@ -193,6 +194,10 @@ describe('admin ProvidersView Qoder create entry', () => {
     const modal = wrapper.get('[data-test="create-provider-modal"]')
     expect(modal.attributes('data-show')).toBe('true')
     expect(modal.attributes('data-initial-platform')).toBe('')
+    wrapper.findComponent(CreateProviderModalStub).vm.$emit('close')
+    await flushPromises()
+    expect(wrapper.get('[data-test="create-provider-modal"]').element).toBe(modal.element)
+    expect(modal.attributes('data-show')).toBe('false')
   })
 })
 

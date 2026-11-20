@@ -23,14 +23,12 @@
     <AppHeader public-page />
 
     <main v-content-reveal="motionRoute?.path" class="relative z-10 flex-1 pb-24 md:pb-32">
-      <!-- Full-bleed interactive Hero Stage: GradientASCII lives inside the hero section (never overlapping DitherVeil below) so only one WebGL2 canvas is ever active and zero compositor holes can occur. -->
-      <section
-        class="relative w-full overflow-hidden px-6 md:px-10"
-      >
+      <!-- The hero renders immediately; lower artwork waits until its reserved section approaches the viewport. -->
+      <section class="relative w-full overflow-hidden px-6 md:px-10">
         <div class="pointer-events-none absolute inset-0 z-0">
           <GradientASCII
             :colors="heroAsciiColors"
-            :shape="heroAsciiShape"
+            shape="horizon"
             characters=" =+xX0S8#@"
             :cell-size="18"
             :density="0.86"
@@ -48,7 +46,6 @@
             click-effect="wave"
             :intro="true"
             :light-mode="!isDarkTheme"
-            :ignore-reduced-motion="true"
             :dpr="1"
             :max-fps="30"
             font-family="'Geist Mono Variable', 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
@@ -62,77 +59,52 @@
         <div
           class="pointer-events-none relative z-10 mx-auto flex min-h-[calc(100vh-var(--header-h))] max-w-7xl flex-col justify-between py-12 lg:py-16"
         >
-        <div class="my-auto flex max-w-2xl flex-col items-start py-8">
-          <h1
-            class="text-balance text-left text-5xl font-light leading-[1.04] tracking-[-0.04em] text-gray-950 sm:text-6xl lg:text-[4.5rem] dark:text-white"
-          >
-            {{ homeHeroTitle }}
-          </h1>
-
-          <p
-            class="mt-6 max-w-[44ch] text-pretty text-left text-base leading-relaxed text-gray-900/75 sm:text-lg dark:text-dark-50/75"
-          >
-            {{ homeHeroSubtitle }}
-          </p>
-
-          <div
-            class="pointer-events-auto mt-9 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center"
-          >
-            <router-link
-              :to="isAuthenticated ? dashboardPath : '/login'"
-              class="inline-flex min-h-12 min-w-[176px] items-center justify-center gap-2.5 rounded-full bg-gray-950 px-7 py-3 text-sm font-medium text-gray-50 shadow-sm transition duration-fast ease-standard hover:-translate-y-0.5 hover:bg-gray-800 active:scale-[0.98] dark:bg-dark-50 dark:text-dark-950 dark:hover:bg-dark-200"
+          <div class="my-auto flex max-w-2xl flex-col items-start py-8">
+            <h1
+              class="text-balance text-left text-5xl font-light leading-[1.04] tracking-[-0.04em] text-gray-950 sm:text-6xl lg:text-[4.5rem] dark:text-white"
             >
-              {{ isAuthenticated ? t('home.goToDashboard') : t('home.getStarted') }}
-              <Icon name="arrowRight" size="sm" :stroke-width="2" />
-            </router-link>
-            <router-link
-              to="/models"
-              class="inline-flex min-h-12 min-w-[176px] items-center justify-center gap-2.5 rounded-full border border-black/[0.12] bg-white/85 px-7 py-3 text-sm font-medium text-gray-950 shadow-sm transition duration-fast ease-standard hover:-translate-y-0.5 hover:bg-white active:scale-[0.98] dark:border-white/[0.16] dark:bg-black/55 dark:text-dark-50 dark:hover:bg-black/75"
-            >
-              {{ t('home.exploreMarketplace') }}
-              <span class="relative flex h-4 w-4 items-center justify-center overflow-hidden">
-                <MotionTransition name="home-marketplace-icon" mode="out-in">
-                  <ProviderIcon
-                    v-if="homeMarketplaceButtonBrand"
-                    :key="homeMarketplaceButtonBrand"
-                    :brand="homeMarketplaceButtonBrand"
-                    size="16px"
-                  />
-                  <Icon
-                    v-else
-                    key="marketplace-fallback"
-                    name="sparkles"
-                    size="sm"
-                    class="text-primary-500"
-                  />
-                </MotionTransition>
-              </span>
-            </router-link>
-          </div>
-        </div>
+              {{ homeHeroTitle }}
+            </h1>
 
-        <!-- Bottom bar: borderless telemetry numbers + subtle interactive ASCII shape switcher -->
-        <div class="space-y-4">
-          <div class="flex justify-end">
+            <p
+              class="mt-6 max-w-[44ch] text-pretty text-left text-base leading-relaxed text-gray-900/75 sm:text-lg dark:text-dark-50/75"
+            >
+              {{ homeHeroSubtitle }}
+            </p>
+
             <div
-              class="pointer-events-auto inline-flex items-center gap-0.5 rounded-full border border-black/[0.10] bg-white/85 p-1 dark:border-white/[0.16] dark:bg-black/55"
-              role="group"
-              aria-label="ASCII light shape"
+              class="pointer-events-auto mt-9 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center"
             >
-              <button
-                v-for="item in heroAsciiShapes"
-                :key="item.value"
-                type="button"
-                class="rounded-full px-2.5 py-0.5 font-mono text-xs transition-colors duration-fast"
-                :class="
-                  heroAsciiShape === item.value
-                    ? 'bg-gray-950 text-white dark:bg-white dark:text-gray-950 font-medium'
-                    : 'text-gray-900/65 hover:text-gray-950 dark:text-white/70 dark:hover:text-white'
-                "
-                @click="heroAsciiShape = item.value"
+              <router-link
+                :to="isAuthenticated ? dashboardPath : '/login'"
+                class="inline-flex min-h-12 min-w-[176px] items-center justify-center gap-2.5 rounded-full bg-gray-950 px-7 py-3 text-sm font-medium text-gray-50 shadow-sm transition duration-fast ease-standard hover:-translate-y-0.5 hover:bg-gray-800 active:scale-[0.98] dark:bg-dark-50 dark:text-dark-950 dark:hover:bg-dark-200"
               >
-                {{ item.label }}
-              </button>
+                {{ isAuthenticated ? t('home.goToDashboard') : t('home.getStarted') }}
+                <Icon name="arrowRight" size="sm" :stroke-width="2" />
+              </router-link>
+              <router-link
+                to="/models"
+                class="inline-flex min-h-12 min-w-[176px] items-center justify-center gap-2.5 rounded-full border border-black/[0.12] bg-white/85 px-7 py-3 text-sm font-medium text-gray-950 shadow-sm transition duration-fast ease-standard hover:-translate-y-0.5 hover:bg-white active:scale-[0.98] dark:border-white/[0.16] dark:bg-black/55 dark:text-dark-50 dark:hover:bg-black/75"
+              >
+                {{ t('home.exploreMarketplace') }}
+                <span class="relative flex h-4 w-4 items-center justify-center overflow-hidden">
+                  <MotionTransition name="home-marketplace-icon" mode="out-in">
+                    <ProviderIcon
+                      v-if="homeMarketplaceButtonBrand"
+                      :key="homeMarketplaceButtonBrand"
+                      :brand="homeMarketplaceButtonBrand"
+                      size="16px"
+                    />
+                    <Icon
+                      v-else
+                      key="marketplace-fallback"
+                      name="sparkles"
+                      size="sm"
+                      class="text-primary-500"
+                    />
+                  </MotionTransition>
+                </span>
+              </router-link>
             </div>
           </div>
 
@@ -171,457 +143,392 @@
             </span>
           </div>
         </div>
-        </div>
       </section>
 
       <div class="px-6 md:px-10">
-      <!-- Section 2: Single uncluttered editorial band pairing interactive DitherVeil with borderless hairline feature rows (zero stacked card bloat) -->
-      <section
-        class="mx-auto mt-20 grid max-w-7xl grid-cols-1 items-center gap-12 lg:mt-28 lg:grid-cols-12"
-      >
-        <div class="lg:col-span-6">
-          <div
-            class="group relative isolate h-[380px] w-full overflow-hidden rounded-surface border border-black/[0.08] bg-gray-950 shadow-xl sm:h-[440px] dark:border-white/[0.12]"
-          >
-            <DitherVeil
-              :src="heroDitherArt"
-              fit="cover"
-              :pattern="heroVeilPattern"
-              :pixel-size="2"
-              :levels="2"
-              palette="duotone"
-              :ink-color="heroVeilTheme.ink"
-              :paper-color="heroVeilTheme.paper"
-              :rim-color="heroVeilTheme.rim"
-              :rim="0.14"
-              :contrast="1.18"
-              :reveal-radius="210"
-              :softness="0.6"
-              :linger="1.15"
-              :wander="false"
-              :click-burst="true"
-            />
-
-            <div
-              class="pointer-events-none absolute inset-x-4 top-4 z-10 flex items-center justify-between gap-2 sm:inset-x-5 sm:top-5"
-            >
-              <span
-                class="inline-flex items-center gap-2 rounded-full border border-white/25 bg-black/75 px-3 py-1 font-mono text-xs text-white/95"
-              >
-                <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-                {{ homeRouteLabel }}
-              </span>
-
-              <div
-                class="pointer-events-auto inline-flex items-center gap-0.5 rounded-full border border-white/20 bg-black/75 p-1"
-                role="group"
-                aria-label="Dither pattern"
-              >
-                <button
-                  v-for="item in heroVeilPatterns"
-                  :key="item.value"
-                  type="button"
-                  class="rounded-full px-2.5 py-0.5 font-mono text-xs transition-colors duration-fast"
-                  :class="
-                    heroVeilPattern === item.value
-                      ? 'bg-white text-gray-950 font-medium'
-                      : 'text-white/70 hover:text-white'
-                  "
-                  @click="heroVeilPattern = item.value"
-                >
-                  {{ item.label }}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div
-          class="divide-y divide-black/[0.08] border-y border-black/[0.08] lg:col-span-6 dark:divide-white/[0.10] dark:border-white/[0.10]"
+        <!-- Section 2: Single uncluttered editorial band pairing interactive DitherVeil with borderless hairline feature rows (zero stacked card bloat) -->
+        <section
+          class="mx-auto mt-20 grid max-w-7xl grid-cols-1 items-center gap-12 lg:mt-28 lg:grid-cols-12"
         >
-          <div class="py-6">
-            <div class="flex items-baseline justify-between gap-4">
-              <h2 class="text-xl font-light tracking-[-0.02em] text-gray-950 dark:text-white">
-                {{ t('home.features.unifiedGateway') }}
-              </h2>
-              <router-link
-                to="/models"
-                class="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-link"
-              >
-                {{ t('home.features.browseAll') }}
-                <Icon name="arrowRight" size="xs" />
-              </router-link>
-            </div>
-            <p class="mt-2 text-sm leading-relaxed text-gray-900/65 dark:text-dark-50/65">
-              {{ t('home.features.unifiedGatewayDesc') }}
-            </p>
-          </div>
-
-          <div class="py-6">
-            <div class="flex items-baseline justify-between gap-4">
-              <h2 class="text-xl font-light tracking-[-0.02em] text-gray-950 dark:text-white">
-                {{ t('home.features.multiProvider') }}
-              </h2>
-              <router-link
-                :to="isAuthenticated ? dashboardPath : '/login'"
-                class="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-link"
-              >
-                {{ t('home.features.learnMore') }}
-                <Icon name="arrowRight" size="xs" />
-              </router-link>
-            </div>
-            <p class="mt-2 text-sm leading-relaxed text-gray-900/65 dark:text-dark-50/65">
-              {{ t('home.features.multiProviderDesc') }}
-            </p>
-          </div>
-
-          <div class="py-6">
-            <div class="flex items-baseline justify-between gap-4">
-              <h2 class="text-xl font-light tracking-[-0.02em] text-gray-950 dark:text-white">
-                {{ t('home.features.balanceQuota') }}
-              </h2>
-              <router-link
-                :to="isAuthenticated ? dashboardPath : '/login'"
-                class="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-link"
-              >
-                {{ t('home.features.viewUsage') }}
-                <Icon name="arrowRight" size="xs" />
-              </router-link>
-            </div>
-            <p class="mt-2 text-sm leading-relaxed text-gray-900/65 dark:text-dark-50/65">
-              {{ t('home.features.balanceQuotaDesc') }}
-            </p>
-          </div>
-
-          <div class="py-6">
-            <div class="flex items-baseline justify-between gap-4">
-              <h2 class="text-xl font-light tracking-[-0.02em] text-gray-950 dark:text-white">
-                {{ t('home.features.dataPolicies') }}
-              </h2>
-              <a
-                v-if="docUrl"
-                :href="docUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-link"
-              >
-                {{ t('home.docs') }}
-                <Icon name="externalLink" size="xs" />
-              </a>
-            </div>
-            <p class="mt-2 text-sm leading-relaxed text-gray-900/65 dark:text-dark-50/65">
-              {{ t('home.features.dataPoliciesDesc') }}
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section class="mx-auto mt-24 max-w-7xl">
-        <div class="mb-7 flex items-end justify-between gap-4">
-          <div class="min-w-0">
-            <h2
-              class="text-balance text-xl font-semibold leading-tight tracking-[-0.025em] text-gray-950 dark:text-white"
-            >
-              {{ t('home.providers.title') }}
-            </h2>
-            <p class="mt-1.5 text-sm leading-relaxed text-gray-500 dark:text-dark-400">
-              {{ formatMarketplaceStat(totalModelCount) }} {{ t('marketplace.modelsStat') }}
-              ·
-              {{ formatMarketplaceStat(supportedProviders.length) }}
-              {{ t('home.stats.providerTypes') }}
-            </p>
-          </div>
-          <router-link
-            to="/models"
-            class="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-sm leading-relaxed text-link"
-          >
-            {{ t('home.viewAll') }}
-            <Icon name="arrowRight" size="xs" />
-          </router-link>
-        </div>
-
-        <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          <template v-if="homeMarketplaceLoading">
-            <span role="status" :aria-label="t('common.loading')" class="sr-only"></span>
-            <article
-              v-for="card in 3"
-              :key="card"
-              class="rounded-surface border border-gray-200 bg-white p-6 dark:border-dark-800 dark:bg-dark-900"
-              aria-hidden="true"
-              aria-busy="true"
-              data-loading-skeleton
-            >
-              <div class="flex items-start gap-4">
-                <Skeleton :width="48" :height="48" class="shrink-0 rounded-surface" />
-                <div class="min-w-0 flex-1 space-y-2 py-1">
-                  <Skeleton :width="146" :height="20" class="max-w-full" />
-                  <Skeleton :width="92" :height="14" class="max-w-full" />
-                </div>
-              </div>
-              <div
-                class="mt-5 grid grid-cols-2 gap-1 border-t border-gray-200 pt-5 dark:border-dark-800 sm:gap-4"
-              >
-                <div v-for="field in 2" :key="field" class="space-y-2">
-                  <Skeleton width="70%" :height="14" />
-                  <Skeleton width="48%" :height="14" />
-                </div>
-              </div>
-              <Skeleton :width="96" :height="16" class="mt-5" />
-            </article>
-          </template>
-
-          <div
-            v-else-if="supportedProviders.length === 0"
-            class="rounded-surface border border-gray-200 bg-white px-5 py-4 text-center text-sm text-gray-500 dark:border-dark-800 dark:bg-dark-900 dark:text-dark-400 sm:col-span-2 lg:col-span-3"
-          >
-            {{ homeMarketplaceError ? t('home.providers.unavailable') : t('home.providers.empty') }}
-          </div>
-
-          <!-- Resolved featured-model configuration replaces the fallback provider-category cards in its configured order. -->
-          <template v-else-if="featuredModels.length > 0">
-            <article
-              v-for="featured in featuredModels"
-              :key="featured.model.id"
-              class="glass-card card-hover p-6 focus-within:border-black/[0.16]"
-            >
-              <div class="flex items-start gap-4">
-                <!-- Use the same model artwork and framed icon treatment as the marketplace cards. -->
-                <span
-                  class="flex h-12 w-12 shrink-0 items-center justify-center rounded-surface border border-black/[0.08] bg-white/85 shadow-sm dark:border-white/[0.09] dark:bg-dark-950/85"
-                >
-                  <ModelIcon :model="featured.model.id" size="28px" />
-                </span>
-                <div class="min-w-0 flex-1">
-                  <h3
-                    class="truncate text-lg font-semibold tracking-[-0.02em] text-gray-950 dark:text-white"
-                  >
-                    {{ featured.model.display_name || featured.model.id }}
-                  </h3>
-                  <p
-                    v-if="featured.author"
-                    class="truncate text-sm text-gray-500 dark:text-dark-400"
-                  >
-                    {{ t('home.featured.byAuthor', { author: featured.author }) }}
-                  </p>
-                </div>
-              </div>
-              <dl
-                class="mt-5 grid grid-cols-2 gap-1 border-t border-black/[0.07] pt-5 text-sm leading-relaxed dark:border-white/[0.08] sm:gap-4"
-              >
-                <div class="min-w-0">
-                  <dt class="text-gray-600 dark:text-dark-300">{{
-                    t('home.featured.modalities')
-                  }}</dt>
-                  <dd class="flex min-h-[1.625em] items-center">
-                    <ModelCapabilityTags :model="featured.model" class="home-featured-modalities" />
-                  </dd>
-                </div>
-                <div class="min-w-0 text-right">
-                  <dt class="text-gray-600 dark:text-dark-300">{{
-                    t('home.featured.maxDiscount')
-                  }}</dt>
-                  <dd
-                    class="font-medium tabular-nums"
-                    :class="
-                      featured.discountOff
-                        ? 'text-gray-950 dark:text-white'
-                        : 'text-gray-500 dark:text-dark-400'
-                    "
-                  >
-                    {{ featured.discountOff ?? '—' }}
-                  </dd>
-                </div>
-              </dl>
-            </article>
-          </template>
-
-          <template v-else>
-            <article
-              v-for="provider in supportedProviders.slice(0, 6)"
-              :key="provider.key"
-              class="glass-card card-hover p-6 focus-within:border-black/[0.16]"
-            >
-              <div class="flex items-start gap-4">
-                <span
-                  class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-black/[0.08] bg-white/85 shadow-sm dark:border-white/[0.09] dark:bg-dark-950/85"
-                  :class="providerIconWrapClass(provider)"
-                >
-                  <ProviderIcon :brand="provider.iconBrand" size="22px" />
-                </span>
-                <div class="min-w-0 flex-1">
-                  <h3
-                    class="truncate text-lg font-semibold tracking-[-0.02em] text-gray-950 dark:text-white"
-                  >
-                    {{ provider.label }}
-                  </h3>
-                  <p class="text-sm text-gray-500 dark:text-dark-400">
-                    {{ provider.groupCount }} {{ t('home.providers.groups') }}
-                  </p>
-                </div>
-              </div>
-              <div class="mt-5 border-t border-black/[0.07] pt-5 dark:border-white/[0.08]">
-                <div class="flex items-end justify-between gap-4">
-                  <div>
-                    <p class="text-sm text-gray-500 dark:text-dark-400">
-                      {{ t('home.providers.modelCount') }}
-                    </p>
-                    <p class="mt-1 text-lg font-semibold text-gray-950 dark:text-white">
-                      {{ provider.modelCount }}
-                    </p>
-                  </div>
-                  <p
-                    v-if="provider.officialPriceRatio"
-                    class="max-w-[180px] text-right text-sm font-semibold text-emerald-600 dark:text-emerald-300"
-                  >
-                    {{ formatOfficialPriceRatio(provider.officialPriceRatio) }}
-                  </p>
-                  <p v-else class="text-sm font-medium text-primary-600 dark:text-primary-300">
-                    {{ t('home.providers.supported') }}
-                  </p>
-                </div>
-              </div>
-            </article>
-          </template>
-        </div>
-      </section>
-
-      <!-- Interactive FallingText physics band showcasing multi-provider routing with Matter.js rigid bodies. -->
-      <section class="mx-auto mt-16 max-w-7xl md:mt-20">
-        <div class="glass-card relative overflow-hidden">
-          <div
-            class="pointer-events-none absolute inset-x-5 top-4 z-10 flex items-center justify-between gap-2"
-          >
-            <span class="font-mono text-xs text-gray-500 dark:text-dark-400">
-              Hover · Drag · Throw
-            </span>
+          <div class="lg:col-span-6">
             <div
-              class="pointer-events-auto inline-flex items-center gap-0.5 rounded-full border border-black/[0.10] bg-white/85 p-1 dark:border-white/[0.14] dark:bg-black/55"
-              role="group"
-              aria-label="Falling text variant"
+              class="group relative isolate h-[380px] w-full overflow-hidden rounded-surface border border-black/[0.08] bg-gray-950 shadow-xl sm:h-[440px] dark:border-white/[0.12]"
             >
-              <button
-                v-for="item in fallingVariants"
-                :key="item.value"
-                type="button"
-                class="rounded-full px-2.5 py-0.5 font-mono text-xs transition-colors duration-fast"
-                :class="
-                  fallingVariant === item.value
-                    ? 'bg-gray-950 text-white dark:bg-white dark:text-gray-950 font-medium'
-                    : 'text-gray-700 hover:text-gray-950 dark:text-white/70 dark:hover:text-white'
-                "
-                @click="fallingVariant = item.value"
-              >
-                {{ item.label }}
-              </button>
+              <LazyVisual class="absolute inset-0">
+                <template #fallback>
+                  <img
+                    :src="heroDitherArt"
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    class="h-full w-full object-cover grayscale"
+                  />
+                </template>
+                <DitherVeil
+                  :src="heroDitherArt"
+                  fit="cover"
+                  pattern="floyd"
+                  :pixel-size="2"
+                  :levels="2"
+                  palette="duotone"
+                  :ink-color="heroVeilTheme.ink"
+                  :paper-color="heroVeilTheme.paper"
+                  :rim-color="heroVeilTheme.rim"
+                  :rim="0.14"
+                  :contrast="1.18"
+                  :reveal-radius="210"
+                  :softness="0.6"
+                  :linger="1.15"
+                  :wander="false"
+                  :click-burst="true"
+                />
+              </LazyVisual>
+
+              <div class="pointer-events-none absolute inset-x-4 top-4 z-10 sm:inset-x-5 sm:top-5">
+                <span
+                  class="inline-flex items-center gap-2 rounded-full border border-white/25 bg-black/75 px-3 py-1 font-mono text-xs text-white/95"
+                >
+                  <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                  {{ homeRouteLabel }}
+                </span>
+              </div>
             </div>
           </div>
 
-          <div class="h-[250px] w-full pt-8 sm:h-[270px]">
-            <FallingText
-              text="One unified API routes Claude GPT Gemini DeepSeek Grok with automatic failover and zero lock-in."
-              :highlight-words="['Claude', 'GPT', 'Gemini', 'DeepSeek', 'Grok']"
-              :variant="fallingVariant"
-              trigger="hover"
-              :gravity="0.95"
-              :bounciness="0.32"
-              :scatter="0.55"
-              :cursor-push="0.65"
-              :restore-delay="2.5"
-              :font-size="fallingVariant === 'tiles' ? '1.05rem' : '1.35rem'"
-              :accent-color="fallingAccentColor"
-              :theme="isDarkTheme ? 'dark' : 'light'"
-              :ignore-reduced-motion="true"
-              class-name="text-gray-900 dark:text-dark-100"
-            />
-          </div>
-        </div>
-      </section>
-
-      <section
-        aria-labelledby="home-steps-heading"
-        class="mx-auto mt-20 max-w-7xl text-sm leading-[1.65] text-gray-950 dark:text-dark-50 md:mt-24"
-      >
-        <h2 id="home-steps-heading" class="sr-only">{{ t('home.steps.title') }}</h2>
-        <div class="grid gap-5 md:grid-cols-3">
-          <article
-            v-for="step in homeSteps"
-            :key="step.key"
-            class="glass-card flex min-w-0 flex-col gap-4 p-6"
+          <div
+            class="divide-y divide-black/[0.08] border-y border-black/[0.08] lg:col-span-6 dark:divide-white/[0.10] dark:border-white/[0.10]"
           >
-            <div class="flex items-center gap-3">
-              <span
-                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-black/[0.08] bg-white/80 font-mono text-xs font-semibold tabular-nums text-gray-700 shadow-sm dark:border-white/[0.10] dark:bg-white/[0.06] dark:text-dark-200"
-              >
-                {{ step.index }}
-              </span>
-              <h3 class="text-base font-semibold leading-[1.35] tracking-[-0.015em]">
-                {{ step.title }}
-              </h3>
+            <div class="py-6">
+              <div class="flex items-baseline justify-between gap-4">
+                <h2 class="text-xl font-light tracking-[-0.02em] text-gray-950 dark:text-white">
+                  {{ t('home.features.unifiedGateway') }}
+                </h2>
+                <router-link
+                  to="/models"
+                  class="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-link"
+                >
+                  {{ t('home.features.browseAll') }}
+                  <Icon name="arrowRight" size="xs" />
+                </router-link>
+              </div>
+              <p class="mt-2 text-sm leading-relaxed text-gray-900/65 dark:text-dark-50/65">
+                {{ t('home.features.unifiedGatewayDesc') }}
+              </p>
             </div>
 
-            <p class="min-h-10 text-pretty text-gray-600 dark:text-dark-300 md:min-h-12">
-              {{ step.description }}
-              <template v-if="step.key === 'api-key' && docUrl">
-                {{ ' ' }}
+            <div class="py-6">
+              <div class="flex items-baseline justify-between gap-4">
+                <h2 class="text-xl font-light tracking-[-0.02em] text-gray-950 dark:text-white">
+                  {{ t('home.features.multiProvider') }}
+                </h2>
+                <router-link
+                  :to="isAuthenticated ? dashboardPath : '/login'"
+                  class="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-link"
+                >
+                  {{ t('home.features.learnMore') }}
+                  <Icon name="arrowRight" size="xs" />
+                </router-link>
+              </div>
+              <p class="mt-2 text-sm leading-relaxed text-gray-900/65 dark:text-dark-50/65">
+                {{ t('home.features.multiProviderDesc') }}
+              </p>
+            </div>
+
+            <div class="py-6">
+              <div class="flex items-baseline justify-between gap-4">
+                <h2 class="text-xl font-light tracking-[-0.02em] text-gray-950 dark:text-white">
+                  {{ t('home.features.balanceQuota') }}
+                </h2>
+                <router-link
+                  :to="isAuthenticated ? dashboardPath : '/login'"
+                  class="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-link"
+                >
+                  {{ t('home.features.viewUsage') }}
+                  <Icon name="arrowRight" size="xs" />
+                </router-link>
+              </div>
+              <p class="mt-2 text-sm leading-relaxed text-gray-900/65 dark:text-dark-50/65">
+                {{ t('home.features.balanceQuotaDesc') }}
+              </p>
+            </div>
+
+            <div class="py-6">
+              <div class="flex items-baseline justify-between gap-4">
+                <h2 class="text-xl font-light tracking-[-0.02em] text-gray-950 dark:text-white">
+                  {{ t('home.features.dataPolicies') }}
+                </h2>
                 <a
+                  v-if="docUrl"
                   :href="docUrl"
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="text-link underline-offset-2 decoration-current/40"
+                  class="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-link"
                 >
-                  {{ t('home.steps.apiKey.docs') }}
+                  {{ t('home.docs') }}
+                  <Icon name="externalLink" size="xs" />
                 </a>
-              </template>
-            </p>
+              </div>
+              <p class="mt-2 text-sm leading-relaxed text-gray-900/65 dark:text-dark-50/65">
+                {{ t('home.features.dataPoliciesDesc') }}
+              </p>
+            </div>
+          </div>
+        </section>
 
-            <div class="flex w-full max-w-56 flex-col gap-3 pt-4 md:px-2" aria-hidden="true">
-              <div class="flex items-center gap-2">
-                <svg
-                  class="h-5 w-5 shrink-0"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
+        <section class="mx-auto mt-24 max-w-7xl">
+          <div class="mb-7 flex items-end justify-between gap-4">
+            <div class="min-w-0">
+              <h2
+                class="text-balance text-xl font-semibold leading-tight tracking-[-0.025em] text-gray-950 dark:text-white"
+              >
+                {{ t('home.providers.title') }}
+              </h2>
+              <p class="mt-1.5 text-sm leading-relaxed text-gray-500 dark:text-dark-400">
+                {{ formatMarketplaceStat(totalModelCount) }} {{ t('marketplace.modelsStat') }}
+                ·
+                {{ formatMarketplaceStat(supportedProviders.length) }}
+                {{ t('home.stats.providerTypes') }}
+              </p>
+            </div>
+            <router-link
+              to="/models"
+              class="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-sm leading-relaxed text-link"
+            >
+              {{ t('home.viewAll') }}
+              <Icon name="arrowRight" size="xs" />
+            </router-link>
+          </div>
+
+          <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <template v-if="homeMarketplaceLoading">
+              <span role="status" :aria-label="t('common.loading')" class="sr-only"></span>
+              <article
+                v-for="card in 3"
+                :key="card"
+                class="rounded-surface border border-gray-200 bg-white p-6 dark:border-dark-800 dark:bg-dark-900"
+                aria-hidden="true"
+                aria-busy="true"
+                data-loading-skeleton
+              >
+                <div class="flex items-start gap-4">
+                  <Skeleton :width="48" :height="48" class="shrink-0 rounded-surface" />
+                  <div class="min-w-0 flex-1 space-y-2 py-1">
+                    <Skeleton :width="146" :height="20" class="max-w-full" />
+                    <Skeleton :width="92" :height="14" class="max-w-full" />
+                  </div>
+                </div>
+                <div
+                  class="mt-5 grid grid-cols-2 gap-1 border-t border-gray-200 pt-5 dark:border-dark-800 sm:gap-4"
                 >
-                  <path :d="onboardingPaths[step.icon]" />
-                </svg>
-                <span
-                  v-for="(width, index) in step.illustrationLineWidths"
-                  :key="index"
-                  class="home-step-lines flex h-4 flex-col justify-center gap-0.5"
-                  :class="width"
-                ></span>
-                <span
-                  v-if="step.key === 'api-key'"
-                  class="home-step-sample flex h-6 min-w-0 flex-1 items-center bg-gray-950/5 px-2 text-xs leading-[1.35] tracking-wide text-gray-950/[0.69] dark:bg-dark-50/5 dark:text-dark-50/[0.69]"
+                  <div v-for="field in 2" :key="field" class="space-y-2">
+                    <Skeleton width="70%" :height="14" />
+                    <Skeleton width="48%" :height="14" />
+                  </div>
+                </div>
+                <Skeleton :width="96" :height="16" class="mt-5" />
+              </article>
+            </template>
+
+            <div
+              v-else-if="supportedProviders.length === 0"
+              class="rounded-surface border border-gray-200 bg-white px-5 py-4 text-center text-sm text-gray-500 dark:border-dark-800 dark:bg-dark-900 dark:text-dark-400 sm:col-span-2 lg:col-span-3"
+            >
+              {{
+                homeMarketplaceError ? t('home.providers.unavailable') : t('home.providers.empty')
+              }}
+            </div>
+
+            <!-- Resolved featured-model configuration replaces the fallback provider-category cards in its configured order. -->
+            <template v-else-if="featuredModels.length > 0">
+              <article
+                v-for="featured in featuredModels"
+                :key="featured.model.id"
+                class="glass-card card-hover p-6 focus-within:border-black/[0.16]"
+              >
+                <div class="flex items-start gap-4">
+                  <!-- Use the same model artwork and framed icon treatment as the marketplace cards. -->
+                  <span
+                    class="flex h-12 w-12 shrink-0 items-center justify-center rounded-surface border border-black/[0.08] bg-white/85 shadow-sm dark:border-white/[0.09] dark:bg-dark-950/85"
+                  >
+                    <ModelIcon :model="featured.model.id" size="28px" />
+                  </span>
+                  <div class="min-w-0 flex-1">
+                    <h3
+                      class="truncate text-lg font-semibold tracking-[-0.02em] text-gray-950 dark:text-white"
+                    >
+                      {{ featured.model.display_name || featured.model.id }}
+                    </h3>
+                    <p
+                      v-if="featured.author"
+                      class="truncate text-sm text-gray-500 dark:text-dark-400"
+                    >
+                      {{ t('home.featured.byAuthor', { author: featured.author }) }}
+                    </p>
+                  </div>
+                </div>
+                <dl
+                  class="mt-5 grid grid-cols-2 gap-1 border-t border-black/[0.07] pt-5 text-sm leading-relaxed dark:border-white/[0.08] sm:gap-4"
                 >
-                  <span class="truncate">TOKENROUTER_API_KEY</span>
+                  <div class="min-w-0">
+                    <dt class="text-gray-600 dark:text-dark-300">{{
+                      t('home.featured.modalities')
+                    }}</dt>
+                    <dd class="flex min-h-[1.625em] items-center">
+                      <ModelCapabilityTags
+                        :model="featured.model"
+                        class="home-featured-modalities"
+                      />
+                    </dd>
+                  </div>
+                  <div class="min-w-0 text-right">
+                    <dt class="text-gray-600 dark:text-dark-300">{{
+                      t('home.featured.maxDiscount')
+                    }}</dt>
+                    <dd
+                      class="font-medium tabular-nums"
+                      :class="
+                        featured.discountOff
+                          ? 'text-gray-950 dark:text-white'
+                          : 'text-gray-500 dark:text-dark-400'
+                      "
+                    >
+                      {{ featured.discountOff ?? '—' }}
+                    </dd>
+                  </div>
+                </dl>
+              </article>
+            </template>
+
+            <template v-else>
+              <article
+                v-for="provider in supportedProviders.slice(0, 6)"
+                :key="provider.key"
+                class="glass-card card-hover p-6 focus-within:border-black/[0.16]"
+              >
+                <div class="flex items-start gap-4">
+                  <span
+                    class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-black/[0.08] bg-white/85 shadow-sm dark:border-white/[0.09] dark:bg-dark-950/85"
+                    :class="providerIconWrapClass(provider)"
+                  >
+                    <ProviderIcon :brand="provider.iconBrand" size="22px" />
+                  </span>
+                  <div class="min-w-0 flex-1">
+                    <h3
+                      class="truncate text-lg font-semibold tracking-[-0.02em] text-gray-950 dark:text-white"
+                    >
+                      {{ provider.label }}
+                    </h3>
+                    <p class="text-sm text-gray-500 dark:text-dark-400">
+                      {{ provider.groupCount }} {{ t('home.providers.groups') }}
+                    </p>
+                  </div>
+                </div>
+                <div class="mt-5 border-t border-black/[0.07] pt-5 dark:border-white/[0.08]">
+                  <div class="flex items-end justify-between gap-4">
+                    <div>
+                      <p class="text-sm text-gray-500 dark:text-dark-400">
+                        {{ t('home.providers.modelCount') }}
+                      </p>
+                      <p class="mt-1 text-lg font-semibold text-gray-950 dark:text-white">
+                        {{ provider.modelCount }}
+                      </p>
+                    </div>
+                    <p
+                      v-if="provider.officialPriceRatio"
+                      class="max-w-[180px] text-right text-sm font-semibold text-emerald-600 dark:text-emerald-300"
+                    >
+                      {{ formatOfficialPriceRatio(provider.officialPriceRatio) }}
+                    </p>
+                    <p v-else class="text-sm font-medium text-primary-600 dark:text-primary-300">
+                      {{ t('home.providers.supported') }}
+                    </p>
+                  </div>
+                </div>
+              </article>
+            </template>
+          </div>
+        </section>
+
+        <!-- Interactive FallingText physics band showcasing multi-provider routing with Matter.js rigid bodies. -->
+        <section class="mx-auto mt-16 max-w-7xl md:mt-20">
+          <div class="glass-card relative overflow-hidden">
+            <div class="pointer-events-none absolute inset-x-5 top-4 z-10">
+              <span class="font-mono text-xs text-gray-500 dark:text-dark-400">
+                Hover · Drag · Throw
+              </span>
+            </div>
+
+            <div class="h-[250px] w-full pt-8 sm:h-[270px]">
+              <LazyVisual class="relative">
+                <template #fallback>
+                  <p
+                    class="flex h-full items-center justify-center px-6 text-center text-base text-gray-900 dark:text-dark-100"
+                  >
+                    One unified API routes Claude GPT Gemini DeepSeek Grok with automatic failover
+                    and zero lock-in.
+                  </p>
+                </template>
+                <FallingText
+                  text="One unified API routes Claude GPT Gemini DeepSeek Grok with automatic failover and zero lock-in."
+                  :highlight-words="['Claude', 'GPT', 'Gemini', 'DeepSeek', 'Grok']"
+                  variant="tiles"
+                  trigger="hover"
+                  :gravity="0.95"
+                  :bounciness="0.32"
+                  :scatter="0.55"
+                  :cursor-push="0.65"
+                  :restore-delay="2.5"
+                  font-size="1.05rem"
+                  :accent-color="fallingAccentColor"
+                  :theme="isDarkTheme ? 'dark' : 'light'"
+                  class-name="text-gray-900 dark:text-dark-100"
+                />
+              </LazyVisual>
+            </div>
+          </div>
+        </section>
+
+        <section
+          aria-labelledby="home-steps-heading"
+          class="mx-auto mt-20 max-w-7xl text-sm leading-[1.65] text-gray-950 dark:text-dark-50 md:mt-24"
+        >
+          <h2 id="home-steps-heading" class="sr-only">{{ t('home.steps.title') }}</h2>
+          <div class="grid gap-5 md:grid-cols-3">
+            <article
+              v-for="step in homeSteps"
+              :key="step.key"
+              class="glass-card flex min-w-0 flex-col gap-4 p-6"
+            >
+              <div class="flex items-center gap-3">
+                <span
+                  class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-black/[0.08] bg-white/80 font-mono text-xs font-semibold tabular-nums text-gray-700 shadow-sm dark:border-white/[0.10] dark:bg-white/[0.06] dark:text-dark-200"
+                >
+                  {{ step.index }}
                 </span>
+                <h3 class="text-base font-semibold leading-[1.35] tracking-[-0.015em]">
+                  {{ step.title }}
+                </h3>
               </div>
 
-              <div v-if="step.key === 'signup'" class="flex gap-2">
-                <span
-                  class="flex h-10 w-10 items-center justify-center rounded-control bg-gray-950/[0.03] dark:bg-dark-50/[0.03]"
-                >
-                  <GoogleMark class="h-5 w-5" />
-                </span>
-                <span
-                  class="flex h-10 w-10 items-center justify-center rounded-control bg-gray-950/[0.03] dark:bg-dark-50/[0.03]"
-                >
-                  <GitHubMark class="h-5 w-5" />
-                </span>
-                <span
-                  class="flex h-10 w-10 items-center justify-center rounded-control bg-gray-950/[0.03] dark:bg-dark-50/[0.03]"
-                >
-                  <LinuxDoMark class="h-5 w-5" />
-                </span>
-                <span
-                  class="flex h-10 w-10 items-center justify-center rounded-control bg-gray-950/[0.03] text-primary-600 dark:bg-dark-50/[0.03] dark:text-primary-500"
-                >
+              <p class="min-h-10 text-pretty text-gray-600 dark:text-dark-300 md:min-h-12">
+                {{ step.description }}
+                <template v-if="step.key === 'api-key' && docUrl">
+                  {{ ' ' }}
+                  <a
+                    :href="docUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-link underline-offset-2 decoration-current/40"
+                  >
+                    {{ t('home.steps.apiKey.docs') }}
+                  </a>
+                </template>
+              </p>
+
+              <div class="flex w-full max-w-56 flex-col gap-3 pt-4 md:px-2" aria-hidden="true">
+                <div class="flex items-center gap-2">
                   <svg
-                    class="h-5 w-5"
+                    class="h-5 w-5 shrink-0"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -629,197 +536,229 @@
                     stroke-linecap="round"
                     stroke-linejoin="round"
                   >
-                    <path :d="onboardingPaths.envelope" />
+                    <path :d="onboardingPaths[step.icon]" />
                   </svg>
-                </span>
-              </div>
-
-              <div v-else-if="step.key === 'recharge'" class="flex flex-col gap-2">
-                <div
-                  v-for="example in homeRechargeExamples"
-                  :key="example.date"
-                  class="home-step-sample flex h-6 items-center gap-2 bg-gray-950/5 px-2 dark:bg-dark-50/5"
-                >
                   <span
-                    class="shrink-0 text-xs leading-[1.35] text-gray-950/[0.69] dark:text-dark-50/[0.69]"
+                    v-for="(width, index) in step.illustrationLineWidths"
+                    :key="index"
+                    class="home-step-lines flex h-4 flex-col justify-center gap-0.5"
+                    :class="width"
+                  ></span>
+                  <span
+                    v-if="step.key === 'api-key'"
+                    class="home-step-sample flex h-6 min-w-0 flex-1 items-center bg-gray-950/5 px-2 text-xs leading-[1.35] tracking-wide text-gray-950/[0.69] dark:bg-dark-50/5 dark:text-dark-50/[0.69]"
                   >
-                    {{
-                      formatDate(
-                        example.date,
-                        { month: 'short', day: 'numeric', timeZone: 'UTC' },
-                        locale,
-                      )
-                    }}
+                    <span class="truncate">TOKENROUTER_API_KEY</span>
+                  </span>
+                </div>
+
+                <div v-if="step.key === 'signup'" class="flex gap-2">
+                  <span
+                    class="flex h-10 w-10 items-center justify-center rounded-control bg-gray-950/[0.03] dark:bg-dark-50/[0.03]"
+                  >
+                    <GoogleMark class="h-5 w-5" />
                   </span>
                   <span
-                    class="home-step-sample h-2 min-w-0 flex-1 bg-gray-950/[0.08] dark:bg-dark-50/[0.08]"
-                  ></span>
+                    class="flex h-10 w-10 items-center justify-center rounded-control bg-gray-950/[0.03] dark:bg-dark-50/[0.03]"
+                  >
+                    <GitHubMark class="h-5 w-5" />
+                  </span>
                   <span
-                    class="home-step-sample h-2 min-w-0 flex-1 bg-gray-950/[0.08] dark:bg-dark-50/[0.08]"
-                  ></span>
-                  <span class="shrink-0 font-medium">{{ example.amount }}</span>
+                    class="flex h-10 w-10 items-center justify-center rounded-control bg-gray-950/[0.03] dark:bg-dark-50/[0.03]"
+                  >
+                    <LinuxDoMark class="h-5 w-5" />
+                  </span>
+                  <span
+                    class="flex h-10 w-10 items-center justify-center rounded-control bg-gray-950/[0.03] text-primary-600 dark:bg-dark-50/[0.03] dark:text-primary-500"
+                  >
+                    <svg
+                      class="h-5 w-5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path :d="onboardingPaths.envelope" />
+                    </svg>
+                  </span>
+                </div>
+
+                <div v-else-if="step.key === 'recharge'" class="flex flex-col gap-2">
+                  <div
+                    v-for="example in homeRechargeExamples"
+                    :key="example.date"
+                    class="home-step-sample flex h-6 items-center gap-2 bg-gray-950/5 px-2 dark:bg-dark-50/5"
+                  >
+                    <span
+                      class="shrink-0 text-xs leading-[1.35] text-gray-950/[0.69] dark:text-dark-50/[0.69]"
+                    >
+                      {{
+                        formatDate(
+                          example.date,
+                          { month: 'short', day: 'numeric', timeZone: 'UTC' },
+                          locale,
+                        )
+                      }}
+                    </span>
+                    <span
+                      class="home-step-sample h-2 min-w-0 flex-1 bg-gray-950/[0.08] dark:bg-dark-50/[0.08]"
+                    ></span>
+                    <span
+                      class="home-step-sample h-2 min-w-0 flex-1 bg-gray-950/[0.08] dark:bg-dark-50/[0.08]"
+                    ></span>
+                    <span class="shrink-0 font-medium">{{ example.amount }}</span>
+                  </div>
+                </div>
+
+                <div
+                  v-else
+                  class="home-step-sample flex h-6 items-center bg-gray-950/5 px-2 text-xs leading-[1.35] tracking-wider text-gray-950/[0.69] dark:bg-dark-50/5 dark:text-dark-50/[0.69]"
+                >
+                  ••••••••••••••••
                 </div>
               </div>
-
-              <div
-                v-else
-                class="home-step-sample flex h-6 items-center bg-gray-950/5 px-2 text-xs leading-[1.35] tracking-wider text-gray-950/[0.69] dark:bg-dark-50/5 dark:text-dark-50/[0.69]"
-              >
-                ••••••••••••••••
-              </div>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <!-- Closing interactive MicroSlats fluid signal band, spatially isolated from Hero and DitherVeil so only one WebGL2 context renders at a time. -->
-      <section class="mx-auto mt-20 max-w-7xl md:mt-24">
-        <div
-          class="relative isolate min-h-[340px] overflow-hidden rounded-surface border border-black/[0.10] bg-[#141413] shadow-xl sm:min-h-[380px] dark:border-white/[0.12]"
-        >
-          <div class="absolute inset-0 z-0">
-            <MicroSlats
-              :preset="slatsPreset"
-              :color="slatsTheme.color"
-              :glint-color="slatsTheme.glint"
-              :background-color="slatsTheme.background"
-              :slat-width="10"
-              :slat-height="25"
-              :gap="3"
-              :roundness="0.75"
-              interactive
-              :cursor-strength="1.15"
-              :cursor-size="44"
-              :swirl="0.35"
-              :trail="1.6"
-              :lean="0.35"
-              intro
-              :max-dpr="1"
-              :max-fps="30"
-              :ignore-reduced-motion="true"
-            />
-            <div
-              class="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#141413]/85 via-[#141413]/45 to-transparent"
-            ></div>
+            </article>
           </div>
+        </section>
 
+        <!-- The closing signal band reserves its dark surface while its renderer waits near the viewport. -->
+        <section class="mx-auto mt-20 max-w-7xl md:mt-24">
           <div
-            class="pointer-events-none relative z-10 flex min-h-[340px] flex-col justify-between p-7 sm:min-h-[380px] sm:p-10 lg:p-12"
+            class="relative isolate min-h-[340px] overflow-hidden rounded-surface border border-black/[0.10] bg-[#141413] shadow-xl sm:min-h-[380px] dark:border-white/[0.12]"
           >
-            <div class="flex justify-end">
+            <div class="absolute inset-0 z-0">
+              <LazyVisual class="absolute inset-0">
+                <MicroSlats
+                  preset="swell"
+                  :color="slatsTheme.color"
+                  :glint-color="slatsTheme.glint"
+                  :background-color="slatsTheme.background"
+                  :slat-width="10"
+                  :slat-height="25"
+                  :gap="3"
+                  :roundness="0.75"
+                  interactive
+                  :cursor-strength="1.15"
+                  :cursor-size="44"
+                  :swirl="0.35"
+                  :trail="1.6"
+                  :lean="0.35"
+                  intro
+                  :max-dpr="1"
+                  :max-fps="30"
+                />
+              </LazyVisual>
               <div
-                class="pointer-events-auto inline-flex items-center gap-0.5 rounded-full border border-white/20 bg-black/70 p-1"
-                role="group"
-                aria-label="Fluid wave preset"
-              >
-                <button
-                  v-for="item in slatsPresets"
-                  :key="item.value"
-                  type="button"
-                  class="rounded-full px-2.5 py-0.5 font-mono text-xs transition-colors duration-fast"
-                  :class="
-                    slatsPreset === item.value
-                      ? 'bg-white text-gray-950 font-medium'
-                      : 'text-white/70 hover:text-white'
-                  "
-                  @click="slatsPreset = item.value"
-                >
-                  {{ item.label }}
-                </button>
-              </div>
+                class="pointer-events-none absolute inset-0 bg-gradient-to-r from-[#141413]/85 via-[#141413]/45 to-transparent"
+              ></div>
             </div>
 
-            <div class="max-w-xl py-4">
-              <h2
-                class="text-balance text-3xl font-light leading-[1.12] tracking-[-0.03em] text-white sm:text-4xl"
-              >
-                {{ homeHeroTitle }}
-              </h2>
-              <p class="mt-3 max-w-[46ch] text-pretty text-sm leading-relaxed text-white/75 sm:text-base">
-                {{ homeHeroSubtitle }}
-              </p>
-              <div class="pointer-events-auto mt-7 flex flex-wrap items-center gap-3">
-                <router-link
-                  :to="isAuthenticated ? dashboardPath : '/login'"
-                  class="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-white px-6 py-2.5 text-sm font-medium text-gray-950 shadow-sm transition duration-fast ease-standard hover:-translate-y-0.5 hover:bg-gray-100 active:scale-[0.98]"
+            <div
+              class="pointer-events-none relative z-10 flex min-h-[340px] flex-col justify-center p-7 sm:min-h-[380px] sm:p-10 lg:p-12"
+            >
+              <div class="max-w-xl py-4">
+                <h2
+                  class="text-balance text-3xl font-light leading-[1.12] tracking-[-0.03em] text-white sm:text-4xl"
                 >
-                  {{ isAuthenticated ? t('home.goToDashboard') : t('home.getStarted') }}
-                  <Icon name="arrowRight" size="sm" :stroke-width="2" />
-                </router-link>
-                <router-link
-                  to="/models"
-                  class="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-white/25 bg-black/45 px-6 py-2.5 text-sm font-medium text-white transition duration-fast ease-standard hover:-translate-y-0.5 hover:bg-black/65 active:scale-[0.98]"
+                  {{ homeHeroTitle }}
+                </h2>
+                <p
+                  class="mt-3 max-w-[46ch] text-pretty text-sm leading-relaxed text-white/75 sm:text-base"
                 >
-                  {{ t('home.exploreMarketplace') }}
-                </router-link>
+                  {{ homeHeroSubtitle }}
+                </p>
+                <div class="pointer-events-auto mt-7 flex flex-wrap items-center gap-3">
+                  <router-link
+                    :to="isAuthenticated ? dashboardPath : '/login'"
+                    class="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-white px-6 py-2.5 text-sm font-medium text-gray-950 shadow-sm transition duration-fast ease-standard hover:-translate-y-0.5 hover:bg-gray-100 active:scale-[0.98]"
+                  >
+                    {{ isAuthenticated ? t('home.goToDashboard') : t('home.getStarted') }}
+                    <Icon name="arrowRight" size="sm" :stroke-width="2" />
+                  </router-link>
+                  <router-link
+                    to="/models"
+                    class="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-white/25 bg-black/45 px-6 py-2.5 text-sm font-medium text-white transition duration-fast ease-standard hover:-translate-y-0.5 hover:bg-black/65 active:scale-[0.98]"
+                  >
+                    {{ t('home.exploreMarketplace') }}
+                  </router-link>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
       </div>
     </main>
 
-    <!-- The footer shares the page backdrop in both themes, with a border separating it from the main content. -->
+    <!-- Site navigation and published policies share the page backdrop; configured groups replace the default destinations. -->
     <footer
-      class="relative z-10 border-t border-black/[0.07] px-6 py-12 dark:border-dark-600 md:px-12"
+      class="relative z-10 border-t border-black/[0.07] px-6 pb-8 pt-12 dark:border-dark-600 md:px-12 md:pt-16"
     >
       <div class="mx-auto max-w-7xl">
-        <div
-          class="grid grid-cols-2 gap-x-8 gap-y-10 sm:grid-cols-3 lg:flex lg:justify-between lg:gap-8"
-        >
-          <div class="col-span-2 sm:col-span-3 lg:col-auto lg:max-w-[280px] lg:shrink-0">
-            <div class="flex items-center gap-2.5">
-              <span class="h-8 w-8 shrink-0 overflow-hidden rounded-control shadow-sm">
-                <img
-                  :src="siteLogo || '/logo.svg'"
-                  alt="Logo"
-                  class="h-full w-full object-contain"
-                />
-              </span>
-              <span class="text-sm font-semibold text-gray-950 dark:text-white">{{
-                siteName
-              }}</span>
-            </div>
-            <p class="mt-4 text-sm text-gray-500 dark:text-dark-400">
-              &copy; {{ currentYear }} {{ siteName }}. {{ t('home.footer.allRightsReserved') }}
-            </p>
-            <p
-              v-for="(line, index) in footerTextLines"
-              :key="index"
-              class="mt-1 text-xs text-gray-400 dark:text-dark-500"
+        <div class="grid gap-10 lg:grid-cols-12 lg:gap-16">
+          <div class="min-w-0 lg:col-span-4">
+            <router-link
+              to="/home"
+              class="inline-flex max-w-full items-center gap-2.5 rounded-compact focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-500"
             >
-              {{ line }}
+              <span class="h-8 w-8 shrink-0 overflow-hidden rounded-control shadow-sm">
+                <img :src="siteLogo || '/logo.svg'" alt="" class="h-full w-full object-contain" />
+              </span>
+              <span
+                class="min-w-0 break-words text-base font-semibold text-gray-950 dark:text-white"
+              >
+                {{ siteName }}
+              </span>
+            </router-link>
+            <p class="mt-4 max-w-sm text-sm leading-relaxed text-gray-500 dark:text-dark-400">
+              {{ t('home.footer.description') }}
             </p>
-            <!-- A flex wrapper keeps the inline badge out of a line box, so no baseline gap appears below it. -->
-            <div class="mt-4 flex">
-              <PoweredByBadge />
-            </div>
           </div>
 
-          <div v-for="column in footerColumns" :key="column.title" class="lg:min-w-[140px]">
-            <h3 class="text-sm font-semibold text-gray-950 dark:text-white">{{ column.title }}</h3>
-            <ul class="mt-4 space-y-2.5">
-              <li v-for="link in column.links" :key="link.label">
-                <router-link
-                  v-if="link.url.startsWith('/')"
-                  :to="link.url"
-                  class="text-sm text-gray-500 transition hover:text-gray-950 dark:text-dark-400 dark:hover:text-white"
-                >
-                  {{ link.label }}
-                </router-link>
-                <a
-                  v-else
-                  :href="link.url"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="text-sm text-gray-500 transition hover:text-gray-950 dark:text-dark-400 dark:hover:text-white"
-                >
-                  {{ link.label }}
-                </a>
-              </li>
-            </ul>
-          </div>
+          <nav
+            :aria-label="t('home.footer.navigation')"
+            class="grid min-w-0 grid-cols-2 gap-x-8 gap-y-8 sm:grid-cols-3 lg:col-span-8"
+          >
+            <div v-for="column in footerColumns" :key="column.title" class="min-w-0">
+              <h2 class="break-words text-sm font-semibold text-gray-950 dark:text-white">
+                {{ column.title }}
+              </h2>
+              <ul class="mt-3 space-y-1">
+                <li v-for="link in column.links" :key="link.url">
+                  <router-link
+                    v-if="link.url.startsWith('/')"
+                    :to="link.url"
+                    class="inline-block min-h-8 max-w-full break-words rounded-compact py-1 text-sm leading-relaxed text-gray-500 transition-colors duration-fast hover:text-gray-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-500 dark:text-dark-400 dark:hover:text-white"
+                  >
+                    {{ link.label }}
+                  </router-link>
+                  <a
+                    v-else
+                    :href="link.url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-block min-h-8 max-w-full break-words rounded-compact py-1 text-sm leading-relaxed text-gray-500 transition-colors duration-fast hover:text-gray-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-500 dark:text-dark-400 dark:hover:text-white"
+                  >
+                    {{ link.label }}
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </nav>
+        </div>
+
+        <div class="mt-10 border-t border-black/[0.07] pt-6 dark:border-dark-600">
+          <p class="break-words text-xs leading-relaxed text-gray-500 dark:text-dark-400">
+            &copy; {{ currentYear }} {{ siteName }}. {{ t('home.footer.allRightsReserved') }}
+          </p>
+          <p
+            v-for="(line, index) in footerTextLines"
+            :key="index"
+            class="mt-1 break-words text-xs leading-relaxed text-gray-500 dark:text-dark-400"
+          >
+            {{ line }}
+          </p>
         </div>
       </div>
     </footer>
@@ -840,12 +779,12 @@ import GoogleMark from '@/components/common/GoogleMark.vue'
 import GoogleOneTap from '@/components/auth/GoogleOneTap.vue'
 import LinuxDoMark from '@/components/auth/LinuxDoMark.vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
-import type { FallingTextVariant } from '@/components/common/FallingText.vue'
 import GradientASCII from '@/components/common/GradientASCII.vue'
-import type { SwellPreset } from '@/components/common/MicroSlats.vue'
+import LazyVisual from '@/components/common/LazyVisual.vue'
 import heroDitherArt from '@/assets/hero-dither-art.jpg'
 
-// Below-the-fold WebGL and physics bands load asynchronously so the hero paints without waiting for matter-js or ogl.
+// Below-the-fold modules are requested only when their LazyVisual boundary activates;
+// the initial hero and page content do not wait for OGL or Matter.js.
 const DitherVeil = defineAsyncComponent(() => import('@/components/common/DitherVeil.vue'))
 const FallingText = defineAsyncComponent(() => import('@/components/common/FallingText.vue'))
 const MicroSlats = defineAsyncComponent(() => import('@/components/common/MicroSlats.vue'))
@@ -857,10 +796,10 @@ import Skeleton from '@/components/common/Skeleton.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { getMarketplaceModels, getMarketplaceStats } from '@/api/marketplace'
 import type { MarketplaceGroup, MarketplaceModel, MarketplaceStats } from '@/api/marketplace.types'
+import type { FooterLinkGroup } from '@/api/settings.types'
 import { formatDate } from '@/utils/format'
 import { onboardingPaths } from './home/onboardingArtwork'
 import { modelAuthor } from './home/modelAuthor'
-import PoweredByBadge from './home/PoweredByBadge.vue'
 import { sanitizeUrl } from '@/utils/url'
 import { hasAcceptedLoginAgreement } from '@/utils/loginAgreement'
 import { isGoogleOneTapEligible, isGoogleOneTapOriginSupported } from '@/utils/googleIdentity'
@@ -887,16 +826,10 @@ import {
 // motionRoute supplies the path used to replay the default page's reveal animation.
 const motionRoute = useMotionRoute()
 
-// Interactive DitherVeil hero stage state synchronized with the active theme and editorial palette.
+// Theme state supplies the active palette and light mode to the homepage artwork.
 const { isDark: isDarkTheme, themePalette } = useTheme()
-type HeroVeilPattern = 'floyd' | 'bayer' | 'noise' | 'lines'
-const heroVeilPattern = ref<HeroVeilPattern>('floyd')
-const heroVeilPatterns: ReadonlyArray<{ value: HeroVeilPattern; label: string }> = [
-  { value: 'floyd', label: 'Floyd' },
-  { value: 'bayer', label: 'Bayer' },
-  { value: 'noise', label: 'Noise' },
-  { value: 'lines', label: 'Lines' },
-]
+
+// heroVeilTheme follows the active theme and palette to color the fixed Floyd dither artwork.
 const heroVeilTheme = computed(() => {
   const palette = themePalette.value
   if (isDarkTheme.value) {
@@ -909,16 +842,7 @@ const heroVeilTheme = computed(() => {
   return { ink: '#1E1A17', paper: '#F5F2EC', rim: '#C46346' }
 })
 
-// Palette-synchronized high-contrast color ramp and live shape switcher for the GradientASCII backdrop.
-type HeroAsciiShape = 'horizon' | 'pinch' | 'rise' | 'eclipse'
-const heroAsciiShape = ref<HeroAsciiShape>('horizon')
-const heroAsciiShapes: ReadonlyArray<{ value: HeroAsciiShape; label: string }> = [
-  { value: 'horizon', label: 'Horizon' },
-  { value: 'pinch', label: 'Pinch' },
-  { value: 'rise', label: 'Rise' },
-  { value: 'eclipse', label: 'Eclipse' },
-]
-
+// heroAsciiColors follows the active theme and palette to color the GradientASCII backdrop.
 const heroAsciiColors = computed<string[]>(() => {
   const palette = themePalette.value
   if (isDarkTheme.value) {
@@ -931,15 +855,7 @@ const heroAsciiColors = computed<string[]>(() => {
   return ['#9A3412', '#C46346', '#E08E6D', '#F7D9C8']
 })
 
-// Palette-synchronized colors and wave preset state for the closing MicroSlats band.
-const slatsPreset = ref<SwellPreset>('swell')
-const slatsPresets: ReadonlyArray<{ value: SwellPreset; label: string }> = [
-  { value: 'swell', label: 'Swell' },
-  { value: 'tide', label: 'Tide' },
-  { value: 'storm', label: 'Storm' },
-  { value: 'signal', label: 'Signal' },
-]
-
+// slatsTheme follows the active palette to color the closing MicroSlats fluid signal band.
 const slatsTheme = computed(() => {
   const palette = themePalette.value
   if (palette === 'indigo') {
@@ -951,13 +867,8 @@ const slatsTheme = computed(() => {
   return { color: '#d97757', glint: '#faf9f5', background: '#141413' }
 })
 
-// Palette-synchronized accent and display variant state for the FallingText physics band.
-const fallingVariant = ref<FallingTextVariant>('tiles')
-const fallingVariants: ReadonlyArray<{ value: FallingTextVariant; label: string }> = [
-  { value: 'tiles', label: 'Tiles' },
-  { value: 'text', label: 'Text' },
-]
-
+// fallingAccentColor follows the active theme and palette to highlight model names
+// in the physics band.
 const fallingAccentColor = computed(() => {
   const palette = themePalette.value
   if (palette === 'indigo') return isDarkTheme.value ? '#7170ff' : '#5e6ad2'
@@ -1098,8 +1009,8 @@ const googleOneTapEligible = computed(() => {
 // forces it to recompute while this page remains mounted across a year boundary.
 const currentYear = computed(() => new Date().getFullYear())
 
-// Footer text discards empty trimmed lines, and link columns prefer nonempty
-// configured groups over the built-in quick links. Configured URLs remain unchanged.
+// Footer text keeps administrator-provided lines below the copyright, excluding
+// blank lines without changing their order or other visible text.
 const footerTextLines = computed<string[]>(() => {
   const raw = appStore.cachedPublicSettings?.footer_text || ''
   return raw
@@ -1108,7 +1019,9 @@ const footerTextLines = computed<string[]>(() => {
     .filter(Boolean)
 })
 
-const footerColumns = computed(() => {
+// footerColumns prefers configured groups; otherwise public routes, account state,
+// and published legal documents provide the default navigation without invented destinations.
+const footerColumns = computed<FooterLinkGroup[]>(() => {
   const configured = (appStore.cachedPublicSettings?.footer_links || [])
     .filter((group) => group.title && Array.isArray(group.links) && group.links.length > 0)
     .map((group) => ({
@@ -1117,24 +1030,53 @@ const footerColumns = computed(() => {
     }))
     .filter((group) => group.links.length > 0)
 
-  // A usable configured group replaces the built-in quick-link column; incomplete
+  // A usable configured group replaces all built-in columns; incomplete
   // groups and links are filtered before this decision uses their remaining count.
   if (configured.length > 0) {
     return configured
   }
 
-  const quickLinks: Array<{
-    label: string // Translated quick-link label.
-    url: string // Internal or filtered documentation URL.
-  }> = [
-    { label: t('home.nav.models'), url: '/models' },
+  const productLinks = [
+    { label: t('home.footer.modelsAndPricing'), url: '/models' },
     { label: t('keyUsage.title'), url: '/key-usage' },
   ]
   if (docUrl.value) {
-    quickLinks.push({ label: t('home.docs'), url: docUrl.value })
+    productLinks.push({ label: t('home.docs'), url: docUrl.value })
   }
 
-  return [{ title: t('home.footer.quickLinks'), links: quickLinks }]
+  const accountLinks = isAuthenticated.value
+    ? [
+        { label: t('home.dashboard'), url: dashboardPath.value },
+        { label: t('home.footer.apiKeys'), url: '/keys' },
+      ]
+    : [{ label: t('home.login'), url: '/login' }]
+  if (!isAuthenticated.value && appStore.cachedPublicSettings?.registration_enabled !== false) {
+    accountLinks.push({ label: t('auth.createAccount'), url: '/register' })
+  }
+
+  const columns: FooterLinkGroup[] = [
+    { title: t('home.footer.product'), links: productLinks },
+    { title: t('home.footer.account'), links: accountLinks },
+  ]
+  // Missing summaries in older startup settings use the server's built-in document
+  // IDs. An explicitly published list controls which policies are linked,
+  // including custom privacy documents.
+  const legalDocuments = appStore.cachedPublicSettings?.login_agreement_documents ?? [
+    { id: 'terms', title: t('home.footer.terms') },
+    { id: 'usage-policy', title: t('home.footer.usagePolicy') },
+    { id: 'supported-regions', title: t('home.footer.supportedRegions') },
+    { id: 'service-specific-terms', title: t('home.footer.serviceTerms') },
+  ]
+  const legalLinks = legalDocuments
+    .filter((document) => document.id?.trim() && document.title?.trim())
+    .map((document) => ({
+      label: document.title,
+      url: `/legal/${encodeURIComponent(document.id)}`,
+    }))
+  if (legalLinks.length > 0) {
+    columns.push({ title: t('home.footer.legal'), links: legalLinks })
+  }
+  return columns
 })
 
 // Marketplace and aggregate statistics keep independent loading/error states so
@@ -1161,20 +1103,9 @@ const homeAnimatedStatKeys = new Set<HomeStatsKey>()
 const homeStatAnimationFrames = new Map<HomeStatsKey, number>()
 const homeStatAnimationDurationMs = 3200
 
-// homeProviderCloudRows arranges the gateway marks in staggered rows. Warm and
-// neutral marks separate the blue icons within each row and across adjacent rows.
-const homeProviderCloudRows = [
-  ['Meta', 'Mistral', 'DeepSeek', 'MiniMax', 'Baidu'],
-  ['Cloudflare', 'OpenRouter', 'Moonshot', 'Xiaomi'],
-  ['Tencent', 'OpenAI', 'Perplexity', 'Google', 'Dify'],
-  ['Alibaba', 'TypeSafe', 'Coze', 'OpenCode'],
-  ['Doubao', 'xAI', 'Zhipu', 'Anthropic', 'iFlytek'],
-]
-
-// homeRouteLabel and homeRouteProviderBrands set the model label and the
-// left-to-right provider order in the routing illustration.
+// homeRouteLabel identifies the example model shown above the DitherVeil artwork
+// on the public landing page.
 const homeRouteLabel = 'GPT-6 Astra'
-const homeRouteProviderBrands = ['Google', 'OpenAI', 'Anthropic']
 
 // totalModelCount counts model entries across groups, including aliases repeated
 // in separate groups; it supplies both the summary and supported-model animation target.

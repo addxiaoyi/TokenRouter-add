@@ -185,19 +185,13 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import { useEventListener } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import Icon from '@/components/icons/Icon.vue'
 import MotionTransition from '@/components/common/MotionTransition.vue'
 import Skeleton from '@/components/common/Skeleton.vue'
 import GlobalSearchResultRow from '@/components/layout/search/GlobalSearchResultRow.vue'
-import {
-  closeGlobalSearch,
-  globalSearchAvailable,
-  globalSearchOpen,
-  openGlobalSearch,
-} from '@/components/layout/search/globalSearchState'
+import { closeGlobalSearch, globalSearchOpen } from '@/components/layout/search/globalSearchState'
 import {
   MAX_RECENT_SEARCHES,
   readRecentSearches,
@@ -211,12 +205,7 @@ import {
   type SearchItem,
   type SearchKind,
 } from '@/components/layout/search/searchCatalog'
-import {
-  hasPrimaryModifier,
-  isSlashShortcut,
-  isToggleShortcut,
-  modifierLabel,
-} from '@/components/layout/search/searchShortcuts'
+import { hasPrimaryModifier, modifierLabel } from '@/components/layout/search/searchShortcuts'
 import { useClipboard } from '@/composables/useClipboard'
 import { useDialogLifecycle } from '@/composables/useDialogLifecycle'
 import { useMarketplaceModelIndex } from '@/composables/useMarketplaceModelIndex'
@@ -226,7 +215,8 @@ import { useAdminSettingsStore, useAppStore, useAuthStore } from '@/stores'
 // GlobalSearchPalette.vue is the command palette opened from the header search entry or
 // with Command+K, Control+K, or "/". One input searches marketplace models, the pages
 // the account can open, and a few account actions. The palette is mounted once by
-// App.vue; its open state and the shortcut switch come from globalSearchState.ts.
+// App.vue after its first opening; its state and keyboard shortcuts live in
+// globalSearchState.ts so a closed, unused palette costs no initial download.
 //
 // Results are grouped into sections, but keyboard navigation treats them as one list:
 // each section records the offset of its first row, and activeIndex points into the
@@ -594,45 +584,29 @@ function handlePanelKeydown(event: KeyboardEvent) {
   }
 }
 
-// handleGlobalKeydown opens and closes the palette from the keyboard while a search
-// trigger is mounted. Command+K or Control+K toggles the palette; "/" only opens it from
-// outside text fields. Neither opens the palette over another dialog, which owns the
-// keyboard while it is shown.
-function handleGlobalKeydown(event: KeyboardEvent) {
-  if (event.isComposing || event.keyCode === 229) return
-  if (!globalSearchAvailable.value && !globalSearchOpen.value) return
-  const otherDialogOpen = !globalSearchOpen.value && document.body.classList.contains('modal-open')
-  if (isToggleShortcut(event)) {
-    if (otherDialogOpen) return
-    event.preventDefault()
-    if (globalSearchOpen.value) {
-      closeGlobalSearch()
-    } else {
-      openGlobalSearch()
-    }
-  } else if (!globalSearchOpen.value && !otherDialogOpen && isSlashShortcut(event)) {
-    event.preventDefault()
-    openGlobalSearch()
-  }
-}
-useEventListener(window, 'keydown', handleGlobalKeydown)
-
 // Opening rereads history for the current account, starts the model catalog request,
 // refreshes administrator switches for gated pages, and focuses the input with the
 // previous query selected so typing replaces it.
-watch(globalSearchOpen, async (open) => {
-  if (!open) return
-  scope.value = 'all'
-  activeIndex.value = 0
-  recentKeys.value = readRecentSearches(historyOwner.value)
-  void modelIndex.ensureLoaded()
-  if (authStore.isAdmin) {
-    void adminSettingsStore.fetch()
-  }
-  await nextTick()
-  inputRef.value?.focus()
-  inputRef.value?.select()
-})
+watch(
+  globalSearchOpen,
+  async (open) => {
+    if (!open) return
+    scope.value = 'all'
+    activeIndex.value = 0
+    recentKeys.value = readRecentSearches(historyOwner.value)
+    void modelIndex.ensureLoaded()
+    if (authStore.isAdmin) {
+      void adminSettingsStore.fetch()
+    }
+    await nextTick()
+    if (!globalSearchOpen.value) return
+    inputRef.value?.focus()
+    inputRef.value?.select()
+  },
+  // The first asynchronous mount starts with search already open. Immediate setup
+  // performs the same catalog and focus work as every subsequent opening.
+  { immediate: true },
+)
 
 // A route change, including browser back and forward, closes the palette so it never
 // covers a page the user navigated to by other means.

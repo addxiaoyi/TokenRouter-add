@@ -57,10 +57,14 @@ describe('useSubscriptionStore', () => {
     setActivePinia(createPinia())
     vi.useFakeTimers()
     vi.clearAllMocks()
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true)
   })
 
   afterEach(() => {
+    useSubscriptionStore().$dispose()
     vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
   describe('fetchActiveSubscriptions', () => {
@@ -255,6 +259,165 @@ describe('useSubscriptionStore', () => {
 
       vi.advanceTimersByTime(10 * 60 * 1000)
       expect(mockGetActiveSubscriptions).not.toHaveBeenCalled()
+    })
+
+    // Hidden documents retain polling ownership while their automatic timer is paused.
+    // Becoming visible after a long absence performs one ordinary refresh and reestablishes one timer.
+    it('pauses hidden polling and refreshes once when visible again', async () => {
+      const store = useSubscriptionStore()
+      mockGetActiveSubscriptions.mockResolvedValue(fakeSubscriptions)
+      const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+      store.startPolling()
+      store.startPolling()
+      await vi.advanceTimersByTimeAsync(15 * 60 * 1000)
+      expect(mockGetActiveSubscriptions).not.toHaveBeenCalled()
+      expect(vi.getTimerCount()).toBe(0)
+      visibility.mockReturnValue('visible')
+      document.dispatchEvent(new Event('visibilitychange'))
+      await vi.advanceTimersByTimeAsync(0)
+      expect(mockGetActiveSubscriptions).toHaveBeenCalledTimes(1)
+      expect(vi.getTimerCount()).toBe(1)
+    })
+
+    // Connectivity may recover while the document is still in the background.
+    // Neither offline ticks nor that early online event fetch until the document also becomes visible.
+    it('requires both visibility and connectivity before resuming requests', async () => {
+      const store = useSubscriptionStore()
+      mockGetActiveSubscriptions.mockResolvedValue([])
+      const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+      const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+      store.startPolling()
+      await vi.advanceTimersByTimeAsync(10 * 60 * 1000)
+      online.mockReturnValue(true)
+      window.dispatchEvent(new Event('online'))
+      await vi.advanceTimersByTimeAsync(0)
+      expect(mockGetActiveSubscriptions).not.toHaveBeenCalled()
+      visibility.mockReturnValue('visible')
+      document.dispatchEvent(new Event('visibilitychange'))
+      await vi.advanceTimersByTimeAsync(0)
+      expect(mockGetActiveSubscriptions).toHaveBeenCalledTimes(1)
+      online.mockReturnValue(false)
+      window.dispatchEvent(new Event('offline'))
+      expect(vi.getTimerCount()).toBe(0)
+    })
+
+    // The browser returns to a fresh cache, then emits visibility and connectivity events after expiry.
+    // Fresh records avoid traffic, and simultaneous recovery notifications join one pending replacement request.
+    it('uses cache freshness and pending-request sharing when browser events repeat', async () => {
+      vi.setSystemTime(0)
+      const store = useSubscriptionStore()
+      mockGetActiveSubscriptions.mockResolvedValue(fakeSubscriptions)
+      await store.fetchActiveSubscriptions()
+      store.startPolling()
+      document.dispatchEvent(new Event('visibilitychange'))
+      window.dispatchEvent(new Event('online'))
+      await vi.advanceTimersByTimeAsync(0)
+      expect(mockGetActiveSubscriptions).toHaveBeenCalledTimes(1)
+      await vi.advanceTimersByTimeAsync(61_000)
+      document.dispatchEvent(new Event('visibilitychange'))
+      window.dispatchEvent(new Event('online'))
+      window.dispatchEvent(new Event('online'))
+      expect(mockGetActiveSubscriptions).toHaveBeenCalledTimes(2)
+      await vi.advanceTimersByTimeAsync(0)
+      expect(vi.getTimerCount()).toBe(1)
+    })
+
+    // A user-initiated refresh completes shortly before the automatic five-minute timer.
+    // Polling reuses its fresh response instead of forcing another subscription download during that freshness window.
+    it('reuses fresh explicit refreshes instead of forcing each polling tick', async () => {
+      const store = useSubscriptionStore()
+      mockGetActiveSubscriptions.mockResolvedValue(fakeSubscriptions)
+      store.startPolling()
+      await vi.advanceTimersByTimeAsync(5 * 60 * 1000 - 10_000)
+      await store.fetchActiveSubscriptions(true)
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(mockGetActiveSubscriptions).toHaveBeenCalledTimes(1)
+    })
+
+    // Polling stops while browser recovery events remain possible on the page.
+    // Repeated stop calls remove automatic ownership, and later events or elapsed intervals cannot restart requests.
+    it('removes recovery listeners when polling is stopped', async () => {
+      const store = useSubscriptionStore()
+      mockGetActiveSubscriptions.mockResolvedValue([])
+      store.startPolling()
+      store.stopPolling()
+      store.stopPolling()
+      window.dispatchEvent(new Event('online'))
+      document.dispatchEvent(new Event('visibilitychange'))
+      await vi.advanceTimersByTimeAsync(10 * 60 * 1000)
+      expect(mockGetActiveSubscriptions).not.toHaveBeenCalled()
+      expect(vi.getTimerCount()).toBe(0)
+    })
+
+    // Pinia can dispose a store without the application's logout watcher running first.
+    // Scope cleanup releases polling resources so later browser events cannot request subscriptions for that disposed owner.
+    it('releases polling listeners and timers when Pinia disposes the store', async () => {
+      const store = useSubscriptionStore()
+      mockGetActiveSubscriptions.mockResolvedValue([])
+      store.startPolling()
+      store.$dispose()
+      window.dispatchEvent(new Event('online'))
+      document.dispatchEvent(new Event('visibilitychange'))
+      await vi.advanceTimersByTimeAsync(10 * 60 * 1000)
+      expect(mockGetActiveSubscriptions).not.toHaveBeenCalled()
+      expect(vi.getTimerCount()).toBe(0)
+    })
+  })
+
+  describe('request publication races', () => {
+    // Two forced reads finish in reverse order after obtaining distinct server responses.
+    // Each caller receives its own response, while only the latest request generation publishes shared subscription state.
+    it('keeps the latest forced response when an older request finishes afterward', async () => {
+      const store = useSubscriptionStore()
+      let finishOlder!: (subscriptions: typeof fakeSubscriptions) => void
+      let finishNewer!: (subscriptions: typeof fakeSubscriptions) => void
+      mockGetActiveSubscriptions
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              finishOlder = resolve
+            }),
+        )
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              finishNewer = resolve
+            }),
+        )
+      const older = store.fetchActiveSubscriptions(true)
+      const newer = store.fetchActiveSubscriptions(true)
+      finishNewer([fakeSubscriptions[0]])
+      await expect(newer).resolves.toEqual([fakeSubscriptions[0]])
+      finishOlder(fakeSubscriptions)
+      await expect(older).resolves.toEqual(fakeSubscriptions)
+      expect(store.activeSubscriptions).toEqual([fakeSubscriptions[0]])
+      expect(store.loading).toBe(false)
+    })
+
+    // Logout clears the store while its subscription response has not yet arrived.
+    // Loading and polling stop immediately, and neither late completion nor browser recovery can restore that account's records.
+    it('keeps cleared state and releases loading when a detached request completes', async () => {
+      const store = useSubscriptionStore()
+      let finish!: (subscriptions: typeof fakeSubscriptions) => void
+      mockGetActiveSubscriptions.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finish = resolve
+          }),
+      )
+      const request = store.fetchActiveSubscriptions()
+      store.startPolling()
+      expect(store.loading).toBe(true)
+      store.clear()
+      expect(store.loading).toBe(false)
+      finish(fakeSubscriptions)
+      await expect(request).resolves.toEqual(fakeSubscriptions)
+      window.dispatchEvent(new Event('online'))
+      document.dispatchEvent(new Event('visibilitychange'))
+      await vi.advanceTimersByTimeAsync(10 * 60 * 1000)
+      expect(store.activeSubscriptions).toEqual([])
+      expect(mockGetActiveSubscriptions).toHaveBeenCalledTimes(1)
+      expect(vi.getTimerCount()).toBe(0)
     })
   })
 })

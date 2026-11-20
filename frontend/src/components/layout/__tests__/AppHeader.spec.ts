@@ -1,5 +1,6 @@
 import { shallowMount, enableAutoUnmount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ref } from 'vue'
 import { applyTokens, cssRules, parseVue } from '@/__tests__/helpers/sourceSyntax'
 import AppHeader from '../AppHeader.vue'
 
@@ -13,14 +14,15 @@ const state = vi.hoisted(() => ({
   user: null as null | { id: number; email: string; role: string }, // Current account fixture.
   settings: {} as Record<string, boolean>, // Public feature switch values.
   setThemeMode: vi.fn(), // Theme selection action recorder.
+  setThemePalette: vi.fn(), // Palette selection action recorder.
   toggleTheme: vi.fn(), // Guest theme action recorder.
 }))
 vi.mock('vue-i18n', async (importOriginal) => ({
   ...(await importOriginal<typeof import('vue-i18n')>()),
-  useI18n: () => ({ t: (key: string) => key }),
+  useI18n: () => ({ t: (key: string) => key, locale: ref('en') }),
 }))
 vi.mock('vue-router', () => ({
-  useRoute: () => ({ path: '/' }),
+  useRoute: () => ({ path: '/', meta: {}, params: {} }),
   useRouter: () => ({ push: vi.fn() }),
 }))
 vi.mock('@/stores', () => ({
@@ -34,6 +36,7 @@ vi.mock('@/stores', () => ({
   }),
   useAuthStore: () => ({ user: state.user, isAdmin: false, logout: vi.fn() }),
   useOnboardingStore: () => ({ replay: vi.fn() }),
+  useAdminSettingsStore: () => ({ customMenuItems: [] }),
 }))
 vi.mock('@/composables/useBalanceDisplay', () => ({
   useBalanceDisplay: () => ({ formatBalanceAmount: () => '0', balanceUnitSymbol: '$' }),
@@ -42,7 +45,9 @@ vi.mock('@/composables/useTheme', () => ({
   useTheme: () => ({
     isDark: false,
     themeMode: 'system',
+    themePalette: 'terracotta',
     setThemeMode: state.setThemeMode,
+    setThemePalette: state.setThemePalette,
     toggleTheme: state.toggleTheme,
   }),
 }))

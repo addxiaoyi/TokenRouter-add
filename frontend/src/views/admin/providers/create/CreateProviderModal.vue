@@ -2914,57 +2914,6 @@ const canExchangeCode = computed(() => {
   return authCode.trim() && oauth.sessionId.value && !oauth.loading.value
 })
 
-// Opening initializes platform-specific choices; closing restores all form
-// drafts through resetForm while asynchronous capability reads keep their own results.
-watch(
-  () => props.show,
-  (newVal) => {
-    if (newVal) {
-      form.platform = props.initialPlatform || 'anthropic'
-      // Load TLS fingerprint profiles
-      adminAPI.tlsFingerprintProfiles
-        .list()
-        .then((profiles) => {
-          tlsFingerprintProfiles.value = profiles.map((p) => ({ id: p.id, name: p.name }))
-        })
-        .catch(() => {
-          // Failed discovery hides unavailable profiles while preserving manual
-          // provider editing; a later dialog opening retries the profile request.
-          tlsFingerprintProfiles.value = []
-        })
-      adminAPI.tlsFingerprintRouters
-        .list()
-        .then((routers) => {
-          tlsFingerprintRouters.value = routers.map((router) => ({
-            id: router.id,
-            name: router.name,
-          }))
-        })
-        .catch(() => {
-          // Failed discovery hides unavailable routers while retaining the form
-          // draft; another dialog opening can refresh the available router list.
-          tlsFingerprintRouters.value = []
-        })
-      // Modal opened - fill related models
-      allowedModels.value = []
-      // Antigravity starts in mapping mode and asynchronously fills the platform default mappings while leaving its whitelist unrestricted.
-      if (form.platform === 'antigravity') {
-        antigravityModelRestrictionMode.value = 'mapping'
-        fetchAntigravityDefaultMappings().then((mappings) => {
-          antigravityModelMappings.value = [...mappings]
-        })
-        antigravityWhitelistModels.value = []
-      } else {
-        antigravityWhitelistModels.value = []
-        antigravityModelMappings.value = []
-        antigravityModelRestrictionMode.value = 'mapping'
-      }
-    } else {
-      resetForm()
-    }
-  },
-)
-
 // The resolved provider type follows platform and authorization category; Qoder, Antigravity, and Jev override the generic category mapping.
 watch(
   [providerCategory, addMethod, qoderProviderType, () => form.platform],
@@ -4487,6 +4436,59 @@ const handleCookieAuth = async (sessionKey: string) => {
     oauth.loading.value = false
   }
 }
+// Observe initial visibility after setup helpers exist so a lazily mounted
+// dialog initializes its first opening through the same watcher as later openings.
+// Opening initializes platform-specific choices; closing restores all form
+// drafts through resetForm while asynchronous capability reads keep their own results.
+watch(
+  () => props.show,
+  (newVal) => {
+    if (newVal) {
+      form.platform = props.initialPlatform || 'anthropic'
+      // Load TLS fingerprint profiles
+      adminAPI.tlsFingerprintProfiles
+        .list()
+        .then((profiles) => {
+          tlsFingerprintProfiles.value = profiles.map((p) => ({ id: p.id, name: p.name }))
+        })
+        .catch(() => {
+          // Failed discovery hides unavailable profiles while preserving manual
+          // provider editing; a later dialog opening retries the profile request.
+          tlsFingerprintProfiles.value = []
+        })
+      adminAPI.tlsFingerprintRouters
+        .list()
+        .then((routers) => {
+          tlsFingerprintRouters.value = routers.map((router) => ({
+            id: router.id,
+            name: router.name,
+          }))
+        })
+        .catch(() => {
+          // Failed discovery hides unavailable routers while retaining the form
+          // draft; another dialog opening can refresh the available router list.
+          tlsFingerprintRouters.value = []
+        })
+      // Modal opened - fill related models
+      allowedModels.value = []
+      // Antigravity starts in mapping mode and asynchronously fills the platform default mappings while leaving its whitelist unrestricted.
+      if (form.platform === 'antigravity') {
+        antigravityModelRestrictionMode.value = 'mapping'
+        fetchAntigravityDefaultMappings().then((mappings) => {
+          antigravityModelMappings.value = [...mappings]
+        })
+        antigravityWhitelistModels.value = []
+      } else {
+        antigravityWhitelistModels.value = []
+        antigravityModelMappings.value = []
+        antigravityModelRestrictionMode.value = 'mapping'
+      }
+    } else {
+      resetForm()
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <style scoped>

@@ -4,7 +4,9 @@
     <div
       class="flex min-h-[61px] items-center border-b border-black/[0.07] px-6 py-4 dark:border-dark-600"
     >
-      <h2 class="truncate text-lg font-semibold tracking-[-0.015em] text-gray-950 dark:text-dark-50">
+      <h2
+        class="truncate text-lg font-semibold tracking-[-0.015em] text-gray-950 dark:text-dark-50"
+      >
         {{ t('dashboard.quickActions') }}
       </h2>
     </div>

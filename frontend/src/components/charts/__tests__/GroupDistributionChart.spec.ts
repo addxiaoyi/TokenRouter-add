@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 
 import GroupDistributionChart from '../GroupDistributionChart.vue'
+import DistributionChartLayout from '../DistributionChartLayout.vue'
 
 // GroupDistributionChart.spec.ts checks grouped usage ordering, chart proportions,
 // optional cost columns, and ungrouped labels. Mounted chart substitutes expose raw
@@ -64,7 +65,7 @@ describe('GroupDistributionChart', () => {
   ]
 
   // Default props receive two groups with opposing token and cost order. Chart values,
-  // table rows, desktop alignment, and tooltip percentages must follow token usage.
+  // table rows, centered desktop chart framing, and tooltip percentages must follow token usage.
   it('uses total_tokens and token ordering by default', () => {
     const wrapper = mount(GroupDistributionChart, {
       props: {
@@ -81,8 +82,10 @@ describe('GroupDistributionChart', () => {
     expect(chartData.labels).toEqual(['group-a', 'group-b'])
     expect(chartData.datasets[0].data).toEqual([1200, 600])
 
-    const chartTableLayout = wrapper.find('table').element.parentElement?.parentElement
-    expect(chartTableLayout?.className).toContain('sm:items-start')
+    const chartTableLayout = wrapper.getComponent(DistributionChartLayout)
+    expect(chartTableLayout.classes()).toEqual(
+      expect.arrayContaining(['flex-col', 'sm:flex-row', 'sm:items-center']),
+    )
 
     const rows = wrapper.findAll('tbody tr')
     expect(rows[0].text()).toContain('group-a')

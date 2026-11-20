@@ -63,7 +63,7 @@ vi.mock('@/stores/adminSettings', () => ({
 vi.mock('@/api/setup', () => ({ getSetupStatus: setupStatus }))
 vi.mock('@/router/navigationLoading', () => ({ installNavigationLoading: vi.fn() }))
 vi.mock('@/composables/useRoutePrefetch', () => ({
-  useRoutePrefetch: () => ({ triggerPrefetch: vi.fn() }),
+  useRoutePrefetch: () => ({ triggerPrefetch: vi.fn(), cancelPendingPrefetch: vi.fn() }),
 }))
 
 /**

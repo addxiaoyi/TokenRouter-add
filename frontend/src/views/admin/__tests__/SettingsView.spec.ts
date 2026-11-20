@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h } from 'vue'
-import { flushPromises, mount, DOMWrapper, enableAutoUnmount } from '@vue/test-utils'
+import {
+  flushPromises as flushComponentPromises,
+  mount,
+  DOMWrapper,
+  enableAutoUnmount,
+} from '@vue/test-utils'
 
 import SettingsView from '../SettingsView.vue'
 import ImageUpload from '@/components/common/ImageUpload.vue'
@@ -819,6 +824,15 @@ function mountView({
   })
 }
 
+// flushPromises waits for API fixtures and dynamically imported settings panels.
+// A final component flush applies their mounted watchers before tests read or
+// edit controls, matching the asynchronous first-visit path used in production.
+async function flushPromises() {
+  await flushComponentPromises()
+  await vi.dynamicImportSettled()
+  await flushComponentPromises()
+}
+
 // openPaymentTab reveals payment provider and checkout settings.
 // Call after the page loads; it waits for pending promises so controls and
 // dependent components are ready for the next interaction.
@@ -1113,7 +1127,8 @@ describe('admin SettingsView payment visible method controls', () => {
     // Returning search to its loaded value isolates the bulk snapshot: a dirty
     // bulk snapshot would keep the save bar active after this reversal.
     await wrapper.get('input#web-search-emulation-enabled').setValue(false)
-    expect(wrapper.get('[data-testid="settings-save-bar"]').attributes('inert')).toBeDefined()
+    const cleanSaveBar = wrapper.find('[data-testid="settings-save-bar"]')
+    expect(!cleanSaveBar.exists() || cleanSaveBar.attributes('inert') !== undefined).toBe(true)
     await wrapper.get('input#web-search-emulation-enabled').setValue(true)
     await saveFromSaveBar(wrapper)
     expect(updateSettings).toHaveBeenCalledTimes(2)
@@ -1123,7 +1138,8 @@ describe('admin SettingsView payment visible method controls', () => {
     )
     expect(updateWebSearchEmulationConfig).toHaveBeenCalledTimes(2)
     expect(showSuccess).toHaveBeenCalledWith('admin.settings.settingsSaved')
-    expect(wrapper.get('[data-testid="settings-save-bar"]').attributes('inert')).toBeDefined()
+    const retrySaveBar = wrapper.find('[data-testid="settings-save-bar"]')
+    expect(!retrySaveBar.exists() || retrySaveBar.attributes('inert') !== undefined).toBe(true)
   })
 
   // A failed bulk target and an edited panel rate limit share one submission.
@@ -1170,6 +1186,7 @@ describe('admin SettingsView payment visible method controls', () => {
       .findAll('button')
       .find((button) => button.text().includes('admin.settings.tabs.features'))!
     await featuresTab.trigger('click')
+    await flushPromises()
     const enabled = wrapper.get('#bstats-enabled')
     expect((enabled.element as HTMLInputElement).checked).toBe(true)
     expect(wrapper.get('[data-testid="bstats-settings"] a').attributes('href')).toBe(
@@ -1223,11 +1240,12 @@ describe('admin SettingsView payment visible method controls', () => {
     expect(updatePanelRateLimitSettings).not.toHaveBeenCalled()
   })
 
-  // Security and gateway drafts occupy panels that remain mounted across tabs.
+  // Security and gateway panels mount on their first visit and remain mounted afterward.
   // Switching away and back keeps the same inputs and submits both edited values.
   it('retains security and gateway drafts across tab changes', async () => {
     const wrapper = mountView()
     await flushPromises()
+    expect(wrapper.find('[data-testid="wechat-connect-mp-app-id"]').exists()).toBe(false)
     await openSecurityTab(wrapper)
     const appId = wrapper.get('[data-testid="wechat-connect-mp-app-id"]')
     await appId.setValue('draft-app-id')
@@ -1460,6 +1478,7 @@ describe('admin SettingsView payment visible method controls', () => {
     await flushPromises()
 
     expect(getPanelRateLimitSettings).toHaveBeenCalled()
+    await openSecurityTab(wrapper)
     expect(wrapper.text()).toContain('admin.settings.panelRateLimit.title')
     expect(wrapper.text()).toContain('admin.settings.panelRateLimit.proxySafeNote')
 
@@ -1533,6 +1552,7 @@ describe('admin SettingsView payment visible method controls', () => {
     const wrapper = mountView()
     await flushPromises()
 
+    await openSecurityTab(wrapper)
     expect(wrapper.text()).toContain('Google One Tap')
     expect(wrapper.text()).toContain(window.location.origin)
 
@@ -2013,6 +2033,8 @@ describe('admin SettingsView payment visible method controls', () => {
 
     await flushPromises()
 
+    await openGatewayTab(wrapper)
+    await openGatewaySection(wrapper, 'openai')
     expect(wrapper.text()).toContain('OpenAI 提供商配额自动暂停')
     const fiveHourInput = wrapper.get('[data-testid="settings-openai-quota-auto-pause-5h"]')
     const sevenDayInput = wrapper.get('[data-testid="settings-openai-quota-auto-pause-7d"]')
@@ -2689,6 +2711,8 @@ describe('admin SettingsView payment visible method controls', () => {
     const wrapper = mountView()
     await flushPromises()
     expect(getCreativeModelCandidates).toHaveBeenCalledTimes(1)
+    await wrapper.get('#settings-tab-features').trigger('click')
+    await flushPromises()
     expect(wrapper.text()).toContain('admin.settings.features.creative.modelSettings.title')
 
     await wrapper.find('form').trigger('submit')

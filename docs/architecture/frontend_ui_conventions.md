@@ -233,7 +233,7 @@ Vue 的 `<style scoped>` 中，深色后代规则写成 `.dark .component-class`
 - 模型、分组和端点分布表的名称与展开箭头默认使用普通文字色（浅色 `gray-900`、深色 `white`）。可展开的行在整行悬停时将名称和箭头显示为品牌色（浅色 `primary-600`、深色 `primary-500`）。关闭明细或分组 ID 小于等于 0 时使用普通文字色。
 - 饼图和圆环图按原始指标值画扇区，每项的占比是该项数值除以所有项之和，tooltip 用同一组数值计算百分比。扇区数据保持原值：不做对数压缩，也不设最小占比，零值不占扇区。消费排行的"其他"汇总项也按实际费用计算。
 - 分组、端点、成员消费和运维请求时长分布统一使用环形饼图。分组和端点保留旁边的明细表；成员和时长区间通过图例标识，tooltip 显示原始数值及占比。
-- 图表主题从 `composables/useChartTheme.ts` 取：它提供响应式的 `colors`（text、muted、grid 三档，zinc 色系）和 `onThemeChange` 重绘钩子。`document.documentElement.classList.contains('dark')` 这种快照判断没有响应式依赖，切换主题后不会重新计算，门禁会拦截。vue-chartjs 场景下，colors 是响应式的，切换主题时自动重绘；Stripe Elements 等命令式场景，用 watch 加 `elements.update({ appearance })` 重新应用。
+- 图表主题从 `composables/useChartTheme.ts` 取：它提供响应式的 `colors`（text、muted、grid 三档，沿用页面的暖中性色）和 `onThemeChange` 重绘钩子，后者同时响应明暗模式和配色方案切换。`document.documentElement.classList.contains('dark')` 这种快照判断没有响应式依赖，切换主题后不会重新计算，门禁会拦截。vue-chartjs 场景下，colors 是响应式的，切换主题时自动重绘；Stripe Elements 等命令式场景，用 watch 加 `elements.update({ appearance })` 重新应用。
 - 分布图的调色板只有一份 `CHART_PALETTE`（12 色，按显示顺序取色），"Others" 汇总切片用 `CHART_OTHER_COLOR`；token 趋势的序列色用 `CHART_SERIES_COLORS`。刻度字号 `CHART_TICK_FONT_SIZE`（10），图例字号 `CHART_LEGEND_FONT_SIZE`（11）。
 - 以下业务配色留在组件内部：TeamMemberUsageCharts 的成员固定配色（同一成员在不同图表里颜色一致）；OpsSwitchRateTrendChart 和 DashboardView 的本地图表主题（深色刻度 `#D4D4D8`、网格 `#27272A`，浅色使用品牌色调的字面值）；DailyRevenueChart 的线条和填充色。
 - 用户仪表盘趋势图（`UserDashboardUsageChart`）只画线，线下区域和辉光阴影都不画，保持扁平。单指标时叠加上一周期的对比线，用 `colors.muted` 虚线，按下标和本期对齐。峰值环、均值虚线、标签胶囊和末端的呼吸点画在同一个本地插件里，颜色取自 `useChartTheme` 和卡片底色。尚未结束的时段画成虚线。

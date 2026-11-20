@@ -15,6 +15,7 @@ export default {
     ruleIndex: 'Rule #{index}',
     retry: 'Retry',
     loading: 'Loading...',
+    interfaceLoadFailed: 'This panel could not load. Refresh the page to try again.',
     justNow: 'just now',
     peakRateTooltip: 'Peak rate: {window}',
     save: 'Save',

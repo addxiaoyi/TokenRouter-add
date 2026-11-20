@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 
 import ModelDistributionChart from '../ModelDistributionChart.vue'
+import DistributionChartLayout from '../DistributionChartLayout.vue'
 
 // ModelDistributionChart.spec.ts tests model metric ordering and the alternate user-
 // spending ranking. Mounted chart substitutes expose datasets and tooltip callbacks so
@@ -83,7 +84,7 @@ describe('ModelDistributionChart', () => {
   ]
 
   // Default props receive models with opposite token and spending order. Chart inputs,
-  // table rows, desktop alignment, and tooltip shares must follow descending token
+  // table rows, centered desktop chart framing, and tooltip shares must follow descending token
   // usage.
   it('uses total_tokens and token ordering by default', () => {
     const wrapper = mount(ModelDistributionChart, {
@@ -101,8 +102,10 @@ describe('ModelDistributionChart', () => {
     expect(chartData.labels).toEqual(['model-a', 'model-b'])
     expect(chartData.datasets[0].data).toEqual([1000, 500])
 
-    const chartTableLayout = wrapper.find('table').element.parentElement?.parentElement
-    expect(chartTableLayout?.className).toContain('sm:items-start')
+    const chartTableLayout = wrapper.getComponent(DistributionChartLayout)
+    expect(chartTableLayout.classes()).toEqual(
+      expect.arrayContaining(['flex-col', 'sm:flex-row', 'sm:items-center']),
+    )
 
     const rows = wrapper.findAll('tbody tr')
     expect(rows[0].text()).toContain('model-a')
@@ -226,14 +229,16 @@ describe('ModelDistributionChart', () => {
     expect(options.plugins.tooltip.callbacks.label({ label: 'Others', dataIndex: 3 })).toBe(
       'Others: $10.00 (33.3%)',
     )
-    expect(chartData.datasets[0].backgroundColor[0]).toBe('#3b82f6')
-    expect(chartData.datasets[0].backgroundColor[3]).toBe('#94a3b8')
+    expect(chartData.datasets[0].backgroundColor[0]).toBe('#C46346')
+    expect(chartData.datasets[0].backgroundColor[3]).toBe('#9C968B')
     expect(chartData.datasets[0].backgroundColor[3]).not.toBe(
       chartData.datasets[0].backgroundColor[0],
     )
 
-    const chartTableLayout = wrapper.find('table').element.parentElement?.parentElement
-    expect(chartTableLayout?.className).toContain('sm:items-start')
+    const chartTableLayout = wrapper.getComponent(DistributionChartLayout)
+    expect(chartTableLayout.classes()).toEqual(
+      expect.arrayContaining(['flex-col', 'sm:flex-row', 'sm:items-center']),
+    )
 
     const rows = wrapper.findAll('tbody tr')
     expect(rows).toHaveLength(4)

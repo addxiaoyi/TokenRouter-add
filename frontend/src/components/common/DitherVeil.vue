@@ -1,11 +1,18 @@
 <script lang="ts">
-// DitherVeil.vue renders an interactive WebGL2 dithering veil over an image using OGL.
-// At rest the image is quantized via Floyd-Steinberg, Atkinson, Bayer, blue-noise, or
-// diagonal engraving patterns between inkColor and paperColor; pointer movement and
-// click bursts dissolve the dithered veil back into full color with a configurable trail.
-
 import { Renderer, Program, Mesh, Triangle, Texture, RenderTarget } from 'ogl'
 import type { StyleValue } from 'vue'
+
+// DitherVeil.vue renders an image through a WebGL2 dithering veil and retains its
+// image texture and trail targets for one mounted source. Quantized ink and paper
+// colors provide the resting image; pointer movement and click bursts reveal
+// full color through the fading mask.
+//
+// The viewport observer and document visibility jointly gate rendering. Hidden
+// or background instances cancel pending GPU work while keeping their allocated
+// textures for a later return. Live reduced-motion changes clear pointer presence
+// and bursts, drawing the resting image without an ongoing loop. Unsupported
+// WebGL uses the source image fallback, and source changes retire observers,
+// listeners, and the old context before initializing a new renderer.
 
 type Pattern = 'bayer' | 'noise' | 'atkinson' | 'floyd' | 'lines'
 type Palette = 'duotone' | 'rgb'
@@ -167,7 +174,7 @@ const getBlueNoise = (): Uint8Array => {
     return seed / 2147483647
   }
   const initial = Math.round(n * 0.1)
-  for (let placed = 0; placed < initial; ) {
+  for (let placed = 0; placed < initial;) {
     const i = Math.floor(random() * n)
     if (on[i]) continue
     on[i] = 1
@@ -434,6 +441,7 @@ void main() {
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { observeReducedMotion, observeVisualActivity } from '@/utils/visualActivity'
 
 const props = withDefaults(defineProps<DitherVeilProps>(), {
   src: DEFAULT_SRC,
@@ -490,8 +498,12 @@ watch(
   { immediate: true },
 )
 
-// setup initializes the OGL WebGL2 pipeline, ping-pong trail targets, pointer listeners,
-// and image texture loading; returns a cleanup callback for unmount or src changes.
+// setup owns the image texture, ping-pong trail targets, observers, and pointer
+// listeners for the current source. It returns cleanup for both unmount and source
+// replacement. Viewport and tab visibility jointly suspend frames without losing
+// those textures, while reduced-motion changes retire transient trails. Image
+// loading wakes the retained renderer only when its document can be seen; cleanup
+// detaches that completion handler before releasing the WebGL context.
 const setup = (): (() => void) | undefined => {
   const container = containerRef.value
   if (!container) return undefined
@@ -513,7 +525,7 @@ const setup = (): (() => void) | undefined => {
   }
   webglFallback.value = false
 
-  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  let reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
   const gl = renderer.gl
   const canvas = gl.canvas
   canvas.style.display = 'block'
@@ -716,8 +728,12 @@ const setup = (): (() => void) | undefined => {
     diffusedTexture.needsUpdate = true
   }
 
+  // frame updates the reveal mask and draws the image while visible work remains.
+  // Hidden instances return before layout, diffusion, or framebuffer passes are evaluated
+  // for the loaded source image.
   const frame = (now: number) => {
     raf = 0
+    if (!visible || document.hidden) return
     if (resizePending) {
       resizePending = false
       applyLayout()
@@ -844,8 +860,11 @@ const setup = (): (() => void) | undefined => {
     if (busy && visible) raf = requestAnimationFrame(frame)
   }
 
+  // wake schedules one image frame when viewport and tab visibility permit it.
+  // Resetting the clock prevents a resumed trail from integrating the hidden interval
+  // between successive image frames.
   const wake = () => {
-    if (raf || !visible) return
+    if (raf || !visible || document.hidden) return
     last = performance.now()
     raf = requestAnimationFrame(frame)
   }
@@ -877,7 +896,11 @@ const setup = (): (() => void) | undefined => {
     pointer.y = e.clientY - rect.top
     pointer.placed = true
   }
+  // onMove updates reveal coordinates for visible, motion-enabled images only.
+  // Reduced-motion visitors retain the resting image even when their pointer crosses it,
+  // without starting the full-color reveal.
   const onMove = (e: PointerEvent) => {
+    if (!visible || reducedMotion) return
     locate(e)
     if (!pointer.inside) {
       pointer.inside = true
@@ -889,7 +912,11 @@ const setup = (): (() => void) | undefined => {
     pointer.inside = false
     wake()
   }
+  // onDown adds a bounded burst for the primary pointer on an active image.
+  // Hidden and reduced-motion states reject interactions before changing the trail buffers
+  // for this source image.
   const onDown = (e: PointerEvent) => {
+    if (!visible || document.hidden || reducedMotion) return
     onMove(e)
     if (!settingsRef.current?.clickBurst || (e.pointerType === 'mouse' && e.button !== 0)) return
     bursts.push({ x: pointer.x, y: pointer.y, start: performance.now() })
@@ -906,11 +933,27 @@ const setup = (): (() => void) | undefined => {
     wake()
   })
   resizeObserver.observe(container)
-  const intersectionObserver = new IntersectionObserver(([entry]) => {
-    visible = entry.isIntersecting
+  const stopActivity = observeVisualActivity(container, (active) => {
+    // Pausing cancels scheduled GPU work immediately; a returning viewport uses
+    // wake's new clock while preserving the existing image texture and mask targets.
+    visible = active
+    if (!active) pointer.inside = false
+    cancelAnimationFrame(raf)
+    raf = 0
+    if (active) wake()
+  })
+  const stopMotion = observeReducedMotion((reduced) => {
+    reducedMotion = reduced
+    if (reduced) {
+      // Retire pointer trails and bursts before drawing the static reduced-motion
+      // image so a previously active pointer cannot keep the renderer awake.
+      pointer.inside = false
+      presence = 0
+      trailUntil = 0
+      bursts.length = 0
+    }
     wake()
   })
-  intersectionObserver.observe(container)
 
   layout()
   wake()
@@ -919,7 +962,8 @@ const setup = (): (() => void) | undefined => {
     cancelAnimationFrame(raf)
     wakeRef.current = () => {}
     resizeObserver.disconnect()
-    intersectionObserver.disconnect()
+    stopActivity()
+    stopMotion()
     img.onload = null
     container.removeEventListener('pointermove', onMove)
     container.removeEventListener('pointerenter', onMove)

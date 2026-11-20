@@ -119,7 +119,7 @@ HTTP、用例、存储和后台资源，由 app 装配各模块的实现。业�
 - API 的类型和调用放在 `src/api/`，跨页面的状态放进 store 或 composable，view 里不重复写协议。
 - 修改依赖时同步更新 `frontend/pnpm-lock.yaml`，CI 使用 frozen lockfile。
 
-支付页动态导入 Stripe 和 Airwallex SDK，`frontend/vite.config.ts` 通过 Rolldown 的 `codeSplitting` 将它们分别放进独立的 vendor 包。Airwallex 在模块加载时会预取远程支付脚本，因此它和同命名空间的依赖一起分包。调整分包规则后，检查生产构建的依赖关系，确认支付 SDK 由支付流程触发加载。
+支付页动态导入 Stripe 和 Airwallex SDK，`frontend/vite.config.ts` 通过 Rolldown 的 `codeSplitting` 将它们分别放进独立的 vendor 包。Airwallex 在模块加载时会预取远程支付脚本，因此它和同命名空间的依赖一起分包。Fabric、图片裁剪和解码、物理效果、WebGL、Lottie、Markdown、引导和二维码等重型功能也各自保留依赖边界；未匹配的模块由打包器按实际静态依赖自动拆分，不再汇入一个全站共享的兜底包。拆包保留严格执行顺序，避免依赖被提前初始化。调整规则后，检查生产构建的递归静态依赖，确认可选功能只由实际页面或交互触发；配置测试还会执行独立的动态导入夹具，核对未使用模块没有初始化副作用。页面、面板和后台任务的加载规则见[页面加载与后台工作](../architecture/frontend_modules.md#page_loading)。
 
 <a id="backend_file_layout"></a>
 ## 后端文件组织

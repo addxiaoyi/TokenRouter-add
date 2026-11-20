@@ -307,6 +307,8 @@ const handleReset = async () => {
   }
 }
 
+// Observe initial visibility after setup helpers exist so a lazily mounted
+// dialog initializes its first opening through the same watcher as later openings.
 watch(
   () => [props.show, props.provider?.id],
   ([visible]) => {
@@ -316,5 +318,6 @@ watch(
     }
     status.value = null
   },
+  { immediate: true },
 )
 </script>

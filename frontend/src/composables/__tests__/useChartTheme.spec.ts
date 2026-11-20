@@ -1,7 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { effectScope, nextTick } from 'vue'
-import { setTheme } from '@/composables/useTheme'
-import { useChartTheme, CHART_PALETTE, CHART_SERIES_COLORS } from '@/composables/useChartTheme'
+import { setTheme, setThemePalette } from '@/composables/useTheme'
+import {
+  useChartTheme,
+  CHART_OTHER_COLOR,
+  CHART_PALETTE,
+  CHART_SERIES_COLORS,
+} from '@/composables/useChartTheme'
 
 // useChartTheme.spec.ts checks shared chart palettes and reactive theme integration. The
 // cases exercise actual theme changes and watcher disposal, and retain exact color
@@ -9,77 +14,107 @@ import { useChartTheme, CHART_PALETTE, CHART_SERIES_COLORS } from '@/composables
 // colors.
 
 describe('useChartTheme', () => {
-  // A chart theme is created inside a disposable effect scope before light and dark
-  // palettes are selected. Its computed colors must update synchronously for both
-  // palettes.
-  it('colors 跟随主题切换响应式更新(回归:非响应式快照曾导致切主题不重绘)', () => {
-    const scope = effectScope()
-    const theme = scope.run(() => useChartTheme())!
-
+  beforeEach(() => {
     setTheme(false)
-    expect(theme.colors.value).toEqual({ text: '#3F3F46', muted: '#71717A', grid: '#E4E4E7' })
-
-    setTheme(true)
-    expect(theme.colors.value).toEqual({ text: '#DEE0E2', muted: '#A1A1AA', grid: '#27272A' })
-
-    scope.stop()
+    setThemePalette('terracotta')
+  })
+  afterEach(() => {
     setTheme(false)
+    setThemePalette('terracotta')
   })
 
-  // A subscribed chart observes two theme changes before its watcher is stopped. Later
-  // changes must leave the recorded notifications unchanged after explicit watcher
-  // disposal.
-  it('onThemeChange 回调在切换时触发,返回的停止函数可断开', async () => {
+  // A chart theme is created inside a disposable effect scope before light and dark
+  // modes are selected. Every editorial palette retains reactive text and grid colors
+  // so changing mode cannot leave chart labels on the previous surface.
+  it.each(['terracotta', 'pearl', 'indigo'] as const)(
+    'updates semantic colors with light and dark mode in the %s palette',
+    (palette) => {
+      setThemePalette(palette)
+      const scope = effectScope()
+      const theme = scope.run(() => useChartTheme())!
+
+      try {
+        setTheme(false)
+        expect(theme.colors.value).toEqual({
+          text: '#2B2926',
+          muted: '#757067',
+          grid: 'rgba(24, 22, 20, 0.08)',
+        })
+
+        setTheme(true)
+        expect(theme.colors.value).toEqual({
+          text: '#E7E5DF',
+          muted: '#9C988F',
+          grid: 'rgba(255, 255, 255, 0.08)',
+        })
+      } finally {
+        scope.stop()
+      }
+    },
+  )
+
+  // A subscribed chart observes mode and palette changes before its watcher stops.
+  // Later changes leave notifications unchanged after disposal, including a palette
+  // switch that keeps the same resolved dark mode.
+  it('notifies mode and palette changes until its watcher is stopped', async () => {
     const scope = effectScope()
     const theme = scope.run(() => useChartTheme())!
     const seen: boolean[] = []
     const stop = theme.onThemeChange((dark) => seen.push(dark))
 
-    setTheme(true)
-    // Theme notifications use Vue's queued watcher execution, so advance the reactive
-    // flush before checking which callbacks were delivered.
-    await nextTick()
-    setTheme(false)
-    await nextTick()
-    expect(seen).toEqual([true, false])
+    try {
+      setTheme(true)
+      // Redraw callbacks run in Vue's queued watcher flush, so each selection must
+      // settle before the next change can be checked independently.
+      await nextTick()
+      setThemePalette('pearl')
+      await nextTick()
+      setTheme(false)
+      await nextTick()
+      expect(seen).toEqual([true, true, false])
 
-    stop()
-    setTheme(true)
-    await nextTick()
-    expect(seen).toEqual([true, false])
-
-    scope.stop()
-    setTheme(false)
+      stop()
+      setTheme(true)
+      setThemePalette('indigo')
+      await nextTick()
+      expect(seen).toEqual([true, true, false])
+    } finally {
+      scope.stop()
+    }
   })
 
-  // Distribution charts share a twelve-entry palette whose first ten colors have a defined
-  // order. The assertions protect that prefix and total palette length together.
-  it('调色板 12 色唯一来源,前缀 10 色与原 GroupDistributionChart 拷贝逐项一致', () => {
-    expect(CHART_PALETTE.slice(0, 10)).toEqual([
-      '#3b82f6',
-      '#10b981',
-      '#f59e0b',
-      '#ef4444',
-      '#8b5cf6',
-      '#ec4899',
-      '#00D2FF',
-      '#f97316',
-      '#6366f1',
-      '#84cc16',
+  // Distribution charts assign twelve restrained editorial colors in ranking order.
+  // Exact values and the separate Others tone protect category identity and prevent
+  // the aggregate remainder from borrowing a ranked category's color.
+  it('keeps the editorial distribution palette and Others color stable', () => {
+    expect(CHART_PALETTE).toEqual([
+      '#C46346',
+      '#2A7A72',
+      '#C48A3B',
+      '#4E627A',
+      '#8B5E7B',
+      '#6F8054',
+      '#A8795B',
+      '#4B5588',
+      '#9E4E4E',
+      '#567878',
+      '#9A7D4A',
+      '#6E667A',
     ])
-    expect(CHART_PALETTE).toHaveLength(12)
+    expect(CHART_OTHER_COLOR).toBe('#9C968B')
+    expect(CHART_PALETTE).not.toContain(CHART_OTHER_COLOR)
   })
 
   // Token charts distinguish input, output, cache creation, cache reads, and cache hit
   // rate through assigned colors. Each semantic series must retain its expected shared
   // value.
-  it('序列色锁定 token 趋势图五色语义', () => {
+  it('keeps semantic token series colors stable', () => {
     expect(CHART_SERIES_COLORS).toEqual({
-      input: '#3b82f6',
-      output: '#10b981',
-      cacheCreation: '#f59e0b',
-      cacheRead: '#06b6d4',
-      cacheHitRate: '#8b5cf6',
+      input: '#C46346',
+      output: '#2A7A72',
+      cacheCreation: '#C48A3B',
+      cacheRead: '#4E627A',
+      cacheHitRate: '#8B5E7B',
     })
   })
 })

@@ -174,10 +174,11 @@ describe('UserDashboardHeatmap', () => {
     expect(cells.length).toBe(FALLBACK_WEEKS * 7)
 
     // Today is the only used date and receives the highest band; future padding remains invisible.
-    const greenCells = cells.filter((c) => c.classes().includes('bg-green-700'))
-    expect(greenCells.length).toBe(1)
+    const usedCells = cells.filter((c) => c.classes().includes('bg-primary-600'))
+    expect(usedCells.length).toBe(1)
+    expect(usedCells[0].attributes('data-date')).toBe(today)
     const futureCount = cells.filter((c) => c.classes().includes('invisible')).length
-    expect(cells.filter((c) => c.classes().includes('bg-gray-100')).length).toBe(
+    expect(cells.filter((c) => c.classes().includes('bg-[#e8e6dc]/75')).length).toBe(
       cells.length - futureCount - 1,
     )
   })
@@ -194,7 +195,7 @@ describe('UserDashboardHeatmap', () => {
 
     const wrapper = await mountHeatmap()
     const cells = wrapper.findAll('[data-testid="heatmap-cell"]')
-    const todayIndex = cells.findIndex((c) => c.classes().includes('bg-green-700'))
+    const todayIndex = cells.findIndex((c) => c.attributes('data-date') === today)
     expect(todayIndex).toBeGreaterThan(0)
 
     await cells[todayIndex].trigger('mouseenter')
@@ -230,7 +231,8 @@ describe('UserDashboardHeatmap', () => {
 
     const wrapper = await mountHeatmap()
     const cells = wrapper.findAll('[data-testid="heatmap-cell"]')
-    const todayIndex = cells.findIndex((c) => c.classes().includes('bg-green-700'))
+    const todayIndex = cells.findIndex((c) => c.attributes('data-date') === today)
+    expect(todayIndex).toBeGreaterThan(0)
     await cells[todayIndex].trigger('mouseenter')
     const tooltipElement = wrapper.get('[data-testid="heatmap-tooltip"]').element
 

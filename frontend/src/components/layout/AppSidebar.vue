@@ -26,7 +26,9 @@
             class="h-full w-full object-contain"
           />
         </span>
-        <span class="min-w-0 truncate text-sm font-semibold tracking-[-0.015em] text-gray-950 dark:text-white">
+        <span
+          class="min-w-0 truncate text-sm font-semibold tracking-[-0.015em] text-gray-950 dark:text-white"
+        >
           {{ siteName }}
         </span>
         <VersionBadge v-if="siteVersion" :version="siteVersion" class="shrink-0" />
@@ -121,7 +123,11 @@
                     :class="{ 'sidebar-link-active': route.path === child.path }"
                     @click="handleMenuItemClick(child.path)"
                   >
-                    <Icon :name="child.icon ?? 'home'" size="xs" class="h-3.5 w-3.5 flex-shrink-0 opacity-75" />
+                    <Icon
+                      :name="child.icon ?? 'home'"
+                      size="xs"
+                      class="h-3.5 w-3.5 flex-shrink-0 opacity-75"
+                    />
                     <span class="min-w-0 truncate">{{ child.label }}</span>
                   </router-link>
                 </div>
@@ -280,10 +286,14 @@
             size-class="h-7 w-7 shrink-0"
           />
           <span v-if="!sidebarCollapsed" class="min-w-0 flex-1">
-            <span class="block truncate text-xs font-medium leading-tight text-gray-950 dark:text-white">
+            <span
+              class="block truncate text-xs font-medium leading-tight text-gray-950 dark:text-white"
+            >
               {{ displayName }}
             </span>
-            <span class="mt-0.5 block truncate font-mono text-xs tabular-nums text-gray-500 dark:text-dark-400">
+            <span
+              class="mt-0.5 block truncate font-mono text-xs tabular-nums text-gray-500 dark:text-dark-400"
+            >
               {{ formattedBalance }}
             </span>
           </span>
@@ -306,11 +316,7 @@
           class="dropdown user-menu-panel bottom-full left-2 right-2 z-modal mb-2 w-auto min-w-[220px] origin-bottom-left py-0"
         >
           <div class="menu-section">
-            <router-link
-              to="/profile"
-              class="user-menu-card"
-              @click="accountMenuOpen = false"
-            >
+            <router-link to="/profile" class="user-menu-card" @click="accountMenuOpen = false">
               <UserAvatar
                 :avatar-url="avatarUrl"
                 :user-id="user.id"
@@ -341,11 +347,7 @@
                 {{ formattedBalance }}
               </span>
             </router-link>
-            <router-link
-              to="/keys"
-              class="menu-item text-xs"
-              @click="accountMenuOpen = false"
-            >
+            <router-link to="/keys" class="menu-item text-xs" @click="accountMenuOpen = false">
               <Icon name="key" size="sm" class="shrink-0" />
               {{ t('nav.apiKeys') }}
             </router-link>
@@ -378,11 +380,7 @@
           </div>
 
           <div class="menu-section">
-            <button
-              type="button"
-              class="menu-item menu-item-danger text-xs"
-              @click="handleLogout"
-            >
+            <button type="button" class="menu-item menu-item-danger text-xs" @click="handleLogout">
               <Icon name="logout" size="sm" />
               {{ t('nav.logout') }}
             </button>
@@ -419,9 +417,9 @@ import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
 import { useTheme, type ThemePalette } from '@/composables/useTheme'
 import { useNavigationItems, type NavItem } from '@/components/layout/navigationItems'
 
-// AppSidebar.vue renders the full-height Codex navigation rail with brand and collapse
-// controls at the top, semantically grouped role destinations in the scrollable body,
-// and a pinned account/balance/theme footer at the bottom.
+// AppSidebar.vue renders the full-height Codex navigation rail with brand and
+// collapse controls at the top. Semantically grouped role destinations occupy the
+// scrollable body, with a pinned account, balance, and theme footer at the bottom.
 
 const { t, locale } = useI18n()
 const route = useRoute()
@@ -438,7 +436,11 @@ const sidebarCollapsed = computed(() => appStore.sidebarCollapsed)
 const mobileOpen = computed(() => appStore.mobileOpen)
 const isAdmin = computed(() => authStore.isAdmin)
 const user = computed(() => authStore.user)
-const isZhLocale = computed(() => String(locale.value || '').toLowerCase().startsWith('zh'))
+const isZhLocale = computed(() =>
+  String(locale.value || '')
+    .toLowerCase()
+    .startsWith('zh'),
+)
 
 const siteName = computed(() => appStore.siteName)
 const siteLogo = computed(() =>
@@ -454,9 +456,11 @@ const displayName = computed(() => {
 const avatarUrl = computed(() =>
   sanitizeUrl(user.value?.avatar_url || '', { allowRelative: true, allowDataUrl: true }),
 )
+// formattedBalance displays nonnegative account balances with the configured
+// symbol and locale formatting.
 const formattedBalance = computed(() => {
   const amount = Math.max(0, Number(user.value?.balance ?? 0))
-  const text = formatBalanceAmount(amount, true)
+  const text = formatBalanceAmount(amount)
   return text.startsWith(balanceUnitSymbol.value) ? text : `${balanceUnitSymbol.value}${text}`
 })
 

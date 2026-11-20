@@ -590,17 +590,6 @@ const matchModeOptions = computed(() => [
 
 const platformOptions = CONCRETE_PLATFORM_OPTIONS
 
-// Refresh the rule list when the outer dialog opens so newly opened editors start from the
-// latest returned server records.
-watch(
-  () => props.show,
-  (newVal) => {
-    if (newVal) {
-      loadRules()
-    }
-  },
-)
-
 /**
  * loadRules refreshes the rule list through the administrative API. Failure reports a toast and
  * retains the previous list, while loading feedback clears after the request settles.
@@ -796,4 +785,17 @@ const confirmDelete = async () => {
     console.error('Error deleting rule:', error)
   }
 }
+// Observe initial visibility after setup helpers exist so a lazily mounted
+// dialog initializes its first opening through the same watcher as later openings.
+// Refresh the rule list when the outer dialog opens so newly opened editors start from the
+// latest returned server records.
+watch(
+  () => props.show,
+  (newVal) => {
+    if (newVal) {
+      loadRules()
+    }
+  },
+  { immediate: true },
+)
 </script>

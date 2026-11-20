@@ -15,6 +15,7 @@ export default {
     ruleIndex: '规则 #{index}',
     retry: '重试',
     loading: '加载中...',
+    interfaceLoadFailed: '此面板加载失败，请刷新页面后重试。',
     justNow: '刚刚',
     peakRateTooltip: '高峰倍率：{window}',
     save: '保存',

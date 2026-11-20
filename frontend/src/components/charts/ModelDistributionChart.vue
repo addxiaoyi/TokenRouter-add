@@ -154,13 +154,19 @@
                   {{ model.model }}
                 </span>
               </td>
-              <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-[#5e5d59] dark:text-[#b0aea5]">
+              <td
+                class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-[#5e5d59] dark:text-[#b0aea5]"
+              >
                 {{ formatNumber(model.requests) }}
               </td>
-              <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-[#5e5d59] dark:text-[#b0aea5]">
+              <td
+                class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-[#5e5d59] dark:text-[#b0aea5]"
+              >
                 {{ formatTokens(model.total_tokens) }}
               </td>
-              <td class="whitespace-nowrap px-2 py-2 text-right font-medium tabular-nums text-teal-700 dark:text-teal-400">
+              <td
+                class="whitespace-nowrap px-2 py-2 text-right font-medium tabular-nums text-teal-700 dark:text-teal-400"
+              >
                 {{ balanceUnitSymbol }}{{ formatCost(model.actual_cost) }}
               </td>
               <td

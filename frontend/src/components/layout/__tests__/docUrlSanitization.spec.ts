@@ -1,26 +1,43 @@
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 import { sanitizeUrl } from '@/utils/url'
-import { nodes, parseVue, variableInitializer } from '@/__tests__/helpers/sourceSyntax'
+import { attribute, nodes, parseVue, variableInitializer } from '@/__tests__/helpers/sourceSyntax'
 
 // docUrlSanitization.spec.ts checks document-link sanitization at each public
-// entry point and verifies the URL policy with representative protocols. Script
-// assertions inspect computed callback bodies so formatting cannot hide a
-// missing sanitizer or satisfy the check through an unrelated call.
+// entry point and verifies the URL policy with representative protocols. Entries
+// that delegate documentation navigation identify their rendered owner explicitly.
+// Script assertions inspect that owner's computed callback, so an unrelated logo
+// sanitizer cannot satisfy the document-link contract.
 
-// entryPaths identifies the components whose document links consume publicly configured URLs directly.
-const entryPaths = [
-  'components/layout/AppHeader.vue',
-  'views/HomeView.vue',
-  'views/KeyUsageView.vue',
-  'views/ModelMarketplaceView.vue',
+// entryOwners pairs each public entry with the component that sanitizes its
+// documentation link, retaining coverage when navigation moves into a shared header.
+const entryOwners = [
+  ['components/layout/AppHeader.vue', 'components/layout/AppHeader.vue'],
+  ['views/HomeView.vue', 'views/HomeView.vue'],
+  ['views/KeyUsageView.vue', 'views/KeyUsageView.vue'],
+  ['views/ModelMarketplaceView.vue', 'components/layout/AppHeader.vue'],
 ]
 
 describe('doc_url sanitization', () => {
-  // Public entries compute document links from settings that may contain unsafe
-  // protocols. Each computed getter must return the sanitizer result directly.
-  it.each(entryPaths)('%s sanitizes its computed document URL', (path) => {
-    const script = parseVue(path).script
+  // Public entries either own their documentation link or render the shared public header.
+  // The actual owner must return the sanitizer result directly before binding that URL.
+  it.each(entryOwners)('%s uses sanitized documentation from %s', (entryPath, ownerPath) => {
+    const entry = parseVue(entryPath)
+    if (entryPath !== ownerPath) {
+      const header = entry.elements.find((element) => element.tag === 'AppHeader')
+      expect(header).toBeDefined()
+      if (!header) throw new Error('Missing shared documentation header')
+      expect(attribute(header, 'public-page')).toBe('')
+      expect(
+        nodes(entry.script, ts.isImportDeclaration).some(
+          (node) =>
+            ts.isStringLiteral(node.moduleSpecifier) &&
+            node.moduleSpecifier.text === `@/${ownerPath}` &&
+            node.importClause?.name?.text === 'AppHeader',
+        ),
+      ).toBe(true)
+    }
+    const script = parseVue(ownerPath).script
     const imports = nodes(script, ts.isImportDeclaration)
     expect(
       imports.some(

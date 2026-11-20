@@ -1,60 +1,75 @@
 <script setup lang="ts">
-// FallingText.vue turns a block of words or letters into interactive 2D rigid bodies
-// powered by matter-js. Pieces drop on auto, hover, click, or scroll trigger, support
-// pointer dragging and swipe impulses, and optionally spring back to their original
-// layout after settling.
+import {
+  computed,
+  onBeforeUnmount,
+  onMounted,
+  useTemplateRef,
+  watch,
+  type CSSProperties,
+} from 'vue'
+import Matter from 'matter-js'
+import { observeReducedMotion, observeVisualActivity } from '@/utils/visualActivity'
 
-import { computed, onBeforeUnmount, onMounted, useTemplateRef, watch, type CSSProperties } from 'vue';
-import Matter from 'matter-js';
+// FallingText.vue turns words or letters into Matter.js rigid bodies after an
+// automatic, hover, click, or scroll trigger. The original text layout remains
+// available until admission; active pieces support dragging, pointer impulses,
+// and optional restoration to their measured starting positions.
+//
+// Physics frames stop when the band leaves the viewport or its browser tab is
+// hidden, and restoration animations pause with them. Returning resumes retained
+// positions with a fresh clock. Sleeping pieces also stop requesting physics
+// frames until input or a restoration delay needs work. Live reduced-motion
+// preferences reset the simulation to readable static text. Unmount retires font
+// completions, observers, pointer listeners, and the owned Matter engine together.
 
-export type FallingTextTrigger = 'auto' | 'hover' | 'click' | 'scroll';
-export type FallingTextVariant = 'text' | 'tiles';
-export type FallingTextSplit = 'words' | 'letters';
-export type FallingTextOrder = 'random' | 'sequence' | 'center' | 'together';
+export type FallingTextTrigger = 'auto' | 'hover' | 'click' | 'scroll'
+export type FallingTextVariant = 'text' | 'tiles'
+export type FallingTextSplit = 'words' | 'letters'
+export type FallingTextOrder = 'random' | 'sequence' | 'center' | 'together'
 
 interface FallingTextProps {
-  text?: string;
-  highlightWords?: string[];
-  highlightClass?: string;
-  trigger?: FallingTextTrigger;
-  variant?: FallingTextVariant;
-  split?: FallingTextSplit;
-  gravity?: number;
-  bounciness?: number;
-  scatter?: number;
-  stagger?: number;
-  order?: FallingTextOrder;
-  draggable?: boolean;
-  mouseConstraintStiffness?: number;
-  cursorPush?: number;
-  restoreDelay?: number;
-  fontSize?: string;
-  accentColor?: string;
-  theme?: 'dark' | 'light';
-  backgroundColor?: string;
-  wireframes?: boolean;
-  ignoreReducedMotion?: boolean;
-  className?: string;
-  style?: CSSProperties;
+  text?: string
+  highlightWords?: string[]
+  highlightClass?: string
+  trigger?: FallingTextTrigger
+  variant?: FallingTextVariant
+  split?: FallingTextSplit
+  gravity?: number
+  bounciness?: number
+  scatter?: number
+  stagger?: number
+  order?: FallingTextOrder
+  draggable?: boolean
+  mouseConstraintStiffness?: number
+  cursorPush?: number
+  restoreDelay?: number
+  fontSize?: string
+  accentColor?: string
+  theme?: 'dark' | 'light'
+  backgroundColor?: string
+  wireframes?: boolean
+  ignoreReducedMotion?: boolean
+  className?: string
+  style?: CSSProperties
 }
 
 interface Piece {
-  element: HTMLElement;
-  body: Matter.Body;
-  w: number;
-  h: number;
-  x0: number;
-  y0: number;
-  px: number;
-  py: number;
-  pa: number;
-  dx: number;
-  dy: number;
-  da: number;
-  at: number;
-  released: boolean;
-  knocked?: boolean;
-  pushed?: number;
+  element: HTMLElement
+  body: Matter.Body
+  w: number
+  h: number
+  x0: number
+  y0: number
+  px: number
+  py: number
+  pa: number
+  dx: number
+  dy: number
+  da: number
+  at: number
+  released: boolean
+  knocked?: boolean
+  pushed?: number
 }
 
 const props = withDefaults(defineProps<FallingTextProps>(), {
@@ -79,8 +94,8 @@ const props = withDefaults(defineProps<FallingTextProps>(), {
   backgroundColor: 'transparent',
   wireframes: false,
   ignoreReducedMotion: false,
-  className: ''
-});
+  className: '',
+})
 
 const THEMES: Record<string, Record<string, string>> = {
   dark: {
@@ -88,59 +103,60 @@ const THEMES: Record<string, Record<string, string>> = {
     '--falling-text-tile-edge': 'rgba(255, 255, 255, 0.07)',
     '--falling-text-tile-highlight': 'rgba(255, 255, 255, 0.12)',
     '--falling-text-tile-shadow': '0 4px 10px -4px rgba(0, 0, 0, 0.7)',
-    '--falling-text-tile-ink': '#f4f5f4'
+    '--falling-text-tile-ink': '#f4f5f4',
   },
   light: {
     '--falling-text-tile': 'linear-gradient(180deg, #ffffff 0%, #f5f6f5 100%)',
     '--falling-text-tile-edge': 'rgba(22, 24, 22, 0.08)',
     '--falling-text-tile-highlight': 'rgba(255, 255, 255, 1)',
     '--falling-text-tile-shadow': '0 4px 10px -5px rgba(22, 24, 22, 0.25)',
-    '--falling-text-tile-ink': '#252825'
-  }
-};
+    '--falling-text-tile-ink': '#252825',
+  },
+}
 
-const STEP = 1000 / 120;
-const WALL = 400;
+const STEP = 1000 / 120
+const WALL = 400
 const SPRING =
-  'linear(0, 0.0603, 0.2033, 0.3821, 0.5633, 0.7258, 0.8584, 0.9574, 1.0242, 1.0634, 1.0809, 1.0828, 1.0747, 1.0613, 1.046, 1.0313, 1.0186, 1.0085, 1.0012, 0.9965, 0.994, 0.9931, 0.9933, 0.9941, 0.9953, 0.9966, 0.9978, 0.9988, 1)';
+  'linear(0, 0.0603, 0.2033, 0.3821, 0.5633, 0.7258, 0.8584, 0.9574, 1.0242, 1.0634, 1.0809, 1.0828, 1.0747, 1.0613, 1.046, 1.0313, 1.0186, 1.0085, 1.0012, 0.9965, 0.994, 0.9931, 0.9933, 0.9941, 0.9953, 0.9966, 0.9978, 0.9988, 1)'
 
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
 // readableOn computes WCAG relative luminance to pick dark or light ink on an accent tile.
 const readableOn = (color: string) => {
   let hex = String(color || '')
     .trim()
-    .replace('#', '');
-  if (hex.length === 3) hex = hex.replace(/./g, c => c + c);
-  if (!/^[0-9a-f]{6}$/i.test(hex)) return '#ffffff';
-  const [r, g, b] = [0, 2, 4].map(index => {
-    const c = parseInt(hex.slice(index, index + 2), 16) / 255;
-    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-  });
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.4 ? '#161816' : '#ffffff';
-};
+    .replace('#', '')
+  if (hex.length === 3) hex = hex.replace(/./g, (c) => c + c)
+  if (!/^[0-9a-f]{6}$/i.test(hex)) return '#ffffff'
+  const [r, g, b] = [0, 2, 4].map((index) => {
+    const c = parseInt(hex.slice(index, index + 2), 16) / 255
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+  })
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.4 ? '#161816' : '#ffffff'
+}
 
 const springEase = () =>
   typeof CSS !== 'undefined' && CSS.supports?.('transition-timing-function', 'linear(0, 1)')
     ? SPRING
-    : 'cubic-bezier(0.34, 1.4, 0.64, 1)';
+    : 'cubic-bezier(0.34, 1.4, 0.64, 1)'
 
-const containerRef = useTemplateRef<HTMLDivElement>('containerRef');
-const textRef = useTemplateRef<HTMLDivElement>('textRef');
+const containerRef = useTemplateRef<HTMLDivElement>('containerRef')
+const textRef = useTemplateRef<HTMLDivElement>('textRef')
 
-const highlightKey = computed(() => props.highlightWords.join('\u0000'));
+const highlightKey = computed(() => props.highlightWords.join('\u0000'))
 const groups = computed(() => {
-  const marks = highlightKey.value ? highlightKey.value.split('\u0000') : [];
+  const marks = highlightKey.value ? highlightKey.value.split('\u0000') : []
   return String(props.text)
     .split(/\s+/)
     .filter(Boolean)
-    .map(word => ({ word, highlighted: marks.some(entry => entry && word.startsWith(entry)) }));
-});
+    .map((word) => ({ word, highlighted: marks.some((entry) => entry && word.startsWith(entry)) }))
+})
 
 const pieceClass = computed(
-  () => `falling-text__piece${props.variant === 'tiles' ? ' falling-text__piece--tile' : ''}`
-);
-const pieceClassFor = (highlighted: boolean) => `${pieceClass.value}${highlighted ? ` ${props.highlightClass}` : ''}`;
+  () => `falling-text__piece${props.variant === 'tiles' ? ' falling-text__piece--tile' : ''}`,
+)
+const pieceClassFor = (highlighted: boolean) =>
+  `${pieceClass.value}${highlighted ? ` ${props.highlightClass}` : ''}`
 
 const rootStyle = computed(
   () =>
@@ -149,151 +165,193 @@ const rootStyle = computed(
       '--falling-text-accent': props.accentColor,
       '--falling-text-accent-ink': readableOn(props.accentColor),
       background: props.backgroundColor,
-      fontSize: props.fontSize
-    }) as CSSProperties
-);
+      fontSize: props.fontSize,
+    }) as CSSProperties,
+)
 
-let teardown: (() => void) | null = null;
+let teardown: (() => void) | null = null
 
-// setup binds Matter.js physics, pointer interaction, observers, and returns a cleanup callback.
+// setup binds triggers, observers, and pointer input for the current text layout.
+// Bodies are created only after the selected trigger admits a visible simulation;
+// font readiness also gates automatic admission. Viewport and document visibility
+// pause both physics and restoration while retaining body positions. Reduced-motion
+// changes restore static text immediately. The returned cleanup retires font
+// completions and browser observations before clearing the engine and its inline
+// transforms, preventing work from continuing after component replacement.
 const setup = () => {
-  const container = containerRef.value;
-  const block = textRef.value;
-  if (!container || !block) return null;
-  const variant = props.variant;
-  const trigger = props.trigger;
-  const mediaReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
-  const isReduced = () => mediaReduced && !props.ignoreReducedMotion;
-  let phase: 'idle' | 'falling' | 'restoring' = 'idle';
-  let engine: Matter.Engine | null = null;
-  let pieces: Piece[] = [];
-  let walls: Matter.Body[] = [];
-  let drag: { constraint: Matter.Constraint; id: number } | null = null;
-  let raf = 0;
-  let last = 0;
-  let clock = 0;
-  let accumulator = 0;
-  let quietSince: number | null = null;
-  let inside = false;
-  let visible = true;
-  let armed = true;
-  let lastBounciness: number | null = null;
-  const pointer = { x: 0, y: 0, vx: 0, vy: 0, time: 0 };
+  const container = containerRef.value
+  const block = textRef.value
+  if (!container || !block) return null
+  const variant = props.variant
+  const trigger = props.trigger
+  let mediaReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+  const isReduced = () => mediaReduced && !props.ignoreReducedMotion
+  let phase: 'idle' | 'falling' | 'restoring' = 'idle'
+  let engine: Matter.Engine | null = null
+  let pieces: Piece[] = []
+  let walls: Matter.Body[] = []
+  let drag: { constraint: Matter.Constraint; id: number } | null = null
+  let raf = 0
+  let last = 0
+  let clock = 0
+  let accumulator = 0
+  let quietSince: number | null = null
+  let inside = false
+  let visible = true
+  let armed = true
+  let scrollReady = false
+  let lastBounciness: number | null = null
+  const pointer = { x: 0, y: 0, vx: 0, vy: 0, time: 0 }
 
   const local = (event: PointerEvent) => {
-    const box = container.getBoundingClientRect();
-    return { x: event.clientX - box.left - container.clientLeft, y: event.clientY - box.top - container.clientTop };
-  };
+    const box = container.getBoundingClientRect()
+    return {
+      x: event.clientX - box.left - container.clientLeft,
+      y: event.clientY - box.top - container.clientTop,
+    }
+  }
 
   const placeWalls = () => {
-    if (!engine) return;
-    const width = container.clientWidth;
-    const height = container.clientHeight;
-    const [floor, left, right, ceiling] = walls;
-    Matter.Body.setPosition(floor, { x: width / 2, y: height + WALL / 2 });
-    Matter.Body.setPosition(left, { x: -WALL / 2, y: height / 2 });
-    Matter.Body.setPosition(right, { x: width + WALL / 2, y: height / 2 });
-    Matter.Body.setPosition(ceiling, { x: width / 2, y: -WALL / 2 });
-    pieces.forEach(piece => Matter.Sleeping.set(piece.body, false));
-  };
+    if (!engine) return
+    const width = container.clientWidth
+    const height = container.clientHeight
+    const [floor, left, right, ceiling] = walls
+    Matter.Body.setPosition(floor, { x: width / 2, y: height + WALL / 2 })
+    Matter.Body.setPosition(left, { x: -WALL / 2, y: height / 2 })
+    Matter.Body.setPosition(right, { x: width + WALL / 2, y: height / 2 })
+    Matter.Body.setPosition(ceiling, { x: width / 2, y: -WALL / 2 })
+    pieces.forEach((piece) => Matter.Sleeping.set(piece.body, false))
+  }
 
   const draw = (alpha: number) => {
     for (const piece of pieces) {
-      const { body } = piece;
-      const x = piece.px + (body.position.x - piece.px) * alpha;
-      const y = piece.py + (body.position.y - piece.py) * alpha;
-      const angle = piece.pa + (body.angle - piece.pa) * alpha;
-      if (Math.abs(x - piece.dx) < 0.01 && Math.abs(y - piece.dy) < 0.01 && Math.abs(angle - piece.da) < 0.0001)
-        continue;
-      piece.dx = x;
-      piece.dy = y;
-      piece.da = angle;
-      piece.element.style.transform = `translate3d(${(x - piece.w / 2).toFixed(2)}px, ${(y - piece.h / 2).toFixed(2)}px, 0) rotate(${angle.toFixed(4)}rad)`;
+      const { body } = piece
+      const x = piece.px + (body.position.x - piece.px) * alpha
+      const y = piece.py + (body.position.y - piece.py) * alpha
+      const angle = piece.pa + (body.angle - piece.pa) * alpha
+      if (
+        Math.abs(x - piece.dx) < 0.01 &&
+        Math.abs(y - piece.dy) < 0.01 &&
+        Math.abs(angle - piece.da) < 0.0001
+      )
+        continue
+      piece.dx = x
+      piece.dy = y
+      piece.da = angle
+      piece.element.style.transform = `translate3d(${(x - piece.w / 2).toFixed(2)}px, ${(y - piece.h / 2).toFixed(2)}px, 0) rotate(${angle.toFixed(4)}rad)`
     }
-  };
+  }
 
   const release = (piece: Piece) => {
-    piece.released = true;
-    Matter.Body.setStatic(piece.body, false);
-    Matter.Sleeping.set(piece.body, false);
-    const kick = clamp(props.scatter, 0, 1) * (piece.knocked ? 0.4 : 1);
-    Matter.Body.setVelocity(piece.body, { x: (Math.random() - 0.5) * 6 * kick, y: -Math.random() * 2.5 * kick });
-    Matter.Body.setAngularVelocity(piece.body, (Math.random() - 0.5) * 0.12 * kick);
-  };
+    piece.released = true
+    Matter.Body.setStatic(piece.body, false)
+    Matter.Sleeping.set(piece.body, false)
+    const kick = clamp(props.scatter, 0, 1) * (piece.knocked ? 0.4 : 1)
+    Matter.Body.setVelocity(piece.body, {
+      x: (Math.random() - 0.5) * 6 * kick,
+      y: -Math.random() * 2.5 * kick,
+    })
+    Matter.Body.setAngularVelocity(piece.body, (Math.random() - 0.5) * 0.12 * kick)
+  }
 
+  // frame advances fixed-step physics and interpolates visible piece positions
+  // between the previous and current Matter bodies. The accumulated time is
+  // bounded before stepping, while staggered releases retain their own visible
+  // simulation clock. Hidden callbacks return before advancing either clock.
+  // Settled pieces stop requesting frames unless a drag or outside-pointer
+  // restoration delay still needs work; pointer events can wake the same retained
+  // engine without constructing another body layout.
   const frame = (now: number) => {
-    raf = 0;
-    if (!engine || !visible) return;
-    const dt = Math.min(0.05, last ? (now - last) / 1000 : 1 / 60);
-    last = now;
-    clock += dt;
-    engine.gravity.y = clamp(props.gravity, -3, 4) * 1.4;
-    const bounce = clamp(props.bounciness, 0, 1);
+    raf = 0
+    if (!engine || !visible || document.hidden || isReduced()) return
+    const dt = Math.min(0.05, last ? (now - last) / 1000 : 1 / 60)
+    last = now
+    clock += dt
+    engine.gravity.y = clamp(props.gravity, -3, 4) * 1.4
+    const bounce = clamp(props.bounciness, 0, 1)
     if (bounce !== lastBounciness) {
-      lastBounciness = bounce;
-      pieces.forEach(piece => {
-        piece.body.restitution = bounce;
-      });
+      lastBounciness = bounce
+      pieces.forEach((piece) => {
+        piece.body.restitution = bounce
+      })
     }
-    for (const piece of pieces) if (!piece.released && (clock >= piece.at || piece.knocked)) release(piece);
-    accumulator += dt * 1000;
+    for (const piece of pieces)
+      if (!piece.released && (clock >= piece.at || piece.knocked)) release(piece)
+    accumulator += dt * 1000
     while (accumulator >= STEP) {
       for (const piece of pieces) {
-        piece.px = piece.body.position.x;
-        piece.py = piece.body.position.y;
-        piece.pa = piece.body.angle;
+        piece.px = piece.body.position.x
+        piece.py = piece.body.position.y
+        piece.pa = piece.body.angle
       }
-      Matter.Engine.update(engine, STEP);
-      accumulator -= STEP;
+      Matter.Engine.update(engine, STEP)
+      accumulator -= STEP
     }
-    draw(accumulator / STEP);
-    const settled = pieces.every(piece => piece.released && (piece.body.isSleeping || piece.body.speed < 0.05));
+    draw(accumulator / STEP)
+    const settled = pieces.every(
+      (piece) => piece.released && (piece.body.isSleeping || piece.body.speed < 0.05),
+    )
     if (props.restoreDelay > 0 && settled && !inside && !drag) {
-      quietSince ??= now;
+      quietSince ??= now
       if (now - quietSince > props.restoreDelay * 1000) {
-        restore();
-        return;
+        restore()
+        return
       }
-    } else quietSince = null;
-    raf = requestAnimationFrame(frame);
-  };
+    } else quietSince = null
+    // Sleeping pieces need no physics ticks while the pointer remains inside or
+    // restoration is disabled; pointer movement and leaving the band wake them again.
+    if (!settled || drag || (props.restoreDelay > 0 && !inside)) raf = requestAnimationFrame(frame)
+  }
 
+  // wake requests one physics frame for a visible, motion-enabled engine.
+  // Its fresh time baseline prevents a returning viewport from simulating elapsed background time
+  // between native pointer events.
   const wake = () => {
-    if (!raf && engine && visible) {
-      last = 0;
-      raf = requestAnimationFrame(frame);
+    if (!raf && engine && visible && !document.hidden && !isReduced()) {
+      last = 0
+      raf = requestAnimationFrame(frame)
     }
-  };
+  }
 
+  // fall measures the current text and creates its first set of bodies.
+  // Only an idle, visible, motion-enabled band is admitted, preserving static text
+  // until its configured trigger actually occurs.
   const fall = () => {
-    if (phase !== 'idle' || isReduced()) return;
-    const elements = [...block.querySelectorAll<HTMLElement>('[data-piece]')];
-    if (!elements.length) return;
-    const box = container.getBoundingClientRect();
-    const originX = box.left + container.clientLeft;
-    const originY = box.top + container.clientTop;
-    const rects = elements.map(element => {
-      const rect = element.getBoundingClientRect();
-      return { x: rect.left - originX, y: rect.top - originY, w: rect.width, h: rect.height };
-    });
-    block.style.minHeight = `${block.offsetHeight}px`;
-    const world = Matter.Engine.create({ enableSleeping: true, positionIterations: 10, velocityIterations: 8 });
-    world.gravity.y = clamp(props.gravity, -3, 4) * 1.4;
+    if (phase !== 'idle' || !visible || document.hidden || isReduced()) return
+    const elements = [...block.querySelectorAll<HTMLElement>('[data-piece]')]
+    if (!elements.length) return
+    const box = container.getBoundingClientRect()
+    const originX = box.left + container.clientLeft
+    const originY = box.top + container.clientTop
+    const rects = elements.map((element) => {
+      const rect = element.getBoundingClientRect()
+      return { x: rect.left - originX, y: rect.top - originY, w: rect.width, h: rect.height }
+    })
+    block.style.minHeight = `${block.offsetHeight}px`
+    const world = Matter.Engine.create({
+      enableSleeping: true,
+      positionIterations: 10,
+      velocityIterations: 8,
+    })
+    world.gravity.y = clamp(props.gravity, -3, 4) * 1.4
     walls = [
       Matter.Bodies.rectangle(0, 0, 10000, WALL, { isStatic: true, friction: 0.8 }),
       Matter.Bodies.rectangle(0, 0, WALL, 10000, { isStatic: true, friction: 0.3 }),
       Matter.Bodies.rectangle(0, 0, WALL, 10000, { isStatic: true, friction: 0.3 }),
-      Matter.Bodies.rectangle(0, 0, 10000, WALL, { isStatic: true, friction: 0.3 })
-    ];
-    const count = rects.length;
-    const center = rects.reduce((sum, rect) => sum + rect.x + rect.w / 2, 0) / count;
-    const span = Math.max(1, ...rects.map(rect => Math.abs(rect.x + rect.w / 2 - center)));
-    const shuffled = rects.map((_, index) => index).sort(() => Math.random() - 0.5);
-    const order = props.order;
-    const stagger = props.stagger;
+      Matter.Bodies.rectangle(0, 0, 10000, WALL, { isStatic: true, friction: 0.3 }),
+    ]
+    const count = rects.length
+    const center = rects.reduce((sum, rect) => sum + rect.x + rect.w / 2, 0) / count
+    const span = Math.max(1, ...rects.map((rect) => Math.abs(rect.x + rect.w / 2 - center)))
+    const shuffled = rects.map((_, index) => index).sort(() => Math.random() - 0.5)
+    const order = props.order
+    const stagger = props.stagger
     pieces = elements.map((element, index) => {
-      const rect = rects[index];
-      const radius = Math.max(0, Math.min(variant === 'tiles' ? rect.h * 0.28 : 4, rect.w / 2 - 1, rect.h / 2 - 1));
+      const rect = rects[index]
+      const radius = Math.max(
+        0,
+        Math.min(variant === 'tiles' ? rect.h * 0.28 : 4, rect.w / 2 - 1, rect.h / 2 - 1),
+      )
       const body = Matter.Bodies.rectangle(
         rect.x + rect.w / 2,
         rect.y + rect.h / 2,
@@ -306,23 +364,23 @@ const setup = () => {
           frictionStatic: 0.8,
           frictionAir: 0.012,
           density: 0.0015,
-          slop: 0.02
-        }
-      );
-      Matter.Body.setStatic(body, true);
+          slop: 0.02,
+        },
+      )
+      Matter.Body.setStatic(body, true)
       const rank =
         order === 'random'
           ? shuffled.indexOf(index)
           : order === 'center'
             ? (Math.abs(rect.x + rect.w / 2 - center) / span) * (count - 1)
-            : index;
-      element.style.position = 'absolute';
-      element.style.left = '0';
-      element.style.top = '0';
-      element.style.width = `${rect.w}px`;
-      element.style.height = `${rect.h}px`;
-      element.style.margin = '0';
-      element.style.transform = `translate3d(${rect.x}px, ${rect.y}px, 0)`;
+            : index
+      element.style.position = 'absolute'
+      element.style.left = '0'
+      element.style.top = '0'
+      element.style.width = `${rect.w}px`
+      element.style.height = `${rect.h}px`
+      element.style.margin = '0'
+      element.style.transform = `translate3d(${rect.x}px, ${rect.y}px, 0)`
       return {
         element,
         body,
@@ -337,256 +395,328 @@ const setup = () => {
         dy: body.position.y,
         da: 0,
         at: order === 'together' ? 0 : rank * Math.max(0, stagger),
-        released: false
-      };
-    });
-    Matter.Composite.add(world.world, [...walls, ...pieces.map(piece => piece.body)]);
-    const byBody = new Map(pieces.map(piece => [piece.body, piece]));
-    Matter.Events.on(world, 'collisionStart', event => {
-      const down = Math.sign(world.gravity.y) || 1;
-      for (const pair of event.pairs) {
-        const a = byBody.get(pair.bodyA);
-        const b = byBody.get(pair.bodyB);
-        if (!a || !b || a.released === b.released) continue;
-        const [moving, still] = a.released ? [a, b] : [b, a];
-        if ((still.body.position.y - moving.body.position.y) * down > still.h * 0.25) still.knocked = true;
+        released: false,
       }
-    });
-    engine = world;
-    placeWalls();
-    phase = 'falling';
-    container.dataset.phase = 'falling';
-    clock = 0;
-    accumulator = 0;
-    quietSince = null;
-    lastBounciness = clamp(props.bounciness, 0, 1);
-    wake();
-  };
+    })
+    Matter.Composite.add(world.world, [...walls, ...pieces.map((piece) => piece.body)])
+    const byBody = new Map(pieces.map((piece) => [piece.body, piece]))
+    Matter.Events.on(world, 'collisionStart', (event) => {
+      const down = Math.sign(world.gravity.y) || 1
+      for (const pair of event.pairs) {
+        const a = byBody.get(pair.bodyA)
+        const b = byBody.get(pair.bodyB)
+        if (!a || !b || a.released === b.released) continue
+        const [moving, still] = a.released ? [a, b] : [b, a]
+        if ((still.body.position.y - moving.body.position.y) * down > still.h * 0.25)
+          still.knocked = true
+      }
+    })
+    engine = world
+    placeWalls()
+    phase = 'falling'
+    container.dataset.phase = 'falling'
+    clock = 0
+    accumulator = 0
+    quietSince = null
+    lastBounciness = clamp(props.bounciness, 0, 1)
+    wake()
+  }
 
   const restore = () => {
-    if (phase !== 'falling') return;
-    phase = 'restoring';
-    container.dataset.phase = 'restoring';
+    if (phase !== 'falling') return
+    phase = 'restoring'
+    container.dataset.phase = 'restoring'
     if (drag && engine) {
-      Matter.Composite.remove(engine.world, drag.constraint);
-      drag = null;
+      Matter.Composite.remove(engine.world, drag.constraint)
+      drag = null
     }
-    cancelAnimationFrame(raf);
-    raf = 0;
-    const easing = springEase();
-    const sorted = [...pieces].sort((a, b) => a.body.position.y - b.body.position.y);
+    cancelAnimationFrame(raf)
+    raf = 0
+    const easing = springEase()
+    const sorted = [...pieces].sort((a, b) => a.body.position.y - b.body.position.y)
     const animations = sorted.map((piece, index) => {
-      const angle = Math.atan2(Math.sin(piece.body.angle), Math.cos(piece.body.angle));
-      const from = `translate3d(${(piece.body.position.x - piece.w / 2).toFixed(2)}px, ${(piece.body.position.y - piece.h / 2).toFixed(2)}px, 0) rotate(${angle.toFixed(4)}rad)`;
-      const to = `translate3d(${piece.x0}px, ${piece.y0}px, 0) rotate(0rad)`;
-      piece.element.style.transform = to;
+      const angle = Math.atan2(Math.sin(piece.body.angle), Math.cos(piece.body.angle))
+      const from = `translate3d(${(piece.body.position.x - piece.w / 2).toFixed(2)}px, ${(piece.body.position.y - piece.h / 2).toFixed(2)}px, 0) rotate(${angle.toFixed(4)}rad)`
+      const to = `translate3d(${piece.x0}px, ${piece.y0}px, 0) rotate(0rad)`
+      piece.element.style.transform = to
       return piece.element.animate([{ transform: from }, { transform: to }], {
         duration: 760,
         delay: Math.min(index * 14, 360),
         easing,
-        fill: 'backwards'
-      });
-    });
-    Promise.all(animations.map(animation => animation.finished.catch(() => null))).then(() => {
-      if (phase !== 'restoring') return;
-      reset();
-    });
-  };
+        fill: 'backwards',
+      })
+    })
+    Promise.all(animations.map((animation) => animation.finished.catch(() => null))).then(() => {
+      if (phase !== 'restoring') return
+      reset()
+    })
+  }
 
   const reset = (rearm = true) => {
-    cancelAnimationFrame(raf);
-    raf = 0;
+    cancelAnimationFrame(raf)
+    raf = 0
     if (engine) {
-      Matter.Composite.clear(engine.world, false);
-      Matter.Engine.clear(engine);
+      Matter.Composite.clear(engine.world, false)
+      Matter.Engine.clear(engine)
     }
-    engine = null;
+    engine = null
     for (const piece of pieces) {
-      piece.element.getAnimations().forEach(animation => animation.cancel());
-      piece.element.style.position = '';
-      piece.element.style.left = '';
-      piece.element.style.top = '';
-      piece.element.style.width = '';
-      piece.element.style.height = '';
-      piece.element.style.margin = '';
-      piece.element.style.transform = '';
+      piece.element.getAnimations().forEach((animation) => animation.cancel())
+      piece.element.style.position = ''
+      piece.element.style.left = ''
+      piece.element.style.top = ''
+      piece.element.style.width = ''
+      piece.element.style.height = ''
+      piece.element.style.margin = ''
+      piece.element.style.transform = ''
     }
-    pieces = [];
-    walls = [];
-    drag = null;
-    block.style.minHeight = '';
-    phase = 'idle';
-    delete container.dataset.phase;
-    delete container.dataset.dragging;
-    if (rearm) armed = true;
-  };
+    pieces = []
+    walls = []
+    drag = null
+    block.style.minHeight = ''
+    phase = 'idle'
+    delete container.dataset.phase
+    delete container.dataset.dragging
+    if (rearm) armed = true
+  }
 
   const onEnter = () => {
-    inside = true;
-    if (props.trigger === 'hover') fall();
-  };
+    inside = true
+    if (props.trigger === 'hover') fall()
+  }
+  // onLeave starts counting the restoration delay after the pointer exits.
+  // Waking a sleeping engine ensures its optional return-to-layout policy can still complete
+  // after earlier physics frames stopped.
   const onLeave = () => {
-    inside = false;
-  };
+    inside = false
+    wake()
+  }
   const onClick = () => {
-    if (props.trigger === 'click') fall();
-  };
+    if (props.trigger === 'click') fall()
+  }
 
+  // onDown attaches a primary pointer drag to a released body when permitted.
+  // Hidden or reduced-motion bands reject input before allocating a Matter constraint or capturing input.
   const onDown = (event: PointerEvent) => {
-    if (!engine || phase !== 'falling' || !props.draggable || (event.pointerType === 'mouse' && event.button !== 0))
-      return;
-    const point = local(event);
-    const bodies = pieces.filter(piece => piece.released).map(piece => piece.body);
-    const hit = Matter.Query.point(bodies, point)[0];
-    if (!hit) return;
-    event.preventDefault();
-    container.setPointerCapture?.(event.pointerId);
-    Matter.Sleeping.set(hit, false);
+    if (!visible || document.hidden || isReduced()) return
+    if (
+      !engine ||
+      phase !== 'falling' ||
+      !props.draggable ||
+      (event.pointerType === 'mouse' && event.button !== 0)
+    )
+      return
+    const point = local(event)
+    const bodies = pieces.filter((piece) => piece.released).map((piece) => piece.body)
+    const hit = Matter.Query.point(bodies, point)[0]
+    if (!hit) return
+    event.preventDefault()
+    container.setPointerCapture?.(event.pointerId)
+    Matter.Sleeping.set(hit, false)
     const constraint = Matter.Constraint.create({
       pointA: point,
       bodyB: hit,
       pointB: { x: point.x - hit.position.x, y: point.y - hit.position.y },
       stiffness: clamp(props.mouseConstraintStiffness, 0.01, 1),
       damping: 0.08,
-      length: 0
-    });
-    Matter.Composite.add(engine.world, constraint);
-    drag = { constraint, id: event.pointerId };
-    container.dataset.dragging = '';
-    wake();
-  };
+      length: 0,
+    })
+    Matter.Composite.add(engine.world, constraint)
+    drag = { constraint, id: event.pointerId }
+    container.dataset.dragging = ''
+    wake()
+  }
 
+  // onMove updates active drag or swipe input for the visible band.
+  // Inactive and reduced-motion instances return before reading geometry or modifying body velocities
+  // to start another simulation step.
   const onMove = (event: PointerEvent) => {
-    const point = local(event);
-    const now = performance.now();
-    const dt = Math.max(1, now - pointer.time);
+    if (!visible || document.hidden || isReduced()) return
+    const point = local(event)
+    const now = performance.now()
+    const dt = Math.max(1, now - pointer.time)
     if (pointer.time && dt < 120) {
-      const blend = Math.min(1, dt / 40);
-      pointer.vx += ((point.x - pointer.x) / dt - pointer.vx) * blend;
-      pointer.vy += ((point.y - pointer.y) / dt - pointer.vy) * blend;
+      const blend = Math.min(1, dt / 40)
+      pointer.vx += ((point.x - pointer.x) / dt - pointer.vx) * blend
+      pointer.vy += ((point.y - pointer.y) / dt - pointer.vy) * blend
     } else {
-      pointer.vx = 0;
-      pointer.vy = 0;
+      pointer.vx = 0
+      pointer.vy = 0
     }
-    pointer.x = point.x;
-    pointer.y = point.y;
-    pointer.time = now;
-    inside = true;
-    if (phase === 'idle' && props.trigger === 'hover') fall();
-    if (phase !== 'falling') return;
+    pointer.x = point.x
+    pointer.y = point.y
+    pointer.time = now
+    inside = true
+    if (phase === 'idle' && props.trigger === 'hover') fall()
+    if (phase !== 'falling') return
     if (drag && event.pointerId === drag.id) {
-      drag.constraint.pointA = point;
-      return;
+      drag.constraint.pointA = point
+      return
     }
-    const push = clamp(props.cursorPush, 0, 2);
-    const speed = Math.hypot(pointer.vx, pointer.vy);
-    if (!push || speed < 0.35) return;
-    let touched = false;
+    const push = clamp(props.cursorPush, 0, 2)
+    const speed = Math.hypot(pointer.vx, pointer.vy)
+    if (!push || speed < 0.35) return
+    let touched = false
     for (const piece of pieces) {
-      if (!piece.released) continue;
-      const { body } = piece;
-      const reach = Math.max(piece.w, piece.h) / 2 + 18;
-      const distance = Math.hypot(body.position.x - point.x, body.position.y - point.y);
-      if (distance > reach) continue;
-      if (now - (piece.pushed || 0) < 60) continue;
-      piece.pushed = now;
-      const falloff = 1 - (distance / reach) ** 2;
-      const kick = Math.min(20, speed * push * falloff * 16);
-      Matter.Sleeping.set(body, false);
+      if (!piece.released) continue
+      const { body } = piece
+      const reach = Math.max(piece.w, piece.h) / 2 + 18
+      const distance = Math.hypot(body.position.x - point.x, body.position.y - point.y)
+      if (distance > reach) continue
+      if (now - (piece.pushed || 0) < 60) continue
+      piece.pushed = now
+      const falloff = 1 - (distance / reach) ** 2
+      const kick = Math.min(20, speed * push * falloff * 16)
+      Matter.Sleeping.set(body, false)
       Matter.Body.setVelocity(body, {
         x: body.velocity.x + (pointer.vx / speed) * kick,
-        y: body.velocity.y + (pointer.vy / speed) * kick - kick * 0.7
-      });
-      Matter.Body.setAngularVelocity(body, body.angularVelocity + (Math.random() - 0.5) * 0.06 * push);
-      touched = true;
+        y: body.velocity.y + (pointer.vy / speed) * kick - kick * 0.7,
+      })
+      Matter.Body.setAngularVelocity(
+        body,
+        body.angularVelocity + (Math.random() - 0.5) * 0.06 * push,
+      )
+      touched = true
     }
-    if (touched) wake();
-  };
+    if (touched) wake()
+  }
 
   const onUp = (event: PointerEvent) => {
-    if (!drag || event.pointerId !== drag.id) return;
-    if (engine) Matter.Composite.remove(engine.world, drag.constraint);
-    drag = null;
-    delete container.dataset.dragging;
-  };
+    if (!drag || event.pointerId !== drag.id) return
+    if (engine) Matter.Composite.remove(engine.world, drag.constraint)
+    drag = null
+    delete container.dataset.dragging
+  }
 
   const observer =
-    typeof IntersectionObserver === 'undefined'
+    trigger !== 'scroll' || typeof IntersectionObserver === 'undefined'
       ? null
       : new IntersectionObserver(
-          entries => {
-            const entry = entries[entries.length - 1];
-            visible = entry.isIntersecting;
-            if (visible) wake();
-            if (props.trigger !== 'scroll') return;
-            if (entry.intersectionRatio >= 0.3) {
-              if (armed) {
-                armed = false;
-                fall();
+          (entries) => {
+            const entry = entries[entries.length - 1]
+            scrollReady = entry.intersectionRatio >= 0.3
+            if (scrollReady) {
+              if (armed && visible) {
+                armed = false
+                fall()
               }
-            } else if (phase === 'idle') armed = true;
+            } else if (phase === 'idle') armed = true
           },
-          { threshold: [0, 0.3] }
-        );
-  observer?.observe(container);
+          { threshold: [0, 0.3] },
+        )
+  observer?.observe(container)
 
   const resizeObserver = new ResizeObserver(() => {
     if (phase === 'falling') {
-      placeWalls();
-      wake();
+      placeWalls()
+      wake()
     }
-  });
-  resizeObserver.observe(container);
+  })
+  resizeObserver.observe(container)
 
-  container.addEventListener('pointerenter', onEnter);
-  container.addEventListener('pointerleave', onLeave);
-  container.addEventListener('click', onClick);
-  container.addEventListener('pointerdown', onDown);
-  container.addEventListener('pointermove', onMove);
-  container.addEventListener('pointerup', onUp);
-  container.addEventListener('pointercancel', onUp);
+  container.addEventListener('pointerenter', onEnter)
+  container.addEventListener('pointerleave', onLeave)
+  container.addEventListener('click', onClick)
+  container.addEventListener('pointerdown', onDown)
+  container.addEventListener('pointermove', onMove)
+  container.addEventListener('pointerup', onUp)
+  container.addEventListener('pointercancel', onUp)
 
-  let cancelled = false;
+  let cancelled = false
+  let fontsReady = trigger !== 'auto'
+  const stopActivity = observeVisualActivity(container, (active) => {
+    // Freeze physics and restoration together so an offscreen or background band
+    // preserves its word positions instead of consuming frames or finishing unseen.
+    visible = active
+    cancelAnimationFrame(raf)
+    raf = 0
+    last = 0
+    for (const piece of pieces) {
+      piece.element
+        .getAnimations()
+        .forEach((animation) => (active ? animation.play() : animation.pause()))
+    }
+    if (!active) {
+      // Leaving the active document can interrupt pointer capture before pointerup.
+      // Release its constraint so returning bodies can sleep or restore without dragging.
+      inside = false
+      if (drag && engine) {
+        Matter.Composite.remove(engine.world, drag.constraint)
+        if (container.hasPointerCapture?.(drag.id)) container.releasePointerCapture(drag.id)
+        drag = null
+        delete container.dataset.dragging
+      }
+      return
+    }
+    if (trigger === 'auto' && fontsReady) fall()
+    if (trigger === 'scroll' && scrollReady && armed) {
+      armed = false
+      fall()
+    }
+    wake()
+  })
+  const stopMotion = observeReducedMotion((reduced) => {
+    mediaReduced = reduced
+    // Restore readable text immediately when motion is reduced; cancelling the
+    // engine and pending restoration also prevents a late completion from restarting it.
+    if (isReduced()) reset()
+    else if (visible && trigger === 'auto' && fontsReady) fall()
+    else if (visible && trigger === 'scroll' && scrollReady && armed) {
+      armed = false
+      fall()
+    }
+  })
   if (trigger === 'auto') {
-    const ready = document.fonts?.ready ?? Promise.resolve();
+    const ready = document.fonts?.ready ?? Promise.resolve()
     ready.then(() => {
-      if (!cancelled) requestAnimationFrame(() => !cancelled && fall());
-    });
+      if (cancelled) return
+      fontsReady = true
+      if (visible) fall()
+    })
   }
 
   return () => {
-    cancelled = true;
-    observer?.disconnect();
-    resizeObserver.disconnect();
-    container.removeEventListener('pointerenter', onEnter);
-    container.removeEventListener('pointerleave', onLeave);
-    container.removeEventListener('click', onClick);
-    container.removeEventListener('pointerdown', onDown);
-    container.removeEventListener('pointermove', onMove);
-    container.removeEventListener('pointerup', onUp);
-    container.removeEventListener('pointercancel', onUp);
-    phase = 'idle';
-    reset(false);
-  };
-};
+    cancelled = true
+    stopActivity()
+    stopMotion()
+    observer?.disconnect()
+    resizeObserver.disconnect()
+    container.removeEventListener('pointerenter', onEnter)
+    container.removeEventListener('pointerleave', onLeave)
+    container.removeEventListener('click', onClick)
+    container.removeEventListener('pointerdown', onDown)
+    container.removeEventListener('pointermove', onMove)
+    container.removeEventListener('pointerup', onUp)
+    container.removeEventListener('pointercancel', onUp)
+    phase = 'idle'
+    reset(false)
+  }
+}
 
 const restart = () => {
-  teardown?.();
-  teardown = setup();
-};
+  teardown?.()
+  teardown = setup()
+}
 
-onMounted(restart);
+onMounted(restart)
 
 watch(
-  [() => props.text, highlightKey, () => props.split, () => props.variant, () => props.fontSize, () => props.trigger],
+  [
+    () => props.text,
+    highlightKey,
+    () => props.split,
+    () => props.variant,
+    () => props.fontSize,
+    () => props.trigger,
+  ],
   restart,
-  { flush: 'post' }
-);
+  { flush: 'post' },
+)
 
 onBeforeUnmount(() => {
-  teardown?.();
-  teardown = null;
-});
+  teardown?.()
+  teardown = null
+})
 </script>
 
 <template>

@@ -20,6 +20,19 @@ afterEach(() => {
 })
 
 describe('GlobalSearchTrigger', () => {
+  // The palette component does not exist before its first opening. A mounted trigger
+  // still admits shortcuts and releases their listener when its header leaves.
+  it('opens by keyboard before the palette loads and releases shortcuts on unmount', async () => {
+    const wrapper = mountTrigger()
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))
+    expect(globalSearchOpen.value).toBe(true)
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))
+    expect(globalSearchOpen.value).toBe(false)
+    wrapper.unmount()
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: '/', bubbles: true }))
+    expect(globalSearchOpen.value).toBe(false)
+  })
+
   // The field-style button and the narrow-screen icon button both open the palette and
   // describe it as a dialog to assistive technology.
   it('opens the palette from either button', async () => {

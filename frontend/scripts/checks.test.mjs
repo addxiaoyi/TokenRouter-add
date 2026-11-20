@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join, relative } from 'node:path'
+import { dirname, join, relative, win32 } from 'node:path'
 import { format } from 'prettier'
 import { checkComments } from './check-comments.mjs'
 import { checkImports, importViolation } from './check-imports.mjs'
@@ -31,7 +31,7 @@ test('source collection keeps nested public pages and handwritten configuration 
   }
   assert.deepEqual(
     collectSourceFiles(directory, directory).map((file) => relative(directory, file)),
-    ['src/config/vite.config.js', 'src/views/public/Page.vue'],
+    [join('src', 'config', 'vite.config.js'), join('src', 'views', 'public', 'Page.vue')],
   )
 })
 
@@ -174,6 +174,69 @@ test('private ownership admits declared entries and rejects external implementat
     importViolation(
       'src/__tests__/integration/unrelated.spec.ts',
       'src/views/admin/providers/operations/ImportDataModal.vue',
+    ),
+  )
+})
+
+// The production scanner passes native relative filenames, including Windows backslashes.
+// Existing private owners, exact route entries, and narrow test exceptions remain allowed
+// without registering any new dependency allowance for a different path spelling.
+test('Windows source filenames preserve declared private ownership and exact exceptions', () => {
+  for (const [importer, target] of [
+    [
+      'src/views/admin/providers/ProvidersView.vue',
+      '@/views/admin/providers/table/ProviderTableActions.vue',
+    ],
+    ['src/router/routes/admin.ts', '@/views/admin/providers/ProvidersView.vue'],
+    ['src/views/admin/SettingsView.vue', '@/views/admin/settings/useSettings'],
+    [
+      'src/__tests__/integration/data-import.spec.ts',
+      '@/views/admin/providers/operations/ImportDataModal.vue',
+    ],
+  ]) {
+    const filename = win32.join(...importer.split('/'))
+    const source = `export const load = () => import('${target}')`
+    const text = importer.endsWith('.vue') ? `<script setup lang="ts">${source}</script>` : source
+    assert.deepEqual(checkImports(text, filename), [], filename)
+    assert.deepEqual(checkImports(text, importer), [], importer)
+  }
+})
+
+// Native Windows importers previously bypassed layer prefixes and misresolved relative paths.
+// Alias, relative, type, and lazy imports must still report the same forbidden edge
+// on both platforms, while neighboring private imports cannot borrow an exact exception.
+test('Windows dependency checks retain forbidden layer and private-module edges', () => {
+  for (const [importer, source] of [
+    ['src/api/example.ts', "import type { A } from '../components/A.vue'"],
+    ['src/api/example.ts', "export { A } from '@/stores/auth'"],
+    ['src/components/example.ts', "const load = () => import('../views/Page.vue')"],
+    ['src/composables/useExample.ts', "import A from '@/components/A.vue'"],
+    ['src/pluginHost/example.ts', "import A from '../views/Page.vue'"],
+    ['src/views/user/KeysView.vue', "import A from '@/views/admin/providers/useList'"],
+    ['src/router/routes/admin.ts', "import A from '@/views/admin/providers/useList'"],
+    [
+      'src/__tests__/integration/data-import.spec.ts',
+      "import A from '@/views/admin/providers/operations/BulkEditProviderModal.vue'",
+    ],
+  ]) {
+    const filename = win32.join(...importer.split('/'))
+    // Vue filenames use real script blocks so this fixture exercises the production
+    // parser path as well as native filename normalization at the dependency boundary.
+    const text = importer.endsWith('.vue') ? `<script setup lang="ts">${source}</script>` : source
+    assert.equal(checkImports(text, filename).length, 1, filename)
+    assert.deepEqual(checkImports(text, filename), checkImports(text, importer))
+  }
+  assert.equal(
+    importViolation(
+      win32.join('src', 'views', 'admin', 'providers', 'ProvidersView.vue'),
+      win32.join('src', 'views', 'admin', 'providers', 'useList'),
+    ),
+    null,
+  )
+  assert.ok(
+    importViolation(
+      win32.join('src', 'api', 'example.ts'),
+      win32.join('src', 'components', 'A.vue'),
     ),
   )
 })

@@ -9,7 +9,7 @@
     </a>
 
     <!-- Non-home architectural topography backdrop rendered with zero bloom/neon glow. -->
-    <div class="pointer-events-none fixed inset-0 overflow-hidden bg-[var(--page-bg)]">
+    <LazyVisual class="pointer-events-none fixed inset-0 overflow-hidden bg-[var(--page-bg)]">
       <Topography
         :color="topographyColor"
         :line-count="18"
@@ -40,9 +40,8 @@
         :dpr="1"
         :max-fps="24"
         :max-cells="24000"
-        :ignore-reduced-motion="true"
       />
-    </div>
+    </LazyVisual>
 
     <!--
       In console mode the contextual header spans the main column while the full-height
@@ -115,6 +114,7 @@ import { useTheme } from '@/composables/useTheme'
 import { useOnboardingStore } from '@/stores/onboarding'
 import AppSidebar from './AppSidebar.vue'
 import AppHeader from './AppHeader.vue'
+import LazyVisual from '@/components/common/LazyVisual.vue'
 
 // Topography loads asynchronously so console chrome paints immediately without waiting for WebGL shaders.
 const Topography = defineAsyncComponent(() => import('@/components/common/Topography.vue'))

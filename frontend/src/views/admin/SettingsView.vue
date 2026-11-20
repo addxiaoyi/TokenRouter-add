@@ -91,6 +91,7 @@
         />
         <template v-else>
           <div
+            v-if="mountedTabs.has('security')"
             v-show="activeTab === 'security'"
             v-content-reveal="activeTab === 'security'"
             class="space-y-4"
@@ -99,6 +100,7 @@
           </div>
 
           <div
+            v-if="mountedTabs.has('gateway')"
             v-show="activeTab === 'gateway'"
             v-content-reveal="activeTab === 'gateway'"
             :ref="navigation.gatewayContentStartRef"
@@ -111,6 +113,7 @@
           </div>
 
           <div
+            v-if="mountedTabs.has('security')"
             v-show="activeTab === 'security'"
             v-content-reveal="activeTab === 'security'"
             class="space-y-4"
@@ -121,6 +124,7 @@
           </div>
 
           <div
+            v-if="mountedTabs.has('users')"
             v-show="activeTab === 'users'"
             v-content-reveal="activeTab === 'users'"
             class="space-y-4"
@@ -129,6 +133,7 @@
           </div>
 
           <div
+            v-if="mountedTabs.has('gateway')"
             v-show="activeTab === 'gateway'"
             v-content-reveal="activeTab === 'gateway'"
             class="space-y-4"
@@ -142,6 +147,7 @@
           </div>
 
           <div
+            v-if="mountedTabs.has('general')"
             v-show="activeTab === 'general'"
             v-content-reveal="activeTab === 'general'"
             class="space-y-4"
@@ -150,6 +156,7 @@
           </div>
 
           <div
+            v-if="mountedTabs.has('agreement')"
             v-show="activeTab === 'agreement'"
             v-content-reveal="activeTab === 'agreement'"
             class="space-y-4"
@@ -158,6 +165,7 @@
           </div>
 
           <div
+            v-if="mountedTabs.has('features')"
             v-show="activeTab === 'features'"
             v-content-reveal="activeTab === 'features'"
             class="space-y-4"
@@ -170,6 +178,7 @@
           </div>
 
           <div
+            v-if="mountedTabs.has('payment')"
             v-show="activeTab === 'payment'"
             v-content-reveal="activeTab === 'payment'"
             class="space-y-4"
@@ -182,6 +191,7 @@
           </div>
 
           <div
+            v-if="mountedTabs.has('email')"
             v-show="activeTab === 'email'"
             v-content-reveal="activeTab === 'email'"
             class="space-y-4"
@@ -194,7 +204,11 @@
             />
           </div>
 
-          <div v-show="activeTab === 'backup'" v-content-reveal="activeTab === 'backup'">
+          <div
+            v-if="mountedTabs.has('backup')"
+            v-show="activeTab === 'backup'"
+            v-content-reveal="activeTab === 'backup'"
+          >
             <BackupSettings />
           </div>
 
@@ -260,7 +274,8 @@
 
 <script setup lang="ts">
 import { vContentReveal } from '@/directives/contentReveal'
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
+import { defineLazyComponent } from '@/components/common/asyncComponent'
 import SettingsSkeleton from './settings/SettingsSkeleton.vue'
 import SettingsSaveBar from '@/components/common/settings/SettingsSaveBar.vue'
 import { useDirtyTracker } from '@/composables/useDirtyTracker'
@@ -274,11 +289,10 @@ import Icon from '@/components/icons/Icon.vue'
 import ProviderIcon from '@/components/common/ProviderIcon.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import PaymentProviderDialog from '@/components/admin/payment/PaymentProviderDialog.vue'
-import BackupSettings from './settings/BackupSettings.vue'
 import TotpStepUpDialog from '@/components/auth/TotpStepUpDialog.vue'
 import { useAppStore } from '@/stores'
 import { createSettingsForm } from './settings/settingsState'
-import { useNavigationSettings } from './settings/useNavigationSettings'
+import { useNavigationSettings, type SettingsTab } from './settings/useNavigationSettings'
 import { useGatewaySettings } from './settings/useGatewaySettings'
 import { useEmailSettings } from './settings/useEmailSettings'
 import { useSecuritySettings } from './settings/useSecuritySettings'
@@ -290,17 +304,6 @@ import { useAgreementSettings } from './settings/useAgreementSettings'
 import { useFeaturesSettings } from './settings/useFeaturesSettings'
 import { useIdentitySettings } from './settings/useIdentitySettings'
 import { useWebSearchSettings } from './settings/useWebSearchSettings'
-import AdminApiKeySettings from './settings/AdminApiKeySettings.vue'
-import GatewayPolicySettings from './settings/GatewayPolicySettings.vue'
-import SecuritySettings from './settings/SecuritySettings.vue'
-import IdentitySettings from './settings/IdentitySettings.vue'
-import UserDefaultsSettings from './settings/UserDefaultsSettings.vue'
-import GatewayForwardingSettings from './settings/GatewayForwardingSettings.vue'
-import GeneralSettings from './settings/GeneralSettings.vue'
-import AgreementSettings from './settings/AgreementSettings.vue'
-import FeatureSettings from './settings/FeatureSettings.vue'
-import PaymentSettings from './settings/PaymentSettings.vue'
-import EmailSettings from './settings/EmailSettings.vue'
 import { createSettingsPayload } from './settings/settingsPayload'
 import { createSettingsHydration } from './settings/settingsHydration'
 import { useSettingsPersistence } from './settings/settingsPersistence'
@@ -312,12 +315,64 @@ import { useSettingsPersistence } from './settings/settingsPersistence'
  * snapshots. Controllers start during root setup, including feature polling for
  * an initial Features tab; editable panels mount after the bulk loader finishes.
  *
- * All tab containers remain mounted while hidden, preserving editor drafts and
- * child save registrations. The bulk target includes search and registers before
+ * Tab panels load on their first visit and remain mounted while hidden,
+ * preserving editor drafts and child save registrations after activation.
+ * The bulk target includes search and registers before
  * the eight dedicated targets and mounted child targets. Payment dialogs stay
  * outside the root form because their submissions belong to immediate provider
  * operations. The page delegates bulk persistence ordering to settingsPersistence.ts.
  */
+
+// Tab boundaries download editable panels only when visited. Their domain
+// controllers remain eager so hydration, dirty tracking, and bulk saves cover every tab.
+const AdminApiKeySettings = defineLazyComponent(
+  () => import('./settings/AdminApiKeySettings.vue'),
+  () => activeTab.value === 'security',
+)
+const GatewayPolicySettings = defineLazyComponent(
+  () => import('./settings/GatewayPolicySettings.vue'),
+  () => activeTab.value === 'gateway',
+)
+const SecuritySettings = defineLazyComponent(
+  () => import('./settings/SecuritySettings.vue'),
+  () => activeTab.value === 'security',
+)
+const IdentitySettings = defineLazyComponent(
+  () => import('./settings/IdentitySettings.vue'),
+  () => activeTab.value === 'security',
+)
+const UserDefaultsSettings = defineLazyComponent(
+  () => import('./settings/UserDefaultsSettings.vue'),
+  () => activeTab.value === 'users',
+)
+const GatewayForwardingSettings = defineLazyComponent(
+  () => import('./settings/GatewayForwardingSettings.vue'),
+  () => activeTab.value === 'gateway',
+)
+const GeneralSettings = defineLazyComponent(
+  () => import('./settings/GeneralSettings.vue'),
+  () => activeTab.value === 'general',
+)
+const AgreementSettings = defineLazyComponent(
+  () => import('./settings/AgreementSettings.vue'),
+  () => activeTab.value === 'agreement',
+)
+const FeatureSettings = defineLazyComponent(
+  () => import('./settings/FeatureSettings.vue'),
+  () => activeTab.value === 'features',
+)
+const PaymentSettings = defineLazyComponent(
+  () => import('./settings/PaymentSettings.vue'),
+  () => activeTab.value === 'payment',
+)
+const EmailSettings = defineLazyComponent(
+  () => import('./settings/EmailSettings.vue'),
+  () => activeTab.value === 'email',
+)
+const BackupSettings = defineLazyComponent(
+  () => import('./settings/BackupSettings.vue'),
+  () => activeTab.value === 'backup',
+)
 /**
  * Page services supply translated feedback and the one reactive draft shared by all settings domains.
  */
@@ -344,6 +399,11 @@ const {
   scrollActiveSettingsTabIntoView,
   scrollActiveGatewaySectionIntoView,
 } = navigation
+
+// mountedTabs admits the initial tab and every later selection once. Hiding
+// visited panels keeps their drafts and child save targets alive until page unmount.
+const mountedTabs = reactive(new Set<SettingsTab>([activeTab.value]))
+watch(activeTab, (tab) => mountedTabs.add(tab))
 
 /**
  * Domain controllers share selected fields of form and retain their own transient editor and request state.

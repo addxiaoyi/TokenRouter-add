@@ -8,8 +8,10 @@ import { renderSocialMetadata } from './socialMetadata.ts'
 
 // vite.config.ts configures development proxying and the browser assets embedded
 // in release builds. Development documents receive public settings and branding
-// before application startup. Vendor groups keep payment SDK initialization in
-// the payment flow, while Vue and localization use their configured runtime builds.
+// before application startup. Vendor groups isolate feature libraries so shared
+// startup dependencies cannot pull editors, media tools, or payment SDKs into
+// the initial download. Unclassified modules retain automatic import boundaries,
+// while strict execution order preserves initialization across generated chunks.
 
 // escapeHtml encodes HTML-sensitive characters in injected branding text and attributes.
 function escapeHtml(value: string): string {
@@ -153,56 +155,79 @@ export default defineConfig(({ mode }) => {
       outDir: '../backend/internal/web/dist',
       emptyOutDir: true,
       rolldownOptions: {
+        preserveEntrySignatures: false,
         output: {
           strictExecutionOrder: true,
           codeSplitting: {
             groups: [
               {
-                test: /node_modules/,
+                test: /node_modules[\\/]/,
+                debugName: 'feature-vendors',
                 includeDependenciesRecursively: false,
-                // name assigns vendor modules to bundles according to their runtime role.
-                // Payment namespaces receive separate chunks so loading a shared
-                // application dependency does not initialize a payment SDK early.
+                // name groups known libraries by runtime responsibility and leaves
+                // other modules to automatic splitting. A catch-all vendor group
+                // would make every startup consumer download unrelated lazy features.
                 name(id: string) {
-                  if (id.includes('node_modules')) {
+                  const moduleId = id.replaceAll('\\', '/')
+                  if (moduleId.includes('node_modules')) {
                     // Vue runtime, routing, state, and compiler packages share this vendor group.
                     if (
-                      id.includes('/vue/') ||
-                      id.includes('/vue-router/') ||
-                      id.includes('/pinia/') ||
-                      id.includes('/@vue/')
+                      moduleId.includes('/vue/') ||
+                      moduleId.includes('/vue-router/') ||
+                      moduleId.includes('/pinia/') ||
+                      moduleId.includes('/@vue/')
                     ) {
                       return 'vendor-vue'
                     }
 
                     // Reused browser composition utilities share the UI vendor group.
-                    if (id.includes('/@vueuse/')) {
+                    if (moduleId.includes('/@vueuse/')) {
                       return 'vendor-ui'
                     }
 
                     // Chart rendering libraries share a group used by analytics pages.
-                    if (id.includes('/chart.js/') || id.includes('/vue-chartjs/')) {
+                    if (moduleId.includes('/chart.js/') || moduleId.includes('/vue-chartjs/')) {
                       return 'vendor-chart'
                     }
 
                     // Localization packages remain together with their message compiler dependencies.
-                    if (id.includes('/vue-i18n/') || id.includes('/@intlify/')) {
+                    if (moduleId.includes('/vue-i18n/') || moduleId.includes('/@intlify/')) {
                       return 'vendor-i18n'
                     }
 
                     // Stripe initialization follows its dynamically imported payment entry point.
-                    if (id.includes('/@stripe/stripe-js/')) {
+                    if (moduleId.includes('/@stripe/stripe-js/')) {
                       return 'vendor-stripe'
                     }
 
                     // Airwallex prefetches payment scripts during initialization; keeping its
                     // namespace separate preserves the payment page as that load trigger.
-                    if (id.includes('/@airwallex/')) {
+                    if (moduleId.includes('/@airwallex/')) {
                       return 'vendor-airwallex'
                     }
 
-                    // Remaining vendor modules use the shared miscellaneous dependency group.
-                    return 'vendor-misc'
+                    // Editors and visual effects load independently of account pages;
+                    // each package keeps its own lazy consumer as the download trigger.
+                    if (moduleId.includes('/fabric/')) return 'vendor-canvas'
+                    if (moduleId.includes('/cropperjs/') || moduleId.includes('/@cropper/')) {
+                      return 'vendor-cropper'
+                    }
+                    if (
+                      moduleId.includes('/gifuct-js/') ||
+                      moduleId.includes('/js-binary-schema-parser/')
+                    ) {
+                      return 'vendor-gif'
+                    }
+                    if (moduleId.includes('/matter-js/')) return 'vendor-physics'
+                    if (moduleId.includes('/ogl/')) return 'vendor-webgl'
+                    if (moduleId.includes('/lottie-web/')) return 'vendor-lottie'
+
+                    // Content parsing, tours, and exports stay out of shared HTTP
+                    // dependencies even when their consumers use the same application stores.
+                    if (moduleId.includes('/marked/')) return 'vendor-markdown'
+                    if (moduleId.includes('/driver.js/')) return 'vendor-tour'
+                    if (moduleId.includes('/qrcode/')) return 'vendor-qrcode'
+                    if (moduleId.includes('/xlsx/')) return 'vendor-spreadsheet'
                   }
 
                   return null

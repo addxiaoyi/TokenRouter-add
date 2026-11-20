@@ -1,7 +1,7 @@
 <template>
   <div class="ba-theme-shell relative min-h-screen text-gray-900 dark:text-dark-50">
     <!-- Non-home architectural topography backdrop rendered with zero bloom/neon glow. -->
-    <div class="pointer-events-none fixed inset-0 overflow-hidden bg-[var(--page-bg)]">
+    <LazyVisual class="pointer-events-none fixed inset-0 overflow-hidden bg-[var(--page-bg)]">
       <Topography
         :color="topographyColor"
         :line-count="18"
@@ -32,12 +32,13 @@
         :dpr="1"
         :max-fps="30"
         :max-cells="42000"
-        :ignore-reduced-motion="true"
       />
-    </div>
+    </LazyVisual>
 
-    <!-- Minimal floating editorial header with brand, live palette swatches, locale, and theme toggle -->
-    <header class="site-header fixed inset-x-0 top-0 z-header border-b border-black/[0.06] dark:border-white/[0.07]">
+    <!-- Minimal floating editorial header with brand, locale, and theme toggle -->
+    <header
+      class="site-header fixed inset-x-0 top-0 z-header border-b border-black/[0.06] dark:border-white/[0.07]"
+    >
       <div class="flex h-[var(--header-h)] items-center justify-between px-6 lg:px-10">
         <router-link
           to="/home"
@@ -46,32 +47,16 @@
           <span
             class="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-control border border-white/80 bg-white/80 p-0.5 shadow-sm dark:border-white/[0.12] dark:bg-white/[0.08]"
           >
-            <img :src="siteLogo || '/logo.svg'" :alt="siteName" class="h-full w-full object-contain" />
+            <img
+              :src="siteLogo || '/logo.svg'"
+              :alt="siteName"
+              class="h-full w-full object-contain"
+            />
           </span>
           <span>{{ siteName }}</span>
         </router-link>
 
         <div class="flex items-center gap-2">
-          <!-- Compact 3-theme optical palette switcher -->
-          <div
-            class="hidden items-center gap-1 rounded-full border border-black/[0.08] bg-white/60 px-2 py-1 backdrop-blur-md sm:flex dark:border-white/[0.10] dark:bg-white/[0.06]"
-          >
-            <button
-              v-for="item in paletteOptions"
-              :key="item.id"
-              type="button"
-              :aria-pressed="themePalette === item.id"
-              :title="item.label"
-              class="h-3.5 w-3.5 rounded-full transition-transform duration-fast hover:scale-110"
-              :class="
-                themePalette === item.id
-                  ? 'ring-2 ring-gray-900 ring-offset-2 ring-offset-white dark:ring-white dark:ring-offset-dark-950'
-                  : 'opacity-65 hover:opacity-100'
-              "
-              :style="{ backgroundColor: item.swatch }"
-              @click="setThemePalette(item.id)"
-            />
-          </div>
           <LocaleSwitcher variant="text" />
           <button
             type="button"
@@ -174,15 +159,23 @@
       <section
         class="flex flex-col justify-between px-6 py-10 sm:px-10 lg:col-span-5 lg:px-14 lg:py-12"
       >
-        <div class="glass-card mx-auto my-auto w-full max-w-md p-8 sm:p-10 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none lg:backdrop-blur-none dark:lg:bg-transparent">
+        <div
+          class="glass-card mx-auto my-auto w-full max-w-md p-8 sm:p-10 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none lg:backdrop-blur-none dark:lg:bg-transparent"
+        >
           <!-- Mobile/tablet brand lockup -->
           <div class="mb-7 flex items-center gap-2.5 lg:hidden">
             <span
               class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-control border border-white/80 bg-white/80 p-1 shadow-sm dark:border-white/[0.12] dark:bg-white/[0.08]"
             >
-              <img :src="siteLogo || '/logo.svg'" :alt="siteName" class="h-full w-full object-contain" />
+              <img
+                :src="siteLogo || '/logo.svg'"
+                :alt="siteName"
+                class="h-full w-full object-contain"
+              />
             </span>
-            <span class="text-base font-medium text-gray-900 dark:text-dark-50">{{ siteName }}</span>
+            <span class="text-base font-medium text-gray-900 dark:text-dark-50">{{
+              siteName
+            }}</span>
           </div>
 
           <slot />
@@ -209,10 +202,11 @@ import { computed, defineAsyncComponent, onMounted } from 'vue'
 import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import ProviderIcon from '@/components/common/ProviderIcon.vue'
 import Icon from '@/components/icons/Icon.vue'
+import LazyVisual from '@/components/common/LazyVisual.vue'
 
 // Topography loads asynchronously so authentication forms paint immediately.
 const Topography = defineAsyncComponent(() => import('@/components/common/Topography.vue'))
-import { useTheme, type ThemePalette } from '@/composables/useTheme'
+import { useTheme } from '@/composables/useTheme'
 import { useAppStore } from '@/stores'
 import { sanitizeUrl } from '@/utils/url'
 
@@ -232,7 +226,7 @@ const motionRoute = useMotionRoute()
 // appStore supplies cached public branding and its loading status, while useTheme
 // powers the floating header theme toggle on public auth pages.
 const appStore = useAppStore()
-const { isDark, themePalette, setThemePalette, toggleTheme } = useTheme()
+const { isDark, themePalette, toggleTheme } = useTheme()
 
 // topographyColor picks muted cartographic ink tones without neon saturation.
 const topographyColor = computed(() => {
@@ -244,17 +238,6 @@ const topographyColor = computed(() => {
   if (palette === 'indigo') return '#64748b'
   return '#87867f'
 })
-
-// paletteOptions exposes the three switchable editorial Liquid Glass color worlds.
-const paletteOptions: Array<{
-  id: ThemePalette // Palette identifier stored on html[data-palette]
-  label: string // Concise palette display label
-  swatch: string // Representative swatch hex color
-}> = [
-  { id: 'terracotta', label: '暖玉陶土', swatch: '#C46D45' },
-  { id: 'pearl', label: '珍珠极简', swatch: '#52525B' },
-  { id: 'indigo', label: '雾靛光学', swatch: '#5B6CF9' },
-]
 
 // Branding values use configured public settings; the logo passes URL sanitization and
 // the subtitle honors an explicit empty override when one is present.

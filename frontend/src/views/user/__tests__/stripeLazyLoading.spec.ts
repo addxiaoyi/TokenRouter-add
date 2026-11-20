@@ -30,8 +30,9 @@ describe('Stripe lazy loading', () => {
     expect(staticImports.filter((name) => name.startsWith('@stripe/'))).toEqual([])
   })
 
-  // Production chunk selection distinguishes payment SDKs from ordinary vendor dependencies.
-  // Exercising the configured naming callback protects branch ordering and the shared vendor default.
+  // Production chunk selection keeps payment SDKs separate from other deferred features.
+  // Unclassified dependencies retain automatic import boundaries instead of merging checkout code
+  // into a vendor chunk shared by ordinary application requests.
   it('assigns payment SDKs to dedicated vendor chunks', async () => {
     const config = await viteConfig({ mode: 'production', command: 'build' })
     const output = config.build?.rolldownOptions?.output
@@ -42,7 +43,12 @@ describe('Stripe lazy loading', () => {
       throw new Error('Expected vendor chunk naming callback')
     expect(group.name('/node_modules/@stripe/stripe-js/dist/pure.js')).toBe('vendor-stripe')
     expect(group.name('/node_modules/@airwallex/components-sdk/index.js')).toBe('vendor-airwallex')
-    expect(group.name('/node_modules/ordinary-library/index.js')).toBe('vendor-misc')
+    expect(group.name('/node_modules/fabric/dist/index.js')).toBe('vendor-canvas')
+    expect(group.name('/node_modules/matter-js/build/matter.js')).toBe('vendor-physics')
+    expect(group.name('/node_modules/marked/lib/marked.esm.js')).toBe('vendor-markdown')
+    expect(group.name('/node_modules/axios/lib/axios.js')).toBeNull()
+    expect(group.name('/node_modules/ordinary-library/index.js')).toBeNull()
     expect(group.name('/src/views/user/StripePaymentView.vue')).toBeNull()
+    expect(output.strictExecutionOrder).toBe(true)
   })
 })

@@ -204,7 +204,9 @@
         >
           <div class="flex flex-col justify-between gap-2.5 px-2 py-4 lg:px-5 lg:first:pl-1">
             <div class="flex items-center justify-between gap-2">
-              <span class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-dark-400">
+              <span
+                class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-dark-400"
+              >
                 <Icon name="key" size="xs" :stroke-width="2" />
                 {{ t('admin.dashboard.apiKeys') }}
               </span>
@@ -223,7 +225,9 @@
 
           <div class="flex flex-col justify-between gap-2.5 px-2 py-4 lg:px-5">
             <div class="flex items-center justify-between gap-2">
-              <span class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-dark-400">
+              <span
+                class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-dark-400"
+              >
                 <Icon name="server" size="xs" :stroke-width="2" />
                 {{ t('admin.dashboard.providers') }}
               </span>
@@ -250,7 +254,9 @@
 
           <div class="flex flex-col justify-between gap-2.5 px-2 py-4 lg:px-5">
             <div class="flex items-center justify-between gap-2">
-              <span class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-dark-400">
+              <span
+                class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-dark-400"
+              >
                 <Icon name="chart" size="xs" :stroke-width="2" />
                 {{ t('admin.dashboard.todayRequests') }}
               </span>
@@ -267,7 +273,9 @@
 
           <div class="flex flex-col justify-between gap-2.5 px-2 py-4 lg:px-5 lg:last:pr-1">
             <div class="flex items-center justify-between gap-2">
-              <span class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-dark-400">
+              <span
+                class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-dark-400"
+              >
                 <Icon name="userPlus" size="xs" :stroke-width="2" />
                 {{ t('admin.dashboard.users') }}
               </span>

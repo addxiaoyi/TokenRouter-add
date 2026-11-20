@@ -1,9 +1,18 @@
 <script setup lang="ts">
-// GradientASCII.vue renders a pure WebGL2 procedural light field overlaid with a
-// dynamically sampled monospace ASCII glyph atlas, optional Gaussian halo blur,
-// film grain, pointer scramble trails, and click wave/burst ripples.
-
 import { computed, onMounted, onUnmounted, ref, watch, type CSSProperties } from 'vue'
+import { observeReducedMotion, observeVisualActivity } from '@/utils/visualActivity'
+
+// GradientASCII.vue renders a procedural WebGL2 light field with sampled ASCII
+// glyphs, optional halo passes, grain, and pointer ripples. Shader programs,
+// glyph textures, and render targets belong to one mounted component and remain
+// allocated while its retained image is outside the viewport.
+//
+// Viewport intersection and document visibility jointly admit animation frames.
+// Leaving either cancels scheduled work, and re-entry restarts timing without
+// integrating the hidden interval. The live system motion preference suppresses
+// animated field time and transient pointer effects while retaining one static
+// render. Unmount releases observers and GPU resources independently of pending
+// font loading, whose completion checks the renderer's disposal state.
 
 export type GradientASCIIShape = 'horizon' | 'pinch' | 'rise' | 'eclipse'
 
@@ -573,8 +582,12 @@ const settings = computed<Settings>(() => {
   }
 })
 
-// setup compiles the four WebGL2 passes (field, halo, blur, composite), binds pointer and
-// visibility observers, and starts the requestAnimationFrame loop.
+// setup compiles the field, halo, blur, and composite passes for this component.
+// It owns their textures, observers, pointer listeners, and pending frames until
+// teardown. Viewport and tab visibility decide when retained GPU state may render;
+// a resumed frame uses a fresh clock. System motion changes retire pointer
+// effects and publish a static field, while font completions can rebuild the
+// atlas only while this renderer remains alive.
 const setup = () => {
   const container = containerRef.value
   const canvas = canvasRef.value
@@ -622,9 +635,9 @@ const setup = () => {
     return rgb
   }
 
-  const reduce =
-    !props.ignoreReducedMotion &&
-    (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false)
+  let mediaReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+  // isReduced applies the caller's explicit override to the live system preference.
+  const isReduced = () => mediaReduced && !props.ignoreReducedMotion
   const view = { width: 1, height: 1, ratio: 1 }
   const ramp = new Float32Array(MAX_COLORS * 3)
   const clickData = new Float32Array(MAX_CLICKS * 4)
@@ -634,10 +647,11 @@ const setup = () => {
   const pointer = { x: 0, y: 0, inside: false }
   let atlas: Atlas | null = null
   let atlasKey = ''
+  let atlasRefresh = false
   let paletteKey = ''
   let time = 0
   let glyphTime = 0
-  let introClock = settings.value.intro && !reduce ? 0 : 1
+  let introClock = settings.value.intro && !isReduced() ? 0 : 1
   let frameSeed = 0
   let grainClock = 0
   let raf = 0
@@ -659,21 +673,40 @@ const setup = () => {
     programs.forEach((item) => gl.deleteProgram(item.program))
   }
 
+  // syncAtlas builds glyphs for the current font and character selection.
+  // Font completion only marks a refresh; the next visible draw replaces its texture,
+  // so hidden tabs do not upload an atlas asynchronously.
   const syncAtlas = () => {
     const s = settings.value
     const key = `${s.fontFamily}|${s.characters}`
-    if (key === atlasKey && atlas) return
+    if (key === atlasKey && atlas) {
+      if (atlasRefresh) {
+        gl.deleteTexture(atlas.texture)
+        atlas = buildAtlas(gl, s.characters, s.fontFamily)
+        atlasRefresh = false
+      }
+      return
+    }
     atlasKey = key
+    atlasRefresh = false
     if (atlas) gl.deleteTexture(atlas.texture)
     atlas = buildAtlas(gl, s.characters, s.fontFamily)
     document.fonts?.load?.(`300 64px ${s.fontFamily}`, s.characters).then(
       () => {
         if (disposed || atlasKey !== key) return
-        if (atlas) gl.deleteTexture(atlas.texture)
-        atlas = buildAtlas(gl, s.characters, s.fontFamily)
-        draw()
+        // Preserve the loaded font notification while hidden; wake only admits
+        // a visible frame, and syncAtlas performs the upload inside that draw.
+        atlasRefresh = true
+        wake()
       },
-      () => {},
+      (error) => {
+        // Glyphs already built from the available font remain usable when the
+        // requested web font fails, so retain that atlas and report the cause.
+        console.warn(
+          '[GradientASCII.vue] Font loading failed; keeping the available glyph atlas',
+          error,
+        )
+      },
     )
   }
 
@@ -711,7 +744,7 @@ const setup = () => {
     gl.uniform1f(u.uCount, atlas.count)
     gl.uniform1f(u.uDensity, s.density)
     gl.uniform1f(u.uOpacity, s.glyphOpacity)
-    gl.uniform1f(u.uFlicker, reduce ? 0 : s.flicker)
+    gl.uniform1f(u.uFlicker, isReduced() ? 0 : s.flicker)
     gl.uniform1f(u.uDepth, s.depthOfField)
     gl.uniform1f(u.uGlyphTime, glyphTime)
     gl.uniform1f(u.uSeedValue, s.variation)
@@ -804,7 +837,7 @@ const setup = () => {
     const haloHeight = Math.max(1, Math.round(canvas.height / 4))
     sizeTarget(gl, haloA, haloWidth, haloHeight)
     sizeTarget(gl, haloB, haloWidth, haloHeight)
-    draw()
+    if (visible && !document.hidden) draw()
     wake()
   }
 
@@ -838,9 +871,13 @@ const setup = () => {
     }
   }
 
+  // frame advances visible shader state and schedules another frame while motion
+  // remains active. Hidden frames return before glyph generation, GPU work, or elapsed-time
+  // integration can change the retained field.
   const frame = (now: number) => {
     raf = 0
     if (disposed || !visible || document.hidden) return
+    const reduce = isReduced()
     if (!ready) {
       if (!gl.isContextLost() && !linked()) {
         raf = requestAnimationFrame(frame)
@@ -877,6 +914,9 @@ const setup = () => {
     else last = 0
   }
 
+  // wake admits one pending frame when the renderer can be seen.
+  // Repeated events share that frame, and document visibility still gates callbacks
+  // arriving after an intersection notification.
   function wake() {
     if (!raf && !disposed && visible && !document.hidden) raf = requestAnimationFrame(frame)
   }
@@ -891,10 +931,13 @@ const setup = () => {
     pointer.y = y - 0.5
   }
 
+  // onPointerMove samples pointer trails only for an active, motion-enabled field.
+  // Global pointer events outside this component never allocate scramble trail entries
+  // for later GPU input.
   const onPointerMove = (event: PointerEvent) => {
     locate(event)
     const s = settings.value
-    if (!pointer.inside || !s.mouseInteraction || reduce) return
+    if (!visible || !pointer.inside || !s.mouseInteraction || isReduced()) return
     const head = trail[0]
     const gap = head ? Math.hypot(pointer.x - head.x, pointer.y - head.y) : Infinity
     if (gap < TRAIL_STEP) return
@@ -914,33 +957,42 @@ const setup = () => {
     wake()
   }
 
+  // onPointerDown records a bounded ripple for an active field under the pointer.
+  // Reduced-motion and offscreen states reject it before any animation is queued
+  // from the global pointer listener.
   const onPointerDown = (event: PointerEvent) => {
     locate(event)
     const s = settings.value
-    if (!pointer.inside || !s.clickEffect || reduce) return
+    if (!visible || !pointer.inside || !s.clickEffect || isReduced()) return
     clicks.unshift({ x: pointer.x, y: pointer.y, age: 0 })
     if (clicks.length > MAX_CLICKS) clicks.pop()
     wake()
   }
 
-  const onVisibility = () => {
-    last = 0
-    wake()
-  }
-
   const resizeObserver = new ResizeObserver(resize)
   resizeObserver.observe(container)
-  const intersection = new IntersectionObserver((entries) => {
-    visible = entries.some((entry) => entry.isIntersecting)
-    if (visible) {
-      last = 0
-      wake()
-    }
+  const stopActivity = observeVisualActivity(container, (active) => {
+    // Cancel the pending frame immediately when hidden; retained shader state
+    // resumes with a fresh clock instead of integrating time spent offscreen.
+    visible = active
+    cancelAnimationFrame(raf)
+    raf = 0
+    last = 0
+    if (active) wake()
   })
-  intersection.observe(container)
+  const stopMotion = observeReducedMotion((reduced) => {
+    mediaReduced = reduced
+    if (isReduced()) {
+      // Drop transient motion when the system preference changes; the next
+      // visible frame publishes the static field without leaving an animation loop.
+      introClock = 1
+      clicks.length = 0
+      trail.length = 0
+    }
+    wake()
+  })
   window.addEventListener('pointermove', onPointerMove, { passive: true })
   window.addEventListener('pointerdown', onPointerDown, { passive: true })
-  document.addEventListener('visibilitychange', onVisibility)
   resize()
   wakeHandler = wake
 
@@ -950,10 +1002,10 @@ const setup = () => {
     cancelAnimationFrame(raf)
     wakeHandler = null
     resizeObserver.disconnect()
-    intersection.disconnect()
+    stopActivity()
+    stopMotion()
     window.removeEventListener('pointermove', onPointerMove)
     window.removeEventListener('pointerdown', onPointerDown)
-    document.removeEventListener('visibilitychange', onVisibility)
     ;[fieldTarget, haloA, haloB].forEach((target) => {
       target.textures.forEach((texture) => gl.deleteTexture(texture))
       gl.deleteFramebuffer(target.framebuffer)

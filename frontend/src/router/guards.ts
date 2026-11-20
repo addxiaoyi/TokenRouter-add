@@ -7,7 +7,7 @@ import { getSetupStatus } from '@/api/setup'
 import { resolveCompletedSetupRedirectPath } from './setupRedirect'
 import { resolveRouteDocumentTitle } from './title'
 
-// guards.ts installs access checks, successful-navigation prefetching, and chunk-load
+// guards.ts installs access checks, successful-navigation link warming, and chunk-load
 // recovery on an application router. Session restoration runs once per installation
 // before authentication and role checks. Public settings are fetched for protected
 // feature routes when their availability is still unknown.
@@ -17,7 +17,8 @@ import { resolveRouteDocumentTitle } from './title'
 // separately requires a true cached flag. Backend mode limits public destinations and
 // blocks non-administrator protected navigation, with a login exception that prevents
 // redirect loops. A per-installation prefetch handle is created after the first
-// successful navigation. Chunk failures use a session timestamp to limit reload
+// successful navigation, with pending speculation cancelled before later guards run.
+// Chunk failures use a session timestamp to limit reload
 // attempts.
 
 // installRouteGuards attaches access, prefetch, and error handlers once to the supplied
@@ -25,7 +26,7 @@ import { resolveRouteDocumentTitle } from './title'
 // The installation retains its own first-navigation flag and lazily created prefetch
 // controller. Access checks restore authentication before resolving the title, then
 // apply public-route, role, feature, and backend-mode rules in order. Successful
-// navigation schedules prefetching, while chunk failures may reload the browser using a
+// navigation enables link-intent prefetching, while chunk failures may reload the browser using a
 // session-scoped retry timestamp.
 export function installRouteGuards(router: Router): void {
   // The installation owns one authentication-restoration marker and one lazy prefetch
@@ -83,6 +84,9 @@ export function installRouteGuards(router: Router): void {
   }
 
   router.beforeEach(async (to, _from, next) => {
+    // Navigation takes network and CPU priority over speculative route imports, so
+    // remove queued hover work before authentication or route loaders begin awaiting.
+    routePrefetch?.cancelPendingPrefetch()
     const authStore = useAuthStore()
     // Restore browser authentication before title and permission evaluation, then retain
     // the initialization marker for later navigations on this router.
@@ -228,7 +232,7 @@ export function installRouteGuards(router: Router): void {
   })
 
   router.afterEach((to, _from, failure) => {
-    // Cancelled and aborted destinations do not schedule prefetching because they did
+    // Cancelled and aborted destinations do not enable prefetching because they did
     // not become the successfully displayed route for this navigation.
     if (failure) return
     if (!routePrefetch) {

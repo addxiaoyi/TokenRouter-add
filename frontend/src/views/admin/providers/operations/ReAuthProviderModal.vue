@@ -380,35 +380,6 @@ const canExchangeCode = computed(() => {
   return authCode.trim() && sessionId && !loading
 })
 
-// Visibility initializes the provider-specific authentication choices on open and clears shared
-// inputs plus all platform session state when hidden.
-watch(
-  () => props.show,
-  (newVal) => {
-    if (newVal && props.provider) {
-      // Claude reauthorization retains the existing OAuth or setup-token variant so an ordinary
-      // reauthorization starts with the saved provider type.
-      if (
-        isAnthropic.value &&
-        (props.provider.type === 'oauth' || props.provider.type === 'setup-token')
-      ) {
-        addMethod.value = props.provider.type as AddMethod
-      }
-      if (isGemini.value) {
-        const creds = (props.provider.credentials || {}) as Record<string, unknown>
-        geminiOAuthType.value =
-          creds.oauth_type === 'google_one'
-            ? 'google_one'
-            : creds.oauth_type === 'ai_studio'
-              ? 'ai_studio'
-              : 'code_assist'
-      }
-    } else {
-      resetState()
-    }
-  },
-)
-
 /**
  * resetState restores authentication choices, resets every platform composable, and clears the
  * embedded input form. It runs when the dialog hides; request cancellation behavior remains
@@ -877,4 +848,35 @@ const handleGrokValidateRefreshToken = async (refreshTokenInput: string) => {
     grokOAuth.loading.value = false
   }
 }
+// Observe initial visibility after setup helpers exist so a lazily mounted
+// dialog initializes its first opening through the same watcher as later openings.
+// Visibility initializes the provider-specific authentication choices on open and clears shared
+// inputs plus all platform session state when hidden.
+watch(
+  () => props.show,
+  (newVal) => {
+    if (newVal && props.provider) {
+      // Claude reauthorization retains the existing OAuth or setup-token variant so an ordinary
+      // reauthorization starts with the saved provider type.
+      if (
+        isAnthropic.value &&
+        (props.provider.type === 'oauth' || props.provider.type === 'setup-token')
+      ) {
+        addMethod.value = props.provider.type as AddMethod
+      }
+      if (isGemini.value) {
+        const creds = (props.provider.credentials || {}) as Record<string, unknown>
+        geminiOAuthType.value =
+          creds.oauth_type === 'google_one'
+            ? 'google_one'
+            : creds.oauth_type === 'ai_studio'
+              ? 'ai_studio'
+              : 'code_assist'
+      }
+    } else {
+      resetState()
+    }
+  },
+  { immediate: true },
+)
 </script>

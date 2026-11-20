@@ -1,5 +1,9 @@
 <template>
-  <div class="flex min-w-0 flex-col pt-4 xl:pl-6 xl:pt-2" data-testid="top-models" :aria-busy="!modelsLoaded">
+  <div
+    class="flex min-w-0 flex-col pt-4 xl:pl-6 xl:pt-2"
+    data-testid="top-models"
+    :aria-busy="!modelsLoaded"
+  >
     <div class="mb-4 flex min-h-7 items-center justify-between gap-2">
       <div class="flex min-w-0 items-baseline gap-2">
         <h3 class="text-sm font-semibold text-gray-900 dark:text-dark-50">

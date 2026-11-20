@@ -1,27 +1,44 @@
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
-import { nodes, parseVue, variableInitializer } from '@/__tests__/helpers/sourceSyntax'
+import { attribute, nodes, parseVue, variableInitializer } from '@/__tests__/helpers/sourceSyntax'
+import { sanitizeUrl } from '@/utils/url'
 
 // siteLogoSanitization.spec.ts checks sanitizer inputs and options for site
-// branding and favicon consumers. Syntax assertions attach the allowed relative
-// and data URL options to the actual logo sanitizer call, so unrelated options
-// elsewhere in a component cannot satisfy the policy check.
+// branding and favicon consumers, including shared branding owners. Syntax
+// assertions attach relative and image-data permissions to the actual logo
+// sanitizer call; URL probes preserve rejection of executable or non-image inputs.
 
-// entries maps branding consumers to their explicit cached-settings fallback requirement for logo inputs.
+// entries maps branding consumers to their actual owner and its cached-settings
+// fallback requirement, keeping shared-header pages covered after local logos disappear.
 const entries = [
-  ['components/layout/AppHeader.vue', false],
-  ['views/HomeView.vue', true],
-  ['views/KeyUsageView.vue', true],
-  ['views/ModelMarketplaceView.vue', true],
-  ['App.vue', false],
+  ['components/layout/AppHeader.vue', 'components/layout/AppHeader.vue', false],
+  ['views/HomeView.vue', 'views/HomeView.vue', true],
+  ['views/KeyUsageView.vue', 'views/KeyUsageView.vue', true],
+  ['views/ModelMarketplaceView.vue', 'components/layout/AppHeader.vue', false],
+  ['App.vue', 'App.vue', false],
 ] as const
 
 describe('site_logo sanitization', () => {
   // Branding accepts local assets and data images while sanitizing configured
-  // URLs. Each consumer must pass these permissions on its own sanitizer call.
-  it.each(entries)('%s sanitizes its logo with the required options', (path, cached) => {
-    const script = parseVue(path).script
-    const scope = path === 'App.vue' ? script : variableInitializer(script, 'siteLogo')
+  // URLs. Each actual branding owner must pass these permissions on its sanitizer call.
+  it.each(entries)('%s uses sanitized branding from %s', (entryPath, ownerPath, cached) => {
+    const entry = parseVue(entryPath)
+    if (entryPath !== ownerPath) {
+      const header = entry.elements.find((element) => element.tag === 'AppHeader')
+      expect(header).toBeDefined()
+      if (!header) throw new Error('Missing shared branding header')
+      expect(attribute(header, 'public-page')).toBe('')
+      expect(
+        nodes(entry.script, ts.isImportDeclaration).some(
+          (node) =>
+            ts.isStringLiteral(node.moduleSpecifier) &&
+            node.moduleSpecifier.text === `@/${ownerPath}` &&
+            node.importClause?.name?.text === 'AppHeader',
+        ),
+      ).toBe(true)
+    }
+    const script = parseVue(ownerPath).script
+    const scope = ownerPath === 'App.vue' ? script : variableInitializer(script, 'siteLogo')
     const calls = nodes(scope, ts.isCallExpression).filter(
       (node) => ts.isIdentifier(node.expression) && node.expression.text === 'sanitizeUrl',
     )
@@ -82,5 +99,16 @@ describe('site_logo sanitization', () => {
           nodes(node, ts.isImportSpecifier).some((binding) => binding.name.text === 'sanitizeUrl'),
       ),
     ).toBe(true)
+  })
+
+  // Logo permissions admit local assets and image data, never arbitrary executable
+  // URLs. Non-image data payloads and protocol-relative hosts remain rejected by that same policy.
+  it('rejects executable and non-image logo inputs with branding permissions enabled', () => {
+    const options = { allowRelative: true, allowDataUrl: true }
+    expect(sanitizeUrl('javascript:alert(1)', options)).toBe('')
+    expect(sanitizeUrl('data:text/html,<script>alert(1)</script>', options)).toBe('')
+    expect(sanitizeUrl('//evil.example/logo.svg', options)).toBe('')
+    expect(sanitizeUrl('/logo.svg', options)).toBe('/logo.svg')
+    expect(sanitizeUrl('data:image/png;base64,AA==', options)).toBe('data:image/png;base64,AA==')
   })
 })

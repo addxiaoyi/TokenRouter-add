@@ -173,7 +173,7 @@ describe('TokenUsageTrend', () => {
     })
 
     expect(JSON.parse(wrapper.find('.chart-options').text()).plugins.legend.labels.color).toBe(
-      '#DEE0E2',
+      '#E7E5DF',
     )
 
     setTheme(false)
@@ -182,9 +182,11 @@ describe('TokenUsageTrend', () => {
     const lightOptions = JSON.parse(wrapper.find('.chart-options').text())
     // The light theme supplies dark text to both legend and axes after the reactive
     // theme update.
-    expect(lightOptions.plugins.legend.labels.color).toBe('#3F3F46')
-    expect(lightOptions.scales.x.ticks.color).toBe('#3F3F46')
-    expect(lightOptions.scales.y.ticks.color).toBe('#3F3F46')
+    expect(lightOptions.plugins.legend.labels.color).toBe('#2B2926')
+    expect(lightOptions.scales.x.ticks.color).toBe('#2B2926')
+    expect(lightOptions.scales.y.ticks.color).toBe('#2B2926')
+    expect(lightOptions.scales.x.grid.color).toBe('rgba(24, 22, 20, 0.08)')
+    expect(lightOptions.scales.y.grid.color).toBe('rgba(24, 22, 20, 0.08)')
   })
 
   // Hourly data contains a full date and time string. The chart axis must display the

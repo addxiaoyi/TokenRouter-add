@@ -1,10 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import { reactive } from 'vue'
 
 import App from '@/App.vue'
+import { closeGlobalSearch, openGlobalSearch } from '@/components/layout/search/globalSearchState'
 
 // App.spec.ts verifies announcement popup visibility in the shared application shell
-// across public and console destinations. Route and store doubles isolate popup mounting
+// across public and console destinations, including first-use loading of search.
+// Route and store doubles isolate optional surface mounting
 // from authentication requests. The actual shell runs its mount lifecycle before
 // assertions compare public landing destinations with the dashboard.
 
@@ -37,6 +40,7 @@ const mocks = vi.hoisted(() => ({
     clear: vi.fn(),
   },
   announcementStore: {
+    currentPopup: null as { id: number } | null,
     fetchAnnouncements: vi.fn(),
     reset: vi.fn(),
   },
@@ -45,6 +49,9 @@ const mocks = vi.hoisted(() => ({
   },
   getSetupStatus: vi.fn(),
 }))
+
+// announcementState publishes queue changes to the shell without real account reads.
+const announcementState = reactive(mocks.announcementStore)
 
 vi.mock('vue-router', () => ({
   RouterView: { template: '<div data-testid="router-view"></div>' },
@@ -56,7 +63,7 @@ vi.mock('@/stores', () => ({
   useAppStore: () => mocks.appStore,
   useAuthStore: () => mocks.authStore,
   useSubscriptionStore: () => mocks.subscriptionStore,
-  useAnnouncementStore: () => mocks.announcementStore,
+  useAnnouncementStore: () => announcementState,
   useAdminSettingsStore: () => mocks.adminSettingsStore,
 }))
 
@@ -71,6 +78,7 @@ vi.mock('@/router/title', () => ({
 }))
 
 vi.mock('@/components/announcements/AnnouncementPopup.vue', () => ({
+  __esModule: true,
   default: {
     name: 'AnnouncementPopup',
     template: '<div data-testid="announcement-popup"></div>',
@@ -101,6 +109,8 @@ describe('App announcement popup visibility', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.authStore.isAuthenticated = true
+    announcementState.currentPopup = null
+    closeGlobalSearch()
     mocks.getSetupStatus.mockResolvedValue({ needs_setup: false })
     mocks.appStore.fetchPublicSettings.mockResolvedValue(undefined)
     mocks.subscriptionStore.fetchActiveSubscriptions.mockResolvedValue(undefined)
@@ -108,6 +118,7 @@ describe('App announcement popup visibility', () => {
 
   afterEach(() => {
     document.body.style.overflow = ''
+    closeGlobalSearch()
   })
 
   // An authenticated shell mounts at the root or named Home destination. The global
@@ -125,14 +136,36 @@ describe('App announcement popup visibility', () => {
     wrapper.unmount()
   })
 
-  // An authenticated shell mounts at the dashboard destination. The global announcement
-  // popup remains mounted after startup work settles so console announcements can be
-  // presented there.
-  it('进入 dashboard 后保留公告弹窗挂载', async () => {
+  // An empty console queue leaves announcement code unused. Its first entry mounts
+  // the popup, and clearing that entry retains the instance for its closing transition.
+  it('loads the first queued popup and retains its closing instance', async () => {
     const wrapper = mountApp('/dashboard', 'Dashboard')
     await flushPromises()
 
+    expect(wrapper.find('[data-testid="announcement-popup"]').exists()).toBe(false)
+    announcementState.currentPopup = { id: 1 }
+    await flushPromises()
     expect(wrapper.find('[data-testid="announcement-popup"]').exists()).toBe(true)
+    announcementState.currentPopup = null
+    await flushPromises()
+    expect(wrapper.find('[data-testid="announcement-popup"]').exists()).toBe(true)
+
+    wrapper.unmount()
+  })
+
+  // Search has no mounted panel until first use. Once opened, its instance survives
+  // closing so the actual palette can retain its query between openings.
+  it('mounts search on first use and keeps it after closing', async () => {
+    const wrapper = mountApp('/home', 'Home')
+    await flushPromises()
+    expect(wrapper.find('global-search-palette-stub').exists()).toBe(false)
+
+    openGlobalSearch()
+    await flushPromises()
+    expect(wrapper.find('global-search-palette-stub').exists()).toBe(true)
+    closeGlobalSearch()
+    await flushPromises()
+    expect(wrapper.find('global-search-palette-stub').exists()).toBe(true)
 
     wrapper.unmount()
   })

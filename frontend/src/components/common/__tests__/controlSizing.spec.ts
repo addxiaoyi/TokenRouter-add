@@ -19,8 +19,9 @@ import Pagination from '../Pagination.vue'
 // Parsed template classes and stylesheet rules bind size assertions to actual
 // elements and selectors, while a mounted pagination fixture checks every visible
 // button without depending on source quotes, line breaks, or attribute ordering.
-// Pagination is the one compact exception: its 28px controls keep the bar at the
-// height of the table header above it.
+// Pagination uses 28px controls to keep its bar at the table header height.
+// Sidebar links use a separate 32px rail recipe rather than inheriting the
+// toolbar's minimum height.
 
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 enableAutoUnmount(afterEach)
@@ -52,10 +53,11 @@ function hasClasses(path: string, expected: string[]): boolean {
   })
 }
 
-describe('36px control sizing', () => {
+describe('Shared control sizing', () => {
   // Shared controls derive geometry from the button and input recipes. Each
-  // selector must retain the relevant size, spacing, and typography utility tokens.
-  it('defines the 36px baseline on the owning shared style rules', () => {
+  // selector must retain the relevant size, spacing, and typography utility tokens;
+  // the compact sidebar rail keeps its own explicitly smaller navigation recipe.
+  it('defines toolbar and compact sidebar geometry on their owning shared rules', () => {
     const style = postcss.parse(readSource('style.css'))
     for (const [selector, expected] of [
       ['.btn', ['rounded-control', 'px-4', 'py-1.5', 'text-sm', 'font-medium', 'min-h-9']],
@@ -63,8 +65,8 @@ describe('36px control sizing', () => {
         '.btn-icon',
         ['inline-flex', 'h-9', 'w-9', 'items-center', 'justify-center', 'rounded-control', 'p-0'],
       ],
-      ['.input', ['w-full', 'rounded-control', 'px-4', 'py-1.5', 'text-sm', 'min-h-9']],
-      ['.sidebar-link', ['flex', 'h-9', 'items-center', 'gap-3', 'rounded-control', 'py-1.5']],
+      ['.input', ['w-full', 'rounded-control', 'px-3.5', 'py-2', 'text-sm', 'min-h-9']],
+      ['.sidebar-link', ['flex', 'h-8', 'items-center', 'gap-2.5', 'rounded-control', 'py-1']],
     ] as const) {
       expect(cssRules(style, selector).flatMap(applyTokens)).toEqual(
         expect.arrayContaining(expected),

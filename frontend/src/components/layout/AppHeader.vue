@@ -5,7 +5,9 @@
       consoleMode
         ? [
             'left-0 right-0',
-            sidebarCollapsed ? 'lg:left-[var(--sidebar-w-collapsed)]' : 'lg:left-[var(--sidebar-w)]',
+            sidebarCollapsed
+              ? 'lg:left-[var(--sidebar-w-collapsed)]'
+              : 'lg:left-[var(--sidebar-w)]',
           ]
         : 'inset-x-0'
     "
@@ -44,10 +46,7 @@
         </nav>
 
         <!-- Version details and the homepage link remain separate controls on public/standalone pages. -->
-        <div
-          v-else
-          class="header-brand group/brand flex min-w-0 items-center gap-2.5 px-1.5 py-1"
-        >
+        <div v-else class="header-brand group/brand flex min-w-0 items-center gap-2.5 px-1.5 py-1">
           <router-link
             :to="homePath"
             class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-control bg-gray-100 dark:bg-dark-800"
@@ -409,7 +408,9 @@ const { isDark, themeMode, themePalette, setThemeMode, setThemePalette, toggleTh
 
 const sidebarCollapsed = computed(() => appStore.sidebarCollapsed)
 const consoleSectionLabel = computed(() => {
-  const isZh = String(locale.value || '').toLowerCase().startsWith('zh')
+  const isZh = String(locale.value || '')
+    .toLowerCase()
+    .startsWith('zh')
   if (route.path.startsWith('/admin')) return isZh ? '管理' : 'Admin'
   return isZh ? '工作台' : 'Workspace'
 })

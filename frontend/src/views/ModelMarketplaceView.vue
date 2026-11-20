@@ -59,10 +59,7 @@
     >
       <div :class="isAuthenticated ? 'space-y-4' : 'relative mx-auto max-w-[1320px] space-y-6'">
         <!-- Public visitors see an editorial Liquid Glass header uniting title and search tools. -->
-        <div
-          v-if="!isAuthenticated"
-          class="glass-card relative overflow-hidden p-7 sm:p-10"
-        >
+        <div v-if="!isAuthenticated" class="glass-card relative overflow-hidden p-7 sm:p-10">
           <div class="relative z-10 grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-end">
             <div class="page-heading min-w-0 lg:col-span-7">
               <h1
@@ -118,10 +115,7 @@
 
         <ModelMarketplaceSkeleton v-if="loading" />
 
-        <div
-          v-else-if="errorMessage"
-          class="glass-card max-w-2xl p-6 sm:p-7"
-        >
+        <div v-else-if="errorMessage" class="glass-card max-w-2xl p-6 sm:p-7">
           <div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div class="flex items-start gap-4">
               <span
@@ -130,7 +124,9 @@
                 <Icon name="exclamationCircle" size="md" />
               </span>
               <div class="min-w-0">
-                <h2 class="text-base font-semibold tracking-[-0.015em] text-gray-950 dark:text-white">
+                <h2
+                  class="text-base font-semibold tracking-[-0.015em] text-gray-950 dark:text-white"
+                >
                   {{ t('common.error') }}
                 </h2>
                 <p class="mt-1 text-sm leading-6 text-gray-600 dark:text-dark-300">
@@ -362,7 +358,6 @@ import { formatCompactTokenRange } from '@/utils/formatters'
 import { formatPriceNumber, pricingKind, videoPricingEntries } from '@/utils/marketplacePricing'
 import { compareMarketplaceGroups, groupBrandSource } from '@/utils/marketplaceCatalog'
 import { marketplaceProtocols } from '@/utils/marketplaceProtocols'
-import { sanitizeUrl } from '@/utils/url'
 import type {
   MarketplaceGroup,
   MarketplaceModelPricing,
@@ -426,16 +421,9 @@ let requestGeneration = 0
 let catalogReady = false
 let disposed = false
 
-// Authentication selects the page shell and catalog scope; siteLogo retains the sanitized public logo policy.
+// Authentication selects the page shell and the account's authorized catalog scope.
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const catalogUserID = computed(() => (isAuthenticated.value ? (authStore.user?.id ?? null) : null))
-const siteLogo = computed(() =>
-  sanitizeUrl(appStore.cachedPublicSettings?.site_logo || appStore.siteLogo || '', {
-    allowRelative: true,
-    allowDataUrl: true,
-  }),
-)
-void siteLogo
 
 // Search normalization and the select-only active count feed the shared filter
 // controls; the free-text query is intentionally absent from the select badge count.

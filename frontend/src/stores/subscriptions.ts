@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, onScopeDispose } from 'vue'
 import subscriptionsAPI from '@/api/subscriptions'
 import type { UserSubscription } from '@/api/subscriptions.types'
 
@@ -12,11 +12,16 @@ import type { UserSubscription } from '@/api/subscriptions.types'
 // publishes subscription state. Clearing the store advances the generation so older
 // responses cannot restore cleared data. Promise identity controls loading cleanup
 // independently from publication, allowing an older completion to leave a newer request
-// active. Polling owns one interval and delegates failures to the same request path.
+// active. Polling owns one interval and its visibility/connectivity listeners. Hidden
+// or offline documents release the timer; resuming uses an ordinary cache-aware read
+// so closely spaced browser events share fresh data or one in-flight request.
 
 // CACHE_TTL_MS sets the sixty-second freshness window used by ordinary reads before
 // requesting another subscription list.
 const CACHE_TTL_MS = 60_000
+// POLL_INTERVAL_MS spaces automatic refreshes while the authenticated document is
+// visible and online; browser readiness events can refresh an expired cache sooner.
+const POLL_INTERVAL_MS = 5 * 60 * 1000
 // requestGeneration is shared across store instances and invalidates publication when a
 // newer request starts or a store clears its data.
 let requestGeneration = 0
@@ -36,8 +41,9 @@ export const useSubscriptionStore = defineStore('subscriptions', () => {
   // this owner so older completions cannot clear newer loading state.
   let activePromise: Promise<UserSubscription[]> | null = null
 
-  // pollerInterval owns the single periodic refresh timer, released when authentication
-  // clears the store or the caller stops polling.
+  // pollingEnabled owns browser listeners even while hidden/offline state pauses its
+  // timer. pollerInterval is null whenever no automatic refresh interval is scheduled.
+  let pollingEnabled = false
   let pollerInterval: ReturnType<typeof setInterval> | null = null
 
   // hasActiveSubscriptions derives the presence of usable subscriptions from the current
@@ -54,7 +60,12 @@ export const useSubscriptionStore = defineStore('subscriptions', () => {
     const now = Date.now()
     // Ordinary reads reuse the displayed subscriptions during their freshness window,
     // avoiding another request until expiry or explicit invalidation.
-    if (!force && loaded.value && lastFetchedAt.value && now - lastFetchedAt.value < CACHE_TTL_MS) {
+    if (
+      !force &&
+      loaded.value &&
+      lastFetchedAt.value !== null &&
+      now - lastFetchedAt.value < CACHE_TTL_MS
+    ) {
       return activeSubscriptions.value
     }
     // Ordinary concurrent reads join the active request; force deliberately bypasses
@@ -95,45 +106,76 @@ export const useSubscriptionStore = defineStore('subscriptions', () => {
     return activePromise
   }
 
-  // startPolling starts one five-minute subscription refresh interval when none is
-  // active. Each tick forces a refresh and logs failures; the authentication owner calls
-  // stopPolling or clear to release it.
-  function startPolling() {
-    if (pollerInterval) return
-
-    pollerInterval = setInterval(
-      () => {
-        fetchActiveSubscriptions(true).catch((error) => {
-          console.error('Subscription polling failed:', error)
-        })
-      },
-      5 * 60 * 1000,
-    )
+  // canPoll reports whether browser readiness permits automatic subscription refreshes.
+  function canPoll(): boolean {
+    return document.visibilityState !== 'hidden' && navigator.onLine !== false
   }
 
-  // stopPolling releases the subscription refresh interval and clears its handle.
+  // refreshPolling requests subscriptions only while its polling owner remains active.
+  // Ordinary reads preserve the freshness window and share pending work, avoiding
+  // duplicate requests when visibility and online events arrive close together.
+  function refreshPolling(): void {
+    if (!pollingEnabled || !canPoll()) return
+    fetchActiveSubscriptions().catch((error) => {
+      console.error('Subscription polling failed:', error)
+    })
+  }
+
+  // schedulePolling replaces the automatic timer according to current browser readiness.
+  // Hidden or offline documents retain listener ownership without a running interval;
+  // later readiness events establish one fresh interval instead of accumulating timers.
+  function schedulePolling(): void {
+    if (pollerInterval !== null) clearInterval(pollerInterval)
+    pollerInterval = null
+    if (pollingEnabled && canPoll()) {
+      pollerInterval = setInterval(refreshPolling, POLL_INTERVAL_MS)
+    }
+  }
+
+  // onPollingReadinessChange reconciles the timer and refreshes only an eligible document.
+  // An online event while hidden still leaves polling paused. When visibility returns,
+  // the ordinary read refreshes only expired state or joins its already active request.
+  function onPollingReadinessChange(): void {
+    schedulePolling()
+    refreshPolling()
+  }
+
+  // startPolling acquires one set of browser listeners and a five-minute refresh timer.
+  // It does not fetch immediately: the authentication owner performs its initial read.
+  // Repeated starts preserve the existing owner, including a timer paused while hidden.
+  function startPolling(): void {
+    if (pollingEnabled) return
+    pollingEnabled = true
+    document.addEventListener('visibilitychange', onPollingReadinessChange)
+    window.addEventListener('online', onPollingReadinessChange)
+    window.addEventListener('offline', onPollingReadinessChange)
+    schedulePolling()
+  }
+
+  // stopPolling releases the automatic timer and its browser event listeners.
   // Repeated calls after cleanup do nothing. Cached records remain available, and
   // requests already in flight continue under their existing publication generation.
-  function stopPolling() {
-    if (pollerInterval) {
-      // Release the polling timer before clearing its handle, allowing a later
-      // authenticated session to establish a fresh interval.
-      clearInterval(pollerInterval)
-      pollerInterval = null
-    }
+  function stopPolling(): void {
+    pollingEnabled = false
+    if (pollerInterval !== null) clearInterval(pollerInterval)
+    pollerInterval = null
+    document.removeEventListener('visibilitychange', onPollingReadinessChange)
+    window.removeEventListener('online', onPollingReadinessChange)
+    window.removeEventListener('offline', onPollingReadinessChange)
   }
 
   // clear invalidates pending publication, removes cached subscriptions, and stops the
   // polling interval. Advancing the module-level generation first prevents older
   // responses from restoring the cleared records. The active promise is detached, but
   // its transport continues and its caller can still receive the response. Loading
-  // retains its current value because detached completion no longer owns cleanup; a
-  // subsequent request can acquire and release that state through its own promise.
+  // clears immediately because the detached promise no longer owns this store's UI;
+  // a subsequent request acquires its own loading state and cleanup ownership.
   function clear() {
     // Advance the publication generation before clearing visible data so responses
     // already in flight cannot repopulate the cleared subscription list.
     requestGeneration++
     activePromise = null
+    loading.value = false
     activeSubscriptions.value = []
     loaded.value = false
     lastFetchedAt.value = null
@@ -146,6 +188,10 @@ export const useSubscriptionStore = defineStore('subscriptions', () => {
   function invalidateCache() {
     lastFetchedAt.value = null
   }
+
+  // Pinia disposes this setup scope independently from logout, so release browser
+  // listeners and the timer even when the authentication owner's clear hook is absent.
+  onScopeDispose(stopPolling)
 
   return {
     activeSubscriptions,

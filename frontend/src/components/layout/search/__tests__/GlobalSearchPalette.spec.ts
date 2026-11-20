@@ -180,6 +180,20 @@ afterEach(() => {
 })
 
 describe('GlobalSearchPalette suggestions', () => {
+  // An asynchronous first opening sets shared visibility before the component exists.
+  // Mounting in that state still reads the catalog and focuses the ready input.
+  it('initializes when the first opening precedes mounting', async () => {
+    openGlobalSearch()
+    wrapper = mount(GlobalSearchPalette, {
+      attachTo: document.body,
+      global: { stubs: { teleport: true, Icon: true, ModelIcon: true } },
+    })
+    await flushPromises()
+    expect(state.getAvailable).toHaveBeenCalledTimes(1)
+    expect(document.activeElement).toBe(input().element)
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(true)
+  })
+
   // Before typing, the palette lists recent visits, featured models, and common pages.
   // A featured model already listed as recent is not repeated, and the input has focus.
   it('shows recent, featured, and common sections before typing', async () => {

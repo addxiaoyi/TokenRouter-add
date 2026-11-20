@@ -175,7 +175,8 @@ export default {
         glow: '0 0 24px rgb(var(--color-primary-500) / 0.16)',
         'glow-lg': '0 0 40px rgb(var(--color-primary-500) / 0.22)',
         card: '0 2px 6px rgb(24 23 21 / 0.03), 0 12px 32px -10px rgb(24 23 21 / 0.07)',
-        'card-hover': '0 6px 16px -4px rgb(24 23 21 / 0.06), 0 22px 44px -12px rgb(24 23 21 / 0.11)',
+        'card-hover':
+          '0 6px 16px -4px rgb(24 23 21 / 0.06), 0 22px 44px -12px rgb(24 23 21 / 0.11)',
         'inner-glow': 'inset 0 1px 0 rgb(255 255 255 / 0.85)',
       },
       backgroundImage: {

@@ -56,10 +56,11 @@ describe('TablePageLayout responsive table scrolling', () => {
   })
 
   // Sticky table headers cover body rows while scrolling. Their owning rule
-  // uses opaque light and dark backgrounds and does not introduce backdrop blur.
+  // uses opaque warm-sand and obsidian backgrounds and does not introduce backdrop
+  // blur, so theme changes preserve a readable barrier above moving body rows.
   it('keeps shared sticky table headers opaque', () => {
     expect(cssRules(styles, '.table-scroll-container :deep(thead)').flatMap(applyTokens)).toEqual(
-      expect.arrayContaining(['bg-gray-50', 'dark:bg-dark-900']),
+      expect.arrayContaining(['bg-[#f0eee6]', 'dark:bg-[#222220]']),
     )
     styles.walkAtRules('apply', (rule) => {
       expect(rule.params.split(/\s+/)).not.toContain('backdrop-blur-sm')
