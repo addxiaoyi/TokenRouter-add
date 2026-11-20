@@ -14,15 +14,19 @@ import { ref } from 'vue'
 // ThemeMode selects explicit light, explicit dark, or operating-system theme resolution.
 export type ThemeMode = 'light' | 'dark' | 'system'
 
-// themeStorageKey, themeSwitchingClass, and systemDarkQuery identify persisted preference,
-// transition suppression, and system palette detection for shared theme state.
+// ThemePalette selects the editorial Liquid Glass color world and optical light field.
+export type ThemePalette = 'terracotta' | 'pearl' | 'indigo'
+
+// themeStorageKey, paletteStorageKey, themeSwitchingClass, and systemDarkQuery identify
+// persisted preferences, transition suppression, and system palette detection.
 const themeStorageKey = 'theme'
+const paletteStorageKey = 'theme_palette'
 const themeSwitchingClass = 'theme-switching'
 const systemDarkQuery = '(prefers-color-scheme: dark)'
-// isDark and themeMode are module-shared reactive values. The document initializes
-// resolved darkness, while initTheme reads persisted mode before consumers render theme-dependent content.
+// isDark, themeMode, and themePalette are module-shared reactive values.
 const isDark = ref(document.documentElement.classList.contains('dark')) // check-ui-allow: reactive theme primitive owns document state
 const themeMode = ref<ThemeMode>('system')
+const themePalette = ref<ThemePalette>('terracotta')
 // themeSwitchFrame owns the pending transition-release frame; systemThemeMedia retains the
 // single process-lifetime browser preference listener after initialization.
 let themeSwitchFrame: number | undefined
@@ -67,12 +71,24 @@ function watchSystemTheme() {
   })
 }
 
-// initTheme reads the saved mode, applies its resolved document palette, and installs
-// system observation. Call it during browser startup before mounting theme-dependent
-// views; storage errors propagate to the caller.
+// readSavedThemePalette reads the stored editorial palette choice from localStorage.
+function readSavedThemePalette(): ThemePalette {
+  const saved = localStorage.getItem(paletteStorageKey)
+  return saved === 'pearl' || saved === 'indigo' || saved === 'terracotta' ? saved : 'terracotta'
+}
+
+// applyPalette updates the shared reactive palette and document data-palette attribute.
+function applyPalette(nextPalette: ThemePalette) {
+  themePalette.value = nextPalette
+  document.documentElement.dataset.palette = nextPalette
+}
+
+// initTheme reads the saved mode and palette, applies their resolved document state, and
+// installs system observation. Call it during browser startup before mounting views.
 export function initTheme() {
   themeMode.value = readSavedThemeMode()
   applyTheme(resolveIsDark(themeMode.value))
+  applyPalette(readSavedThemePalette())
   watchSystemTheme()
 }
 
@@ -133,6 +149,14 @@ export function setTheme(nextIsDark: boolean) {
   setThemeMode(nextIsDark ? 'dark' : 'light')
 }
 
+// setThemePalette persists and applies the chosen editorial Liquid Glass palette.
+export function setThemePalette(nextPalette: ThemePalette) {
+  localStorage.setItem(paletteStorageKey, nextPalette)
+  if (nextPalette === themePalette.value) return
+  suspendThemeTransitions()
+  applyPalette(nextPalette)
+}
+
 // useTheme returns the module-shared reactive theme state and mutation functions.
 // Consumers should initialize the browser theme through initTheme first; toggling chooses
 // an explicit palette rather than system mode.
@@ -140,8 +164,10 @@ export function useTheme() {
   return {
     isDark,
     themeMode,
+    themePalette,
     setTheme,
     setThemeMode,
+    setThemePalette,
     toggleTheme: () => setTheme(!isDark.value),
   }
 }

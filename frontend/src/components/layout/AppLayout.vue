@@ -1,13 +1,54 @@
 <template>
   <div class="ba-theme-shell" :class="shellClass">
-    <!-- Background Decoration -->
-    <div class="ba-theme-backdrop pointer-events-none fixed inset-0"></div>
+    <!-- Skip link lets keyboard users jump directly past fixed header and sidebar chrome. -->
+    <a
+      href="#main-content"
+      class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-tooltip focus:rounded-control focus:bg-[#141413] focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-[#faf9f5] focus:shadow-lg dark:focus:bg-[#faf9f5] dark:focus:text-[#141413]"
+    >
+      Skip to content
+    </a>
+
+    <!-- Non-home architectural topography backdrop rendered with zero bloom/neon glow. -->
+    <div class="pointer-events-none fixed inset-0 overflow-hidden bg-[var(--page-bg)]">
+      <Topography
+        :color="topographyColor"
+        :line-count="18"
+        :line-width="1.05"
+        :major-lines="true"
+        :elevation="0.85"
+        :foreground="0.18"
+        :scale="1.15"
+        :detail="0.3"
+        :tilt="34"
+        :speed="0"
+        direction="forward"
+        :morph="0"
+        :glow="0"
+        :depth-of-field="0"
+        :fog="0.4"
+        :brightness="isDarkTheme ? 0.85 : 0.95"
+        :opacity="isDarkTheme ? 0.36 : 0.32"
+        :mouse-interaction="true"
+        hover-effect="lift"
+        :mouse-radius="1.2"
+        :mouse-strength="0.85"
+        :trail="0.45"
+        :parallax="0.65"
+        click-effect="pulse"
+        :intro="false"
+        :light-mode="!isDarkTheme"
+        :dpr="1"
+        :max-fps="24"
+        :max-cells="24000"
+        :ignore-reduced-motion="true"
+      />
+    </div>
 
     <!--
-      The global header spans the sidebar and content; page titles belong inside the
-      main column.
+      In console mode the contextual header spans the main column while the full-height
+      Codex sidebar owns brand and account controls.
     -->
-    <AppHeader />
+    <AppHeader :console-mode="!hideSidebar" />
 
     <!-- Sidebar and Main Content Area -->
     <AppSidebar v-if="!hideSidebar" />
@@ -25,8 +66,10 @@
     >
       <!-- The main flex column allocates available space to the slotted page. -->
       <main
+        id="main-content"
+        tabindex="-1"
         v-content-reveal="route.path"
-        class="app-main flex min-w-0 flex-1 flex-col"
+        class="app-main flex min-w-0 flex-1 flex-col outline-none"
         :class="mainClass"
       >
         <!--
@@ -62,15 +105,19 @@
 import { vContentReveal } from '@/directives/contentReveal'
 
 import '@/styles/onboarding.css'
-import { computed, onBeforeUnmount, onMounted } from 'vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAppStore } from '@/stores'
 import { useAuthStore } from '@/stores/auth'
 import { useOnboardingTour } from '@/composables/onboarding/useOnboardingTour'
 import { usePageMeta } from '@/composables/usePageMeta'
+import { useTheme } from '@/composables/useTheme'
 import { useOnboardingStore } from '@/stores/onboarding'
 import AppSidebar from './AppSidebar.vue'
 import AppHeader from './AppHeader.vue'
+
+// Topography loads asynchronously so console chrome paints immediately without waiting for WebGL shaders.
+const Topography = defineAsyncComponent(() => import('@/components/common/Topography.vue'))
 
 // AppLayout.vue allocates space for the global header, optional sidebar, page heading,
 // and slotted content. Its viewport modes choose whether the shell follows document
@@ -111,6 +158,17 @@ const props = withDefaults(defineProps<Props>(), {
 const appStore = useAppStore()
 const authStore = useAuthStore()
 const route = useRoute()
+const { isDark: isDarkTheme, themePalette } = useTheme()
+// topographyColor picks muted cartographic ink tones without neon saturation.
+const topographyColor = computed(() => {
+  const palette = themePalette.value
+  if (isDarkTheme.value) {
+    if (palette === 'indigo') return '#7682a4'
+    return '#827e74'
+  }
+  if (palette === 'indigo') return '#64748b'
+  return '#87867f'
+})
 const sidebarCollapsed = computed(() => appStore.sidebarCollapsed)
 // hideSidebar reads route metadata so workspace pages can hide navigation and remove the
 // corresponding main-column offset.

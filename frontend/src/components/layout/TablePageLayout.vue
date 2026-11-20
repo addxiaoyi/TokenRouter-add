@@ -92,10 +92,10 @@ onUnmounted(() => {
 
 /*
  * The card holds a flexible scroll area and a fixed pagination footer within one
- * clipped frame on desktop.
+ * clipped frame on desktop, matching the calibrated Ivory / Linear dark console surface.
  */
 .table-scroll-container {
-  @apply flex flex-col overflow-hidden h-full bg-white dark:bg-dark-900 rounded-surface border border-gray-200 dark:border-dark-600 shadow-none;
+  @apply flex flex-col overflow-hidden h-full bg-[#faf9f5]/90 dark:bg-[#1c1c1a]/90 rounded-surface border border-[#e8e6dc] dark:border-white/[0.08] shadow-card;
 }
 
 .table-scroll-container :deep(.table-wrapper) {
@@ -115,10 +115,10 @@ onUnmounted(() => {
 
 .table-scroll-container :deep(thead) {
   /*
-   * An opaque header background covers scrolled rows and keeps sticky header text
-   * readable against the moving table body.
+   * An opaque warm sand / dark obsidian header background covers scrolled rows and
+   * keeps sticky header text readable against the moving table body.
    */
-  @apply bg-gray-50 dark:bg-dark-900;
+  @apply bg-[#f0eee6] dark:bg-[#222220];
 }
 
 .table-scroll-container :deep(tbody) {
@@ -130,11 +130,15 @@ onUnmounted(() => {
    * Header density matches DataTable and the shared table class, leaving more
    * vertical room for data rows in the card.
    */
-  @apply px-4 py-2 text-left text-xs font-medium tracking-wider text-gray-500 dark:text-dark-300 border-b border-gray-200 dark:border-dark-700;
+  @apply px-4 py-2.5 text-left text-xs font-medium tracking-wider text-[#5e5d59] dark:text-[#b0aea5] border-b border-[#e8e6dc] dark:border-white/[0.07];
 }
 
 .table-scroll-container :deep(td) {
-  @apply px-4 py-3 text-sm text-gray-700 dark:text-dark-100 border-b border-gray-100 dark:border-dark-700;
+  @apply px-4 py-3 text-sm text-[#141413] dark:text-[#f5f4ed] border-b border-[#f0eee6] dark:border-white/[0.055];
+}
+
+.table-scroll-container :deep(tbody tr) {
+  @apply transition-colors duration-fast hover:bg-[#e8e6dc]/45 dark:hover:bg-white/[0.035];
 }
 
 /*
@@ -150,7 +154,7 @@ onUnmounted(() => {
 }
 
 .table-page-layout:not(.mobile-mode) .table-pagination-footer {
-  @apply border-t border-gray-200 bg-gray-50/80 dark:border-dark-700 dark:bg-dark-900;
+  @apply border-t border-[#e8e6dc] bg-[#f0eee6]/70 dark:border-white/[0.07] dark:bg-[#191917];
 }
 
 /*

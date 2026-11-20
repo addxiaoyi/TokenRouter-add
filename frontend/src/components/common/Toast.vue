@@ -16,7 +16,7 @@
           :role="toast.type === 'error' ? 'alert' : 'status'"
           data-testid="toast"
           :data-toast-type="toast.type"
-          class="pointer-events-auto flex w-full items-start gap-3 rounded-surface border border-gray-200 bg-white py-3 pl-4 pr-3 shadow-lg shadow-black/[0.06] dark:border-dark-600 dark:bg-dark-900 dark:shadow-black/40"
+          class="pointer-events-auto flex w-full items-start gap-3 rounded-surface border border-[#e8e6dc] bg-[#faf9f5]/95 py-3 pl-4 pr-2.5 shadow-lg shadow-black/[0.06] backdrop-blur-xl dark:border-white/[0.10] dark:bg-[#1c1c1a]/95 dark:shadow-black/50"
         >
           <Icon
             :name="getToastIconName(toast.type)"
@@ -30,7 +30,7 @@
           <div class="min-w-0 flex-1">
             <p
               v-if="toast.title"
-              class="text-sm font-medium leading-5 text-gray-900 dark:text-dark-50"
+              class="text-sm font-medium leading-5 text-[#141413] dark:text-[#f5f4ed]"
             >
               {{ toast.title }}
             </p>
@@ -38,8 +38,8 @@
               :class="[
                 'break-words text-sm leading-5',
                 toast.title
-                  ? 'mt-0.5 text-gray-500 dark:text-dark-300'
-                  : 'text-gray-900 dark:text-dark-100',
+                  ? 'mt-0.5 text-[#5e5d59] dark:text-[#b0aea5]'
+                  : 'text-[#141413] dark:text-[#f5f4ed]',
               ]"
             >
               {{ toast.message }}
@@ -48,7 +48,7 @@
 
           <button
             type="button"
-            class="-my-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-compact text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-100 dark:focus-visible:ring-primary-500/50"
+            class="-my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-compact text-[#5e5d59] transition-colors hover:bg-[#e8e6dc]/70 hover:text-[#141413] dark:text-[#b0aea5] dark:hover:bg-white/[0.08] dark:hover:text-white"
             :aria-label="t('common.close')"
             @click="removeToast(toast.id)"
           >

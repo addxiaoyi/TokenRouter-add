@@ -1,13 +1,13 @@
 <template>
-  <div ref="cardRef" class="card relative p-4" :aria-busy="loading">
+  <div ref="cardRef" class="relative py-2" :aria-busy="loading">
     <!-- Date-shaped placeholders retain the responsive grid while its first request is pending. -->
 
     <div class="mb-4 flex items-center justify-between gap-2">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-dark-50">
+      <h3 class="text-sm font-semibold text-[#141413] dark:text-[#f5f4ed]">
         {{ t('dashboard.activityHeatmap') }}
       </h3>
       <!-- Token-volume intensity legend. -->
-      <div class="flex shrink-0 items-center gap-1 text-xs text-gray-500 dark:text-dark-400">
+      <div class="flex shrink-0 items-center gap-1.5 text-xs text-[#5e5d59] dark:text-[#b0aea5]">
         <span>{{ t('dashboard.heatmapLess') }}</span>
         <span
           v-for="level in 5"
@@ -62,7 +62,7 @@
         <div
           v-for="m in monthItems"
           :key="`m-${m.weekIndex}`"
-          class="overflow-visible whitespace-nowrap text-xs leading-4 text-gray-400 dark:text-gray-500"
+          class="overflow-visible whitespace-nowrap text-xs leading-4 text-[#5e5d59] dark:text-[#b0aea5]"
           :style="{ gridColumn: m.weekIndex + 2, gridRow: 1 }"
         >
           {{ m.label }}
@@ -72,7 +72,7 @@
         <div
           v-for="w in weekdayLabels"
           :key="`w-${w.row}`"
-          class="flex items-center pr-1 text-xs leading-none text-gray-400 dark:text-gray-500"
+          class="flex items-center pr-1 text-xs leading-none text-[#5e5d59] dark:text-[#b0aea5]"
           :style="{ gridColumn: 1, gridRow: w.row + 2 }"
         >
           {{ w.label }}
@@ -172,14 +172,14 @@ const LABEL_COL_PX = 24
 // viewport when container width is unavailable.
 const FETCH_DAYS = 3 * 364
 const FALLBACK_WEEKS = 53
-// LEVEL_CLASSES maps zero usage and four increasing token-volume bands to matching light and
-// dark cell colors.
+// LEVEL_CLASSES maps zero usage and four increasing token-volume bands to palette-reactive
+// editorial intensities across light and dark modes.
 const LEVEL_CLASSES = [
-  'bg-gray-100 dark:bg-dark-700',
-  'bg-green-200 dark:bg-green-800',
-  'bg-green-300 dark:bg-green-600',
-  'bg-green-500 dark:bg-green-400',
-  'bg-green-700 dark:bg-green-300',
+  'bg-[#e8e6dc]/75 dark:bg-white/[0.06]',
+  'bg-primary-500/20 dark:bg-primary-400/22',
+  'bg-primary-500/45 dark:bg-primary-400/46',
+  'bg-primary-500/72 dark:bg-primary-400/74',
+  'bg-primary-600 dark:bg-primary-400',
 ]
 // KEY_OFFSETS moves keyboard focus by one calendar day vertically or one whole week
 // horizontally within visible cells.

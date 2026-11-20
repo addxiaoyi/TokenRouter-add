@@ -1,7 +1,11 @@
 <template>
   <component
     :is="isAuthenticated ? AppLayout : 'div'"
-    :class="isAuthenticated ? '' : 'ba-theme-shell relative min-h-screen overflow-hidden'"
+    :class="
+      isAuthenticated
+        ? ''
+        : 'ba-theme-shell relative min-h-screen overflow-hidden pt-[var(--header-h)]'
+    "
   >
     <template v-if="isAuthenticated" #page-heading-actions>
       <div
@@ -45,151 +49,133 @@
     <template v-if="!isAuthenticated">
       <div class="ba-theme-backdrop pointer-events-none fixed inset-0"></div>
 
-      <header class="site-header relative z-20 border-b border-primary-900/10 px-4 sm:px-6">
-        <nav class="mx-auto flex h-[var(--header-h)] max-w-7xl items-center justify-between gap-4">
-          <router-link to="/home" class="flex min-w-0 items-center gap-2.5">
-            <span class="h-8 w-8 shrink-0 overflow-hidden rounded-control shadow-sm">
-              <img :src="siteLogo || '/logo.svg'" alt="Logo" class="h-full w-full object-contain" />
-            </span>
-            <span class="truncate text-base font-semibold text-gray-950 dark:text-white">{{
-              siteName
-            }}</span>
-          </router-link>
-
-          <!--
-            The global search entry leads the right-hand controls, matching the shared
-            header; the group may shrink so a narrow header narrows the search entry.
-          -->
-          <div class="flex min-w-0 items-center gap-2 sm:gap-3">
-            <GlobalSearchTrigger />
-            <div
-              class="hidden items-center gap-5 text-sm font-medium text-gray-600 dark:text-dark-300 md:flex"
-            >
-              <router-link to="/models" class="text-link">
-                {{ t('home.nav.models') }}
-              </router-link>
-              <a
-                v-if="docUrl"
-                :href="docUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="text-link"
-              >
-                {{ t('home.docs') }}
-              </a>
-            </div>
-
-            <LocaleSwitcher />
-
-            <button
-              type="button"
-              @click="toggleTheme"
-              class="flex rounded-control text-primary-900/90 transition-colors hover:bg-primary-100 hover:text-primary-900 dark:text-dark-100/80 dark:hover:bg-dark-800 dark:hover:text-white btn-icon"
-              :title="isDark ? t('home.switchToLight') : t('home.switchToDark')"
-            >
-              <Icon v-if="isDark" name="sun" size="md" />
-              <Icon v-else name="moon" size="md" />
-            </button>
-
-            <router-link
-              to="/login"
-              class="inline-flex items-center rounded-full bg-gray-950 px-4 py-2 text-xs font-semibold text-white transition hover:bg-gray-800 dark:bg-white dark:text-dark-950 dark:hover:bg-dark-200"
-            >
-              {{ t('home.login') }}
-            </router-link>
-          </div>
-        </nav>
-      </header>
+      <!-- Share the public application header so home and marketplace keep identical chrome. -->
+      <AppHeader public-page />
     </template>
 
     <section
       v-content-reveal="!isAuthenticated && route?.path"
-      :class="isAuthenticated ? 'space-y-4' : 'relative z-10 px-4 pb-12 pt-6 sm:px-6 lg:px-8'"
+      :class="isAuthenticated ? 'space-y-4' : 'relative z-10 px-4 pb-16 pt-10 sm:px-6 lg:px-8'"
     >
-      <div :class="isAuthenticated ? 'space-y-4' : 'relative mx-auto max-w-[1400px] space-y-5'">
-        <div v-if="!isAuthenticated" class="page-heading mb-4">
-          <h1 class="page-title">{{ t('marketplace.title') }}</h1>
-          <p class="page-description">{{ t('marketplace.subtitle') }}</p>
-        </div>
-        <div v-if="!isAuthenticated" class="flex min-w-0 items-center gap-2">
-          <div class="min-w-0 flex-1 sm:w-80 sm:flex-none xl:w-96">
-            <SearchInput
-              v-model="search"
-              :placeholder="t('marketplace.searchPlaceholder')"
-              :debounce-ms="120"
-            />
-          </div>
+      <div :class="isAuthenticated ? 'space-y-4' : 'relative mx-auto max-w-[1320px] space-y-6'">
+        <!-- Public visitors see an editorial Liquid Glass header uniting title and search tools. -->
+        <div
+          v-if="!isAuthenticated"
+          class="glass-card relative overflow-hidden p-7 sm:p-10"
+        >
+          <div class="relative z-10 grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-end">
+            <div class="page-heading min-w-0 lg:col-span-7">
+              <h1
+                class="page-title text-3xl font-medium leading-[1.08] tracking-[-0.036em] sm:text-4xl md:text-[2.75rem]"
+              >
+                {{ t('marketplace.title') }}
+              </h1>
+              <p class="page-description mt-2.5 text-base">
+                {{ t('marketplace.subtitle') }}
+              </p>
+            </div>
 
-          <FilterDropdown :active-count="activeFilterCount" keep-mounted @reset="resetPanelFilters">
-            <FilterField :label="t('marketplace.filterBrand')" icon="tag">
-              <FilterOptions v-model="selectedBrand" :options="brandSelectOptions">
-                <template #icon="{ value }">
-                  <ProviderIcon :brand="String(value)" size="16px" hide-fallback />
-                </template>
-              </FilterOptions>
-            </FilterField>
-            <FilterField :label="t('marketplace.filterPricingMode')" icon="dollar">
-              <FilterOptions v-model="selectedPricingMode" :options="pricingSelectOptions" />
-            </FilterField>
-            <FilterField :label="t('marketplace.filterGroup')" icon="folder">
-              <FilterOptions v-model="selectedGroupId" :options="groupSelectOptions" searchable>
-                <template #icon="{ option }">
-                  <ProviderIcon
-                    v-if="option?.brand"
-                    :brand="String(option.brand)"
-                    size="16px"
-                    hide-fallback
-                  />
-                </template>
-              </FilterOptions>
-            </FilterField>
-          </FilterDropdown>
+            <div class="flex min-w-0 items-center gap-2.5 lg:col-span-5">
+              <div class="min-w-0 flex-1">
+                <SearchInput
+                  v-model="search"
+                  :placeholder="t('marketplace.searchPlaceholder')"
+                  :debounce-ms="120"
+                />
+              </div>
+
+              <FilterDropdown
+                :active-count="activeFilterCount"
+                keep-mounted
+                @reset="resetPanelFilters"
+              >
+                <FilterField :label="t('marketplace.filterBrand')" icon="tag">
+                  <FilterOptions v-model="selectedBrand" :options="brandSelectOptions">
+                    <template #icon="{ value }">
+                      <ProviderIcon :brand="String(value)" size="16px" hide-fallback />
+                    </template>
+                  </FilterOptions>
+                </FilterField>
+                <FilterField :label="t('marketplace.filterPricingMode')" icon="dollar">
+                  <FilterOptions v-model="selectedPricingMode" :options="pricingSelectOptions" />
+                </FilterField>
+                <FilterField :label="t('marketplace.filterGroup')" icon="folder">
+                  <FilterOptions v-model="selectedGroupId" :options="groupSelectOptions" searchable>
+                    <template #icon="{ option }">
+                      <ProviderIcon
+                        v-if="option?.brand"
+                        :brand="String(option.brand)"
+                        size="16px"
+                        hide-fallback
+                      />
+                    </template>
+                  </FilterOptions>
+                </FilterField>
+              </FilterDropdown>
+            </div>
+          </div>
         </div>
 
         <ModelMarketplaceSkeleton v-if="loading" />
 
-        <div v-else-if="errorMessage" class="card border-red-200 p-6 dark:border-red-500/30">
-          <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-                {{ t('common.error') }}
-              </h2>
-              <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-dark-300">
-                {{ errorMessage }}
-              </p>
+        <div
+          v-else-if="errorMessage"
+          class="glass-card max-w-2xl p-6 sm:p-7"
+        >
+          <div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div class="flex items-start gap-4">
+              <span
+                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-surface border border-red-200/80 bg-red-50/80 text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
+              >
+                <Icon name="exclamationCircle" size="md" />
+              </span>
+              <div class="min-w-0">
+                <h2 class="text-base font-semibold tracking-[-0.015em] text-gray-950 dark:text-white">
+                  {{ t('common.error') }}
+                </h2>
+                <p class="mt-1 text-sm leading-6 text-gray-600 dark:text-dark-300">
+                  {{ errorMessage }}
+                </p>
+              </div>
             </div>
-            <button class="btn btn-primary" type="button" @click="fetchMarketplace">
+            <button
+              class="btn btn-primary shrink-0 self-start rounded-full px-6 sm:self-center"
+              type="button"
+              @click="fetchMarketplace"
+            >
               {{ t('common.refresh') }}
             </button>
           </div>
         </div>
 
-        <div v-else-if="!hasMarketplaceResults" class="card px-6 py-14">
+        <div v-else-if="!hasMarketplaceResults" class="glass-card px-6 py-14">
           <div
-            class="mx-auto flex h-16 w-16 items-center justify-center rounded-surface bg-primary-50 text-primary-600 dark:bg-primary-500/10 dark:text-primary-300"
+            class="mx-auto flex h-14 w-14 items-center justify-center rounded-surface border border-black/[0.08] bg-white/80 text-gray-700 shadow-sm dark:border-white/[0.10] dark:bg-white/[0.06] dark:text-dark-100"
           >
             <Icon name="inbox" size="xl" />
           </div>
-          <h2 class="mt-6 text-center text-2xl font-semibold text-gray-950 dark:text-white">
+          <h2
+            class="mt-6 text-balance text-center text-2xl font-semibold tracking-[-0.025em] text-gray-950 dark:text-white"
+          >
             {{ t('marketplace.emptyTitle') }}
           </h2>
           <p
-            class="mx-auto mt-3 max-w-xl text-center text-sm leading-7 text-gray-600 dark:text-dark-300"
+            class="mx-auto mt-3 max-w-xl text-pretty text-center text-sm leading-7 text-gray-600 dark:text-dark-300"
           >
             {{ t('marketplace.emptyDescription') }}
           </p>
           <div class="mt-6 text-center">
-            <button class="btn btn-secondary" type="button" @click="resetFilters">
+            <button class="btn btn-secondary rounded-full px-5" type="button" @click="resetFilters">
               {{ t('common.reset') }}
             </button>
           </div>
         </div>
 
-        <div v-else ref="groupListRef" class="space-y-4">
+        <div v-else ref="groupListRef" class="space-y-5">
           <section
             v-for="group in filteredGroups"
             :key="group.id"
-            class="card overflow-hidden"
+            class="glass-card overflow-hidden"
             data-testid="marketplace-group-section"
           >
             <div
@@ -247,19 +233,21 @@
                   </HelpTooltip>
                 </div>
 
-                <div class="flex items-start gap-3">
+                <div class="flex items-start gap-3.5">
                   <span
-                    class="mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-surface border border-gray-200 bg-white shadow-sm dark:border-dark-700 dark:bg-dark-950"
+                    class="mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-surface border border-black/[0.08] bg-white/85 shadow-sm dark:border-white/[0.09] dark:bg-dark-950/85"
                   >
                     <ProviderIcon :brand="groupBrandSource(group)" size="28px" />
                   </span>
                   <div class="min-w-0">
-                    <h2 class="text-lg font-semibold text-gray-950 dark:text-white">
+                    <h2
+                      class="text-lg font-semibold tracking-[-0.02em] text-gray-950 dark:text-white"
+                    >
                       {{ group.name }}
                     </h2>
                     <p
                       v-if="group.description"
-                      class="mt-1 text-sm leading-6 text-gray-600 dark:text-dark-300"
+                      class="mt-1 max-w-[68ch] text-pretty text-sm leading-6 text-gray-600 dark:text-dark-300"
                     >
                       {{ group.description }}
                     </p>
@@ -284,12 +272,12 @@
                 v-for="model in group.models"
                 :key="`${group.id}-${model.id}`"
                 :data-model-id="model.id"
-                class="group min-w-0 max-w-full rounded-surface border border-gray-100 bg-gray-50/80 p-4 transition-colors hover:border-black/20 dark:border-dark-700 dark:bg-dark-950/80 dark:hover:border-primary-500/50"
+                class="group min-w-0 max-w-full rounded-surface border border-black/[0.07] bg-white/65 p-4 shadow-sm backdrop-blur-md transition duration-fast hover:-translate-y-0.5 hover:border-black/[0.15] hover:bg-white/95 dark:border-white/[0.08] dark:bg-white/[0.03] dark:hover:border-white/[0.16] dark:hover:bg-white/[0.055]"
               >
                 <div class="flex min-w-0 flex-wrap items-start justify-between gap-2">
                   <div class="flex min-w-0 flex-1 basis-32 items-center">
                     <h3
-                      class="min-w-0 truncate text-base font-semibold text-gray-950 dark:text-white"
+                      class="min-w-0 truncate text-base font-semibold tracking-[-0.015em] text-gray-950 dark:text-white"
                     >
                       {{ model.display_name }}
                     </h3>
@@ -346,10 +334,10 @@ import { useRoute } from 'vue-router'
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import AppHeader from '@/components/layout/AppHeader.vue'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import ModelMarketplaceSkeleton from '@/components/marketplace/ModelMarketplaceSkeleton.vue'
-import LocaleSwitcher from '@/components/common/LocaleSwitcher.vue'
 import GroupAvailabilityBar from '@/components/marketplace/GroupAvailabilityBar.vue'
 import ModelCapabilityTags from '@/components/marketplace/ModelCapabilityTags.vue'
 import ModelAttributeDetails from '@/components/marketplace/ModelAttributeDetails.vue'
@@ -362,9 +350,8 @@ import FilterField from '@/components/common/FilterField.vue'
 import FilterOptions from '@/components/common/FilterOptions.vue'
 import { BILLING_MODE_ICONS, withOptionIcons } from '@/components/common/filterOptionIcons'
 import ModelIdLabel from '@/components/common/ModelIdLabel.vue'
-import GlobalSearchTrigger from '@/components/layout/search/GlobalSearchTrigger.vue'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
-import { initTheme, useTheme } from '@/composables/useTheme'
+import { initTheme } from '@/composables/useTheme'
 import { getAvailableMarketplaceModels, getMarketplaceModels } from '@/api/marketplace'
 import {
   providerBrandDisplayName,
@@ -422,7 +409,6 @@ const { balanceUnitName } = useBalanceDisplay()
 
 const appStore = useAppStore()
 const authStore = useAuthStore()
-const { isDark, toggleTheme } = useTheme()
 
 // Loaded catalog state is separate from local search and select filters, allowing
 // filter resets to reuse the response without making another API request.
@@ -440,21 +426,16 @@ let requestGeneration = 0
 let catalogReady = false
 let disposed = false
 
-// Authentication selects the page shell and catalog; branding derives from injected or cached
-// settings with filtered logo and documentation URLs before rendering external links.
+// Authentication selects the page shell and catalog scope; siteLogo retains the sanitized public logo policy.
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const catalogUserID = computed(() => (isAuthenticated.value ? (authStore.user?.id ?? null) : null))
-
-const siteName = computed(() => appStore.siteName || 'TokenRouter')
 const siteLogo = computed(() =>
   sanitizeUrl(appStore.cachedPublicSettings?.site_logo || appStore.siteLogo || '', {
     allowRelative: true,
     allowDataUrl: true,
   }),
 )
-const docUrl = computed(() =>
-  sanitizeUrl(appStore.cachedPublicSettings?.doc_url || appStore.docUrl || ''),
-)
+void siteLogo
 
 // Search normalization and the select-only active count feed the shared filter
 // controls; the free-text query is intentionally absent from the select badge count.

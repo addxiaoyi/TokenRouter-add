@@ -26,10 +26,10 @@ describe('radius theme', () => {
   // Each semantic property has exactly one value in the root stylesheet. This
   // guards the compact, control, surface, and dialog geometry against conflicting declarations.
   it.each([
-    ['compact', '6px'],
-    ['control', '8px'],
-    ['surface', '12px'],
-    ['dialog', '16px'],
+    ['compact', '8px'],
+    ['control', '10px'],
+    ['surface', '16px'],
+    ['dialog', '20px'],
   ])('defines %s exactly once', (name, value) => {
     expect(rootRules.flatMap((rule) => declarations(rule, `--radius-${name}`))).toEqual([value])
   })

@@ -224,11 +224,11 @@ async function mountMarketplace() {
   const wrapper = mount(ModelMarketplaceView, {
     global: {
       stubs: {
+        AppHeader: { template: '<header />' },
         AppLayout: { template: '<div><slot name="page-heading-actions" /><slot /></div>' },
         RouterLink: { template: '<a><slot /></a>' },
         Icon: { template: '<span />' },
         LoadingSpinner: { template: '<span />' },
-        LocaleSwitcher: { template: '<span />' },
         GroupCapacityBadge: { template: '<span data-testid="group-capacity" />' },
         SearchInput: SearchInputStub,
       },

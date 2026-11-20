@@ -212,25 +212,25 @@ defineExpose({
   the upper right.
 */
 .filter-trigger-active {
-  @apply border-primary-300 text-primary-700 dark:border-primary-500/40 dark:text-primary-400;
+  @apply border-gray-900/25 text-gray-950 dark:border-white/25 dark:text-white;
 }
 
 .filter-trigger-count {
   @apply pointer-events-none absolute -right-1.5 -top-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1;
-  @apply bg-primary-600 text-xs font-semibold leading-none text-white;
+  @apply bg-gray-900 text-xs font-semibold leading-none text-white dark:bg-white dark:text-gray-950;
   @apply ring-2 ring-white dark:ring-dark-950;
 }
 
 /*
-  The panel keeps the date-range picker surface. Its 6px padding plus the rows'
+  The panel keeps the frosted macOS popover surface. Its 6px padding plus the rows'
   compact radius stays concentric with the surface radius.
 */
 .filter-panel {
   @apply absolute top-full z-modal-nested mt-2 flex flex-col overflow-hidden;
   @apply max-h-[min(70vh,42rem)];
-  @apply bg-white dark:bg-dark-900;
-  @apply rounded-surface border border-primary-900/10 dark:border-dark-600;
-  @apply shadow-lg shadow-black/10 dark:shadow-black/30;
+  @apply bg-white/95 backdrop-blur-xl dark:bg-dark-900/95;
+  @apply rounded-surface border border-black/[0.08] dark:border-dark-600;
+  @apply shadow-glass;
 }
 
 .filter-panel-body {
@@ -239,13 +239,13 @@ defineExpose({
 
 /* The reset row appears only with active conditions, separated like inset menu sections. */
 .filter-panel-footer {
-  @apply shrink-0 border-t border-primary-900/10 p-1.5 dark:border-dark-700;
+  @apply shrink-0 border-t border-black/[0.07] p-1.5 dark:border-dark-700;
 }
 
 .filter-panel-reset {
   @apply flex h-9 w-full items-center gap-2.5 rounded-compact px-2.5 text-left text-sm font-medium;
-  @apply text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-dark-300 dark:hover:bg-dark-800 dark:hover:text-dark-50;
+  @apply text-gray-600 hover:bg-black/[0.05] hover:text-gray-950 dark:text-dark-300 dark:hover:bg-white/[0.07] dark:hover:text-white;
   @apply transition-colors duration-fast;
-  @apply outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500/50;
+  @apply outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-black/15 dark:focus-visible:ring-white/15;
 }
 </style>

@@ -87,15 +87,17 @@ onBeforeUnmount(() => {
  * hint appears from lg upward, where the field is wide enough to keep the placeholder.
  */
 .global-search-trigger {
-  @apply h-9 min-w-0 items-center gap-2 rounded-control border px-3 text-sm;
-  @apply border-primary-900/10 bg-gray-100/70 text-primary-900/45;
+  @apply h-9 min-w-0 items-center gap-2 rounded-full border px-3.5 text-sm;
+  @apply border-black/[0.08] bg-white/60 text-gray-500 backdrop-blur-md;
   @apply transition-colors duration-fast;
-  @apply hover:border-primary-900/20 hover:bg-gray-100;
+  @apply hover:border-black/[0.15] hover:bg-white/85 hover:text-gray-700;
   @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.7);
 }
 
 .dark .global-search-trigger {
-  @apply border-dark-600 bg-dark-950 text-dark-400;
-  @apply hover:border-dark-500 hover:bg-dark-950 focus-visible:ring-white/6;
+  @apply border-white/[0.09] bg-white/[0.05] text-dark-400 backdrop-blur-md;
+  @apply hover:border-white/[0.16] hover:bg-white/[0.08] hover:text-dark-200 focus-visible:ring-white/10;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06);
 }
 </style>

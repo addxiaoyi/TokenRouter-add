@@ -2,24 +2,24 @@
   <div class="card">
     <!-- Match the announcement heading while keeping navigation rows compact. -->
     <div
-      class="flex min-h-[61px] items-center border-b border-gray-100 px-6 py-4 dark:border-dark-700"
+      class="flex min-h-[61px] items-center border-b border-black/[0.07] px-6 py-4 dark:border-dark-600"
     >
-      <h2 class="truncate text-lg font-semibold text-gray-900 dark:text-dark-50">
+      <h2 class="truncate text-lg font-semibold tracking-[-0.015em] text-gray-950 dark:text-dark-50">
         {{ t('dashboard.quickActions') }}
       </h2>
     </div>
-    <div class="space-y-2 p-4">
+    <div class="space-y-1.5 p-3">
       <button
         @click="router.push('/keys')"
-        class="group flex w-full items-center gap-3 rounded-control bg-gray-50 p-3 text-left transition duration-normal hover:bg-gray-100 dark:bg-dark-800/50 dark:hover:bg-dark-800"
+        class="group flex w-full items-center gap-3 rounded-control bg-transparent p-3 text-left transition duration-fast hover:bg-black/[0.04] active:scale-[0.99] dark:hover:bg-white/[0.05]"
       >
         <div
-          class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-control bg-primary-100 transition-transform group-hover:scale-105 dark:bg-primary-900/30"
+          class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-control border border-black/[0.06] bg-gray-100/80 transition-transform duration-fast group-hover:scale-105 dark:border-dark-600 dark:bg-dark-800"
         >
-          <Icon name="key" size="md" class="text-primary-600 dark:text-primary-400" />
+          <Icon name="key" size="md" class="text-gray-700 dark:text-dark-100" />
         </div>
         <div class="min-w-0 flex-1">
-          <p class="text-sm font-medium text-gray-900 dark:text-dark-50">
+          <p class="text-sm font-medium text-gray-950 dark:text-dark-50">
             {{ t('dashboard.createApiKey') }}
           </p>
           <p class="text-xs text-gray-500 dark:text-dark-400">
@@ -29,22 +29,22 @@
         <Icon
           name="chevronRight"
           size="sm"
-          class="text-gray-400 transition duration-fast group-hover:translate-x-0.5 group-hover:text-primary-500 dark:text-dark-500"
+          class="text-gray-400 transition duration-fast group-hover:translate-x-0.5 group-hover:text-gray-700 dark:text-dark-500 dark:group-hover:text-dark-200"
           :animate-on-hover="false"
         />
       </button>
 
       <button
         @click="router.push('/usage')"
-        class="group flex w-full items-center gap-3 rounded-control bg-gray-50 p-3 text-left transition duration-normal hover:bg-gray-100 dark:bg-dark-800/50 dark:hover:bg-dark-800"
+        class="group flex w-full items-center gap-3 rounded-control bg-transparent p-3 text-left transition duration-fast hover:bg-black/[0.04] active:scale-[0.99] dark:hover:bg-white/[0.05]"
       >
         <div
-          class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-control bg-emerald-100 transition-transform group-hover:scale-105 dark:bg-emerald-900/30"
+          class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-control border border-black/[0.06] bg-gray-100/80 transition-transform duration-fast group-hover:scale-105 dark:border-dark-600 dark:bg-dark-800"
         >
-          <Icon name="chart" size="md" class="text-emerald-600 dark:text-emerald-400" />
+          <Icon name="chart" size="md" class="text-gray-700 dark:text-dark-100" />
         </div>
         <div class="min-w-0 flex-1">
-          <p class="text-sm font-medium text-gray-900 dark:text-dark-50">
+          <p class="text-sm font-medium text-gray-950 dark:text-dark-50">
             {{ t('dashboard.viewUsage') }}
           </p>
           <p class="text-xs text-gray-500 dark:text-dark-400">
@@ -54,7 +54,7 @@
         <Icon
           name="chevronRight"
           size="sm"
-          class="text-gray-400 transition duration-fast group-hover:translate-x-0.5 group-hover:text-emerald-500 dark:text-dark-500"
+          class="text-gray-400 transition duration-fast group-hover:translate-x-0.5 group-hover:text-gray-700 dark:text-dark-500 dark:group-hover:text-dark-200"
           :animate-on-hover="false"
         />
       </button>
@@ -63,15 +63,15 @@
         v-if="paymentEnabled"
         data-testid="purchase-quick-action"
         @click="router.push('/purchase')"
-        class="group flex w-full items-center gap-3 rounded-control bg-gray-50 p-3 text-left transition duration-normal hover:bg-gray-100 dark:bg-dark-800/50 dark:hover:bg-dark-800"
+        class="group flex w-full items-center gap-3 rounded-control bg-transparent p-3 text-left transition duration-fast hover:bg-black/[0.04] active:scale-[0.99] dark:hover:bg-white/[0.05]"
       >
         <div
-          class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-control bg-rose-100 transition-transform group-hover:scale-105 dark:bg-rose-900/30"
+          class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-control border border-black/[0.06] bg-gray-100/80 transition-transform duration-fast group-hover:scale-105 dark:border-dark-600 dark:bg-dark-800"
         >
-          <Icon name="creditCard" size="md" class="text-rose-600 dark:text-rose-400" />
+          <Icon name="creditCard" size="md" class="text-gray-700 dark:text-dark-100" />
         </div>
         <div class="min-w-0 flex-1">
-          <p class="text-sm font-medium text-gray-900 dark:text-dark-50">
+          <p class="text-sm font-medium text-gray-950 dark:text-dark-50">
             {{ t('nav.buySubscription') }}
           </p>
           <p class="text-xs text-gray-500 dark:text-dark-400">
@@ -81,22 +81,22 @@
         <Icon
           name="chevronRight"
           size="sm"
-          class="text-gray-400 transition duration-fast group-hover:translate-x-0.5 group-hover:text-rose-500 dark:text-dark-500"
+          class="text-gray-400 transition duration-fast group-hover:translate-x-0.5 group-hover:text-gray-700 dark:text-dark-500 dark:group-hover:text-dark-200"
           :animate-on-hover="false"
         />
       </button>
 
       <button
         @click="router.push('/redeem')"
-        class="group flex w-full items-center gap-3 rounded-control bg-gray-50 p-3 text-left transition duration-normal hover:bg-gray-100 dark:bg-dark-800/50 dark:hover:bg-dark-800"
+        class="group flex w-full items-center gap-3 rounded-control bg-transparent p-3 text-left transition duration-fast hover:bg-black/[0.04] active:scale-[0.99] dark:hover:bg-white/[0.05]"
       >
         <div
-          class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-control bg-amber-100 transition-transform group-hover:scale-105 dark:bg-amber-900/30"
+          class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-control border border-black/[0.06] bg-gray-100/80 transition-transform duration-fast group-hover:scale-105 dark:border-dark-600 dark:bg-dark-800"
         >
-          <Icon name="gift" size="md" class="text-amber-600 dark:text-amber-400" />
+          <Icon name="gift" size="md" class="text-gray-700 dark:text-dark-100" />
         </div>
         <div class="min-w-0 flex-1">
-          <p class="text-sm font-medium text-gray-900 dark:text-dark-50">
+          <p class="text-sm font-medium text-gray-950 dark:text-dark-50">
             {{ t('dashboard.redeemCode') }}
           </p>
           <p class="text-xs text-gray-500 dark:text-dark-400">
@@ -106,7 +106,7 @@
         <Icon
           name="chevronRight"
           size="sm"
-          class="text-gray-400 transition duration-fast group-hover:translate-x-0.5 group-hover:text-amber-500 dark:text-dark-500"
+          class="text-gray-400 transition duration-fast group-hover:translate-x-0.5 group-hover:text-gray-700 dark:text-dark-500 dark:group-hover:text-dark-200"
           :animate-on-hover="false"
         />
       </button>

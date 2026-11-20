@@ -1,13 +1,18 @@
 <template>
   <div
-    class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500 dark:text-dark-400"
+    class="inline-flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600 dark:text-dark-300"
     data-testid="live-stats"
     :aria-busy="!loaded"
   >
+    <!-- Single restrained liveness pulse indicates active five-minute telemetry polling. -->
+    <span
+      class="h-1.5 w-1.5 shrink-0 rounded-full bg-primary-500/90 motion-safe:animate-pulse dark:bg-primary-400"
+      aria-hidden="true"
+    ></span>
     <span
       v-for="item in items"
       :key="item.key"
-      class="inline-flex items-center gap-2"
+      class="inline-flex items-center gap-1.5"
       :title="item.hint"
       :data-testid="`live-stat-${item.key}`"
     >
@@ -17,9 +22,9 @@
         :class="METRIC_TONES[item.tone].icon"
         :animate-on-hover="false"
       />
-      <span>{{ item.label }}</span>
+      <span class="text-gray-500 dark:text-dark-400">{{ item.label }}</span>
       <Skeleton v-if="!loaded" :width="40" :height="12" />
-      <span v-else class="font-medium tabular-nums text-gray-900 dark:text-dark-100">
+      <span v-else class="font-medium tabular-nums text-gray-950 dark:text-dark-50">
         <span aria-hidden="true">{{ item.animated }}</span>
         <span class="sr-only">{{ item.value }}</span>
       </span>

@@ -706,8 +706,8 @@ onMounted(() => {
 }
 
 .settings-tab-active {
-  @apply border-primary-200/80 bg-white text-primary-700 shadow-sm dark:border-primary-500/15 dark:bg-primary-500/8 dark:text-primary-500;
-  box-shadow: 0 1px 0 rgb(255 255 255 / 0.92) inset;
+  @apply border-black/[0.08] bg-black/[0.07] font-semibold text-gray-950 dark:border-white/[0.09] dark:bg-white/[0.10] dark:text-white;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.5) inset;
 }
 
 .settings-tab-active::before {
@@ -724,7 +724,7 @@ onMounted(() => {
 }
 
 .settings-tab-active .settings-tab-icon {
-  @apply text-primary-600 dark:text-primary-500;
+  @apply text-gray-950 dark:text-white;
 }
 
 .settings-tab-label {
@@ -761,7 +761,7 @@ onMounted(() => {
 }
 
 .gateway-section-tab-active {
-  @apply border-primary-200 bg-primary-50 text-primary-700 dark:border-primary-400/30 dark:bg-primary-400/10 dark:text-primary-200;
+  @apply border-black/[0.08] bg-black/[0.06] font-semibold text-gray-950 dark:border-white/[0.09] dark:bg-white/[0.09] dark:text-white;
 }
 
 .gateway-section-tab-icon {

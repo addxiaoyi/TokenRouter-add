@@ -11,14 +11,14 @@ defineProps<{ loading?: boolean /* Distribution request pending. */ }>()
 
 <template>
   <div
-    class="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:gap-6"
+    class="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-5"
     :aria-busy="loading"
   >
-    <div class="h-48 w-48 shrink-0">
+    <div class="h-36 w-36 shrink-0 xl:h-40 xl:w-40">
       <Skeleton v-if="loading" variant="circle" class="h-full" />
       <slot v-else name="chart" />
     </div>
-    <div class="max-h-48 w-full min-w-0 flex-1 overflow-auto">
+    <div class="max-h-52 w-full min-w-0 flex-1 overflow-auto">
       <slot />
     </div>
   </div>

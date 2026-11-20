@@ -1,8 +1,8 @@
 <template>
   <div class="space-y-4" :aria-busy="loading">
-    <!-- Metric cards select the trend while showing totals and comparison changes for the selected interval. -->
+    <!-- Open-canvas hairline metric strip: dissolves card boxes directly into the Topography backdrop. -->
     <div
-      class="dash-rise-item grid grid-cols-2 gap-4 lg:grid-cols-4"
+      class="dash-rise-item grid grid-cols-2 divide-y divide-black/[0.08] border-y border-black/[0.08] lg:grid-cols-4 lg:divide-x lg:divide-y-0 dark:divide-white/[0.08] dark:border-white/[0.08]"
       :style="{ '--rise-i': 0 }"
       role="tablist"
       :aria-label="t('dashboard.usageChart.metricsLabel')"
@@ -14,30 +14,52 @@
         role="tab"
         :data-testid="`usage-metric-${item.key}`"
         :aria-selected="metric === item.key"
-        class="metric-card card flex min-w-0 flex-col gap-1 overflow-hidden p-4 text-left transition-colors duration-fast sm:gap-3"
+        class="metric-card group relative flex min-w-0 flex-col justify-between gap-2.5 overflow-hidden px-3 py-4 text-left transition-colors duration-fast lg:px-5 lg:first:pl-1 lg:last:pr-1"
         :class="
           metric === item.key
-            ? 'border-primary-600 dark:border-primary-500/70'
-            : 'hover:border-black/20 dark:hover:border-dark-500'
+            ? 'bg-black/[0.025] dark:bg-white/[0.03]'
+            : 'hover:bg-black/[0.018] dark:hover:bg-white/[0.02]'
         "
         @click="selectMetric(item.key)"
       >
-        <div class="flex min-w-0 items-center gap-2">
+        <span
+          v-if="metric === item.key"
+          class="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 bg-primary-500 dark:bg-primary-400"
+          aria-hidden="true"
+        />
+        <div class="flex min-w-0 items-center justify-between gap-2">
           <span
-            class="flex h-5 w-5 shrink-0 items-center justify-center rounded-compact sm:h-7 sm:w-7"
-            :class="[METRIC_TONES[item.key].tile, METRIC_TONES[item.key].icon]"
+            class="inline-flex min-w-0 items-center gap-1.5 text-xs font-medium tracking-[0.01em] text-gray-500 dark:text-dark-400"
           >
-            <Icon :name="item.icon" size="sm" />
+            <Icon :name="item.icon" size="xs" :class="METRIC_TONES[item.key].icon" />
+            <span class="truncate">{{ item.label }}</span>
           </span>
-          <span class="truncate text-xs font-medium text-gray-500 dark:text-dark-400">{{
-            item.label
-          }}</span>
+          <Skeleton v-if="!loaded" :width="56" :height="18" />
+          <span
+            v-else
+            class="flex min-w-0 items-center gap-1 text-xs text-gray-500 dark:text-dark-400"
+            :data-testid="`usage-delta-${item.key}`"
+          >
+            <template v-if="item.delta">
+              <span
+                class="inline-flex shrink-0 items-center gap-0.5 rounded-full px-2 py-0.5 font-medium tabular-nums"
+                :class="deltaToneClasses[item.key === 'cacheHitRate' ? item.delta.tone : 'flat']"
+                :title="t('dashboard.usageChart.vsPrevious')"
+              >
+                <Icon :name="deltaIcons[item.delta.tone]" size="xs" :animate-on-hover="false" />
+                {{ item.delta.text }}
+              </span>
+            </template>
+            <span v-else class="truncate text-gray-400 dark:text-dark-500">{{
+              t('dashboard.usageChart.noPrevious')
+            }}</span>
+          </span>
         </div>
-        <div class="flex min-w-0 items-end justify-between gap-3">
+        <div class="mt-1 flex min-w-0 items-end justify-between gap-3">
           <Skeleton v-if="!loaded" :width="96" :height="32" />
           <span
             v-else
-            class="min-w-0 truncate text-2xl font-semibold tracking-tight tabular-nums text-gray-900 dark:text-dark-50"
+            class="min-w-0 truncate text-2xl font-light tracking-[-0.03em] tabular-nums text-gray-950 dark:text-dark-50 sm:text-3xl"
           >
             <!-- Keep animated digits visual and expose the settled value to screen readers. -->
             <span aria-hidden="true">{{ item.animatedValue }}</span>
@@ -49,40 +71,24 @@
             class="metric-sparkline h-8 w-20 shrink-0"
             :class="
               metric === item.key
-                ? 'text-primary-600 dark:text-primary-500'
-                : 'text-gray-400 dark:text-dark-500'
+                ? 'text-primary-600 dark:text-primary-400'
+                : 'text-gray-400/80 dark:text-dark-500'
             "
             :values="item.series"
             :data-testid="`usage-sparkline-${item.key}`"
           />
         </div>
-        <Skeleton v-if="!loaded" :width="120" :height="20" />
-        <span
-          v-else
-          class="flex min-w-0 flex-wrap items-center gap-1 text-xs text-gray-500 dark:text-dark-400 sm:gap-2"
-          :data-testid="`usage-delta-${item.key}`"
-        >
-          <template v-if="item.delta">
-            <span
-              class="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-medium tabular-nums"
-              :class="deltaToneClasses[item.key === 'cacheHitRate' ? item.delta.tone : 'flat']"
-            >
-              <Icon :name="deltaIcons[item.delta.tone]" size="xs" :animate-on-hover="false" />
-              {{ item.delta.text }}
-            </span>
-            <span class="sm:hidden">{{ t('dashboard.usageChart.vsPreviousShort') }}</span>
-            <span class="hidden sm:inline">{{ t('dashboard.usageChart.vsPrevious') }}</span>
-          </template>
-          <span v-else class="truncate">{{ t('dashboard.usageChart.noPrevious') }}</span>
-        </span>
       </button>
     </div>
 
-    <!-- Place the ranking below the chart until the xl layout has room for both. -->
-    <div class="dash-rise-item grid grid-cols-1 gap-4 xl:grid-cols-3" :style="{ '--rise-i': 1 }">
+    <!-- Borderless open-canvas chart & model ranking band separated by a single hairline divider. -->
+    <div
+      class="dash-rise-item grid grid-cols-1 divide-y divide-black/[0.08] border-b border-black/[0.08] pb-6 xl:grid-cols-3 xl:divide-x xl:divide-y-0 dark:divide-white/[0.08] dark:border-white/[0.08]"
+      :style="{ '--rise-i': 1 }"
+    >
       <div
         ref="chartCardRef"
-        class="card flex min-w-0 flex-col p-4 xl:col-span-2"
+        class="flex min-w-0 flex-col py-2 xl:col-span-2 xl:pr-6"
         data-testid="usage-chart-card"
       >
         <div class="mb-4 flex min-h-7 flex-wrap items-center justify-between gap-2">
@@ -249,12 +255,16 @@ type UsageDataset = ChartDataset<'line', Array<number | null>> & {
   previous?: boolean
 }
 
-// BRAND_LINE_COLOR supplies the theme-specific request and spending line color shared with
-// selected metric controls.
-const BRAND_LINE_COLOR = { light: '#12A7E8', dark: '#00D2FF' }
+// PALETTE_LINE_COLORS supplies theme- and palette-specific request and spending line colors
+// so the primary trend curve harmonizes with the active editorial palette.
+const PALETTE_LINE_COLORS = {
+  terracotta: { light: '#C46346', dark: '#E38A6E' },
+  pearl: { light: '#2B2926', dark: '#E7E5DF' },
+  indigo: { light: '#4E5D94', dark: '#8B9AD1' },
+} as const
 // CARD_SURFACE matches card backgrounds so hover points and peak rings appear hollow against
 // the surrounding plot.
-const CARD_SURFACE = { light: '#FFFFFF', dark: '#0F0F10' }
+const CARD_SURFACE = { light: '#FAF9F6', dark: '#141413' }
 // OPEN_SEGMENT_DASH and PREVIOUS_DASH distinguish incomplete live data and comparison
 // periods from completed current-period line segments.
 const OPEN_SEGMENT_DASH = [4, 4]
@@ -269,7 +279,7 @@ const LABEL_GAP = 10
 // cards and their shared trend selection.
 const { t } = useI18n()
 const { formatBalanceAmount } = useBalanceDisplay()
-const { colors: themeColors, isDark } = useChartTheme()
+const { colors: themeColors, isDark, themePalette } = useChartTheme()
 const reducedMotion = usePreferredReducedMotion()
 const {
   metric,
@@ -470,7 +480,10 @@ const shortLabel = (date: string): string =>
 // annotation surface colors.
 const axisLabels = computed(() => current.value.map((point) => shortLabel(point.date)))
 
-const brandColor = computed(() => (isDark.value ? BRAND_LINE_COLOR.dark : BRAND_LINE_COLOR.light))
+const brandColor = computed(() => {
+  const paletteColors = PALETTE_LINE_COLORS[themePalette.value] ?? PALETTE_LINE_COLORS.terracotta
+  return isDark.value ? paletteColors.dark : paletteColors.light
+})
 const surfaceColor = computed(() => (isDark.value ? CARD_SURFACE.dark : CARD_SURFACE.light))
 
 // mainColor uses the cache-rate series color for that metric and the theme-specific brand

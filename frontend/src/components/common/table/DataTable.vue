@@ -15,7 +15,7 @@
       <div
         v-for="i in 5"
         :key="i"
-        class="rounded-surface border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-900"
+        class="card p-4"
         data-loading-skeleton
         aria-hidden="true"
       >
@@ -51,9 +51,7 @@
     </template>
 
     <template v-else-if="!data || data.length === 0">
-      <div
-        class="rounded-surface border border-gray-200 bg-white p-12 text-center dark:border-dark-700 dark:bg-dark-900"
-      >
+      <div class="card p-12 text-center">
         <slot name="empty">
           <div class="flex flex-col items-center">
             <Icon name="inbox" size="xl" class="mb-4 h-12 w-12 text-gray-400 dark:text-dark-500" />
@@ -82,10 +80,10 @@
       <div
         v-for="(row, index) in sortedData"
         :key="resolveRowKey(row, index)"
-        class="rounded-surface border border-gray-200 bg-white p-4 dark:border-dark-700 dark:bg-dark-900"
+        class="card p-4"
         :class="{
           'cursor-pointer': clickableRows,
-          'border-primary-300 bg-primary-50/40 dark:border-primary-700 dark:bg-primary-900/10':
+          'ring-1 ring-primary-500/40 bg-primary-50/40 dark:ring-primary-400/40 dark:bg-primary-900/15':
             selectable && isRowSelected(row, index),
         }"
         @click="clickableRows && emit('rowClick', row)"
@@ -241,7 +239,7 @@
         </tr>
       </thead>
       <tbody
-        class="table-body divide-y divide-gray-200 bg-white dark:divide-dark-700 dark:bg-dark-900"
+        class="table-body divide-y divide-[#f0eee6] bg-transparent dark:divide-white/[0.06]"
       >
         <!-- Loading cells retain the same column order, sticky positions, and padding as data cells. -->
         <tr v-if="loading" v-for="i in 5" :key="i" aria-hidden="true" data-loading-skeleton>

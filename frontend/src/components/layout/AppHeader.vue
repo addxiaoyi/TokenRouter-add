@@ -1,12 +1,22 @@
 <template>
-  <header class="site-header fixed inset-x-0 top-0 z-header border-b border-primary-900/10">
+  <header
+    class="site-header fixed top-0 z-header border-b border-black/[0.07] transition-[left] duration-layout dark:border-white/[0.08]"
+    :class="
+      consoleMode
+        ? [
+            'left-0 right-0',
+            sidebarCollapsed ? 'lg:left-[var(--sidebar-w-collapsed)]' : 'lg:left-[var(--sidebar-w)]',
+          ]
+        : 'inset-x-0'
+    "
+  >
     <!--
       Header padding follows the same breakpoint sequence as the main content so their
       left and right edges stay aligned.
     -->
     <div class="flex h-[var(--header-h)] items-center justify-between gap-3 px-4 md:px-6 lg:px-8">
-      <!-- The global header owns site branding. -->
-      <div class="flex min-w-0 shrink-0 items-center gap-2 sm:gap-4">
+      <!-- Console mode shows mobile drawer toggle + Codex breadcrumb; public mode owns full brand. -->
+      <div class="flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
         <!-- The sidebar toggle stays square at widths where navigation labels begin to show. -->
         <button
           v-if="!publicPage && !isCreativeStudio"
@@ -18,15 +28,32 @@
           <Icon name="menu" size="md" />
         </button>
 
-        <!-- Version details and the homepage link remain separate controls. -->
-        <div class="header-brand group/brand flex min-w-0 items-center gap-2.5 px-1.5 py-1">
+        <!-- Codex contextual breadcrumb in console mode -->
+        <nav
+          v-if="consoleMode"
+          aria-label="Breadcrumb"
+          class="flex min-w-0 items-center gap-1.5 text-[13px]"
+        >
+          <span class="hidden text-gray-500 sm:inline dark:text-dark-400">
+            {{ consoleSectionLabel }}
+          </span>
+          <span class="hidden text-gray-400/70 sm:inline dark:text-dark-500">/</span>
+          <span class="truncate font-medium text-gray-950 dark:text-white">
+            {{ consolePageTitle }}
+          </span>
+        </nav>
+
+        <!-- Version details and the homepage link remain separate controls on public/standalone pages. -->
+        <div
+          v-else
+          class="header-brand group/brand flex min-w-0 items-center gap-2.5 px-1.5 py-1"
+        >
           <router-link
             :to="homePath"
-            class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-control bg-primary-100 dark:bg-dark-800"
+            class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-control bg-gray-100 dark:bg-dark-800"
             :aria-label="siteName"
           >
             <img
-              v-if="settingsLoaded"
               :src="siteLogo || '/logo.svg'"
               :alt="siteName"
               class="h-full w-full object-contain"
@@ -38,7 +65,7 @@
               class="block max-w-44 truncate text-base font-bold leading-tight text-gray-900 transition-colors duration-fast focus-visible:text-primary-600 group-hover/brand:text-primary-600 dark:text-white dark:focus-visible:text-primary-500 dark:group-hover/brand:text-primary-500"
               >{{ siteName }}</router-link
             >
-            <VersionBadge :version="siteVersion" />
+            <VersionBadge v-if="siteVersion" :version="siteVersion" />
           </span>
         </div>
 
@@ -108,15 +135,10 @@
           :title="isDark ? t('nav.lightMode') : t('nav.darkMode')"
           @click="toggleTheme"
         >
-          <!-- Sun and moon colors distinguish the theme toggle states. -->
-          <Icon
-            :name="isDark ? 'sun' : 'moon'"
-            size="md"
-            :class="isDark ? 'text-amber-500' : 'text-blue-500'"
-          />
+          <Icon :name="isDark ? 'sun' : 'moon'" size="md" />
         </button>
 
-        <template v-if="user">
+        <template v-if="user && !consoleMode">
           <div class="header-status-divider hidden sm:block"></div>
 
           <!--
@@ -138,8 +160,8 @@
           </SubscriptionProgressMini>
         </template>
 
-        <!-- The avatar opens the user menu and matches the utility button height. -->
-        <div v-if="user" class="relative" ref="dropdownRef">
+        <!-- The avatar opens the user menu on public/standalone headers; console mode hosts it in the sidebar footer. -->
+        <div v-if="user && !consoleMode" class="relative" ref="dropdownRef">
           <button
             @click="toggleDropdown"
             class="header-status-user-button"
@@ -266,8 +288,8 @@
                 </button>
               </div>
 
-              <!-- Theme choices use the shared segmented control beneath the account menu. -->
-              <div class="menu-section">
+              <!-- Theme choices use the shared segmented control plus live editorial palette swatches. -->
+              <div class="menu-section space-y-2.5">
                 <div
                   v-segmented
                   class="segmented grid grid-cols-3 gap-1"
@@ -292,12 +314,36 @@
                     <Icon :name="option.icon" size="sm" />
                   </button>
                 </div>
+
+                <!-- Live editorial Liquid Glass palette selector -->
+                <div class="flex items-center justify-between gap-1.5 px-1">
+                  <button
+                    v-for="item in paletteOptions"
+                    :key="item.id"
+                    type="button"
+                    :aria-pressed="themePalette === item.id"
+                    :title="item.label"
+                    class="flex flex-1 items-center justify-center gap-1.5 rounded-control border px-2 py-1 text-xs font-medium transition-colors duration-fast"
+                    :class="
+                      themePalette === item.id
+                        ? 'border-gray-900/25 bg-white text-gray-900 dark:border-white/25 dark:bg-white/[0.12] dark:text-white'
+                        : 'border-transparent text-gray-900/55 hover:bg-black/[0.04] hover:text-gray-900 dark:text-dark-50/55 dark:hover:bg-white/[0.06] dark:hover:text-white'
+                    "
+                    @click="setThemePalette(item.id)"
+                  >
+                    <span
+                      class="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-black/15 dark:ring-white/25"
+                      :style="{ backgroundColor: item.swatch }"
+                    ></span>
+                    <span class="truncate">{{ item.label }}</span>
+                  </button>
+                </div>
               </div>
             </div>
           </MotionTransition>
         </div>
 
-        <router-link v-else-if="publicPage" to="/login" class="btn btn-primary">
+        <router-link v-else-if="publicPage" to="/login" class="btn btn-primary rounded-full px-5">
           {{ t('home.login') }}
         </router-link>
       </div>
@@ -323,7 +369,8 @@ import type { IconName } from '@/components/icons'
 import VersionBadge from '@/components/admin/system/VersionBadge.vue'
 import { sanitizeUrl } from '@/utils/url'
 import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
-import { useTheme, type ThemeMode } from '@/composables/useTheme'
+import { usePageMeta } from '@/composables/usePageMeta'
+import { useTheme, type ThemeMode, type ThemePalette } from '@/composables/useTheme'
 
 // AppHeader.vue renders the shared brand, the global search entry, labeled navigation
 // entries, balance, and account menu. Marketplace, announcement, docs, support, and
@@ -334,22 +381,50 @@ import { useTheme, type ThemeMode } from '@/composables/useTheme'
 // provides a dashboard return link beside the brand. Menu listeners belong to the
 // mounted header.
 
-// publicPage hides the sidebar toggle and enables marketplace and guest login links
-// while keeping the shared brand and account controls.
-withDefaults(defineProps<{ publicPage?: boolean /* Public page navigation */ }>(), {
-  publicPage: false,
-})
+// publicPage hides the sidebar toggle and enables marketplace and guest login links;
+// consoleMode offsets the header to the main column and shows a Codex breadcrumb while
+// brand and account controls live in the full-height sidebar.
+withDefaults(
+  defineProps<{
+    publicPage?: boolean /* Public page navigation */
+    consoleMode?: boolean /* Contextual console header paired with full-height sidebar */
+  }>(),
+  {
+    publicPage: false,
+    consoleMode: false,
+  },
+)
 
 // Router, stores, translation, balance formatting, and theme state supply the shared
 // header actions and account display for this mounted component.
 const router = useRouter()
 const route = useRoute()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const appStore = useAppStore()
 const authStore = useAuthStore()
 const onboardingStore = useOnboardingStore()
+const { pageTitle } = usePageMeta()
 const { formatBalanceAmount, balanceUnitSymbol } = useBalanceDisplay()
-const { isDark, themeMode, setThemeMode, toggleTheme } = useTheme()
+const { isDark, themeMode, themePalette, setThemeMode, setThemePalette, toggleTheme } = useTheme()
+
+const sidebarCollapsed = computed(() => appStore.sidebarCollapsed)
+const consoleSectionLabel = computed(() => {
+  const isZh = String(locale.value || '').toLowerCase().startsWith('zh')
+  if (route.path.startsWith('/admin')) return isZh ? '管理' : 'Admin'
+  return isZh ? '工作台' : 'Workspace'
+})
+const consolePageTitle = computed(() => pageTitle.value || siteName.value)
+
+// paletteOptions defines the three switchable editorial Liquid Glass color worlds.
+const paletteOptions: Array<{
+  id: ThemePalette // Palette identifier stored on html[data-palette]
+  label: string // Concise palette display label
+  swatch: string // Representative swatch hex color
+}> = [
+  { id: 'terracotta', label: '暖玉', swatch: '#C46D45' },
+  { id: 'pearl', label: '珍珠', swatch: '#52525B' },
+  { id: 'indigo', label: '雾靛', swatch: '#5B6CF9' },
+]
 
 // User and site values drive branding and account controls; public settings gate the
 // logo, and dropdownOpen owns the local account-menu visibility.
@@ -361,7 +436,6 @@ const siteLogo = computed(() =>
   sanitizeUrl(appStore.siteLogo || '', { allowRelative: true, allowDataUrl: true }),
 )
 const siteVersion = computed(() => appStore.siteVersion)
-const settingsLoaded = computed(() => appStore.publicSettingsLoaded)
 const dropdownOpen = ref(false)
 
 // MenuNavItem describes a translated account-menu destination and its icon.
@@ -505,14 +579,23 @@ function handleClickOutside(event: MouseEvent) {
   }
 }
 
-// Register the document click listener for this mounted header and remove the same
-// callback before unmount so stale menus stop observing clicks.
+// handleKeydown dismisses the open account menu when the user presses Escape.
+function handleKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && dropdownOpen.value) {
+    closeDropdown()
+  }
+}
+
+// Register document click and Escape listeners for this mounted header and remove the
+// same callbacks before unmount so stale menus stop observing events.
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  document.addEventListener('keydown', handleKeydown)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
+  document.removeEventListener('keydown', handleKeydown)
 })
 </script>
 

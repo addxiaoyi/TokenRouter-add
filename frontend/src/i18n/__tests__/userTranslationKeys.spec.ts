@@ -121,7 +121,13 @@ function userSources(): string[] {
   const visited = new Set<string>()
   while (queue.length) {
     const file = queue.pop()!
-    if (visited.has(file) || file.includes('/i18n/locales/') || file.includes('/router/')) continue
+    const normalized = file.replace(/\\/g, '/')
+    if (
+      visited.has(file) ||
+      normalized.includes('/i18n/locales/') ||
+      normalized.includes('/router/')
+    )
+      continue
     visited.add(file)
     const source = readFileSync(file, 'utf8')
     for (const reference of sourceReferences(source, file).imports) {

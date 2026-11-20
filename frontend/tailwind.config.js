@@ -13,12 +13,12 @@ const darkEdgeColor =
 
 // darkEdges supplies shared border, divide, and ring opacities while text and surface utilities use separate color ramps.
 const darkEdges = {
-  400: darkEdgeColor(0.3),
-  500: darkEdgeColor(0.125),
-  600: darkEdgeColor(0.078),
-  700: darkEdgeColor(0.04),
-  800: darkEdgeColor(0.031),
-  900: darkEdgeColor(0.02),
+  400: darkEdgeColor(0.28),
+  500: darkEdgeColor(0.14),
+  600: darkEdgeColor(0.085),
+  700: darkEdgeColor(0.055),
+  800: darkEdgeColor(0.04),
+  900: darkEdgeColor(0.025),
 }
 
 /** @type {import('tailwindcss').Config} */
@@ -72,81 +72,78 @@ export default {
         panel: 'var(--max-h-panel)',
       },
       colors: {
-        // Primary blue shades supply the application accent ramp across light and dark themes.
+        // Dynamic editorial accent ramp driven by root RGB tokens so multi-theme palettes switch live.
         primary: {
-          50: '#F6FCFF',
-          100: '#DDF4FC',
-          200: '#BFEAFF',
-          300: '#8BDDF8',
-          400: '#4DD4F6',
-          500: '#00D2FF',
-          600: '#12A7E8',
-          700: '#0B8FD8',
-          800: '#176F9E',
-          900: '#2D4F68',
-          950: '#071A2A',
+          50: 'rgb(var(--color-primary-50) / <alpha-value>)',
+          100: 'rgb(var(--color-primary-100) / <alpha-value>)',
+          200: 'rgb(var(--color-primary-200) / <alpha-value>)',
+          300: 'rgb(var(--color-primary-300) / <alpha-value>)',
+          400: 'rgb(var(--color-primary-400) / <alpha-value>)',
+          500: 'rgb(var(--color-primary-500) / <alpha-value>)',
+          600: 'rgb(var(--color-primary-600) / <alpha-value>)',
+          700: 'rgb(var(--color-primary-700) / <alpha-value>)',
+          800: 'rgb(var(--color-primary-800) / <alpha-value>)',
+          900: 'rgb(var(--color-primary-900) / <alpha-value>)',
+          950: 'rgb(var(--color-primary-950) / <alpha-value>)',
         },
-        // Accent shades provide the secondary white-to-blue ramp used by branded surfaces.
         accent: {
-          50: '#FFFFFF',
-          100: '#EAF8FE',
-          200: '#CDEFFD',
-          300: '#9BDEFA',
-          400: '#5BCDF2',
-          500: '#1598D8',
-          600: '#0B8FD8',
-          700: '#176F9E',
-          800: '#2D4F68',
-          900: '#21465E',
-          950: '#071A2A',
+          50: 'rgb(var(--color-primary-50) / <alpha-value>)',
+          100: 'rgb(var(--color-primary-100) / <alpha-value>)',
+          200: 'rgb(var(--color-primary-200) / <alpha-value>)',
+          300: 'rgb(var(--color-primary-300) / <alpha-value>)',
+          400: 'rgb(var(--color-primary-400) / <alpha-value>)',
+          500: 'rgb(var(--color-primary-500) / <alpha-value>)',
+          600: 'rgb(var(--color-primary-600) / <alpha-value>)',
+          700: 'rgb(var(--color-primary-700) / <alpha-value>)',
+          800: 'rgb(var(--color-primary-800) / <alpha-value>)',
+          900: 'rgb(var(--color-primary-900) / <alpha-value>)',
+          950: 'rgb(var(--color-primary-950) / <alpha-value>)',
         },
-        // Gray and slate utilities share neutral zinc values so reused utilities
-        // stay in the same neutral family as the dark application surfaces.
+        // Warm gallery alabaster & obsidian stone neutral scale (Anthropic / OpenAI editorial craft).
         gray: {
-          50: '#FAFAFA',
-          100: '#F4F4F5',
-          200: '#E4E4E7',
-          300: '#D4D4D8',
-          400: '#A1A1AA',
-          500: '#71717A',
-          600: '#52525B',
-          700: '#3F3F46',
-          800: '#27272A',
-          900: '#18181B',
-          950: '#09090B',
+          50: '#FAF9F6',
+          100: '#F3F1EC',
+          200: '#E7E4DD',
+          300: '#D5D0C7',
+          400: '#A5A097',
+          500: '#767169',
+          600: '#56524C',
+          700: '#413E39',
+          800: '#272522',
+          900: '#181715',
+          950: '#0E0E0D',
         },
         slate: {
-          50: '#FAFAFA',
-          100: '#F4F4F5',
-          200: '#E4E4E7',
-          300: '#D4D4D8',
-          400: '#A1A1AA',
-          500: '#71717A',
-          600: '#52525B',
-          700: '#3F3F46',
-          800: '#27272A',
-          900: '#18181B',
-          950: '#09090B',
+          50: '#FAF9F6',
+          100: '#F3F1EC',
+          200: '#E7E4DD',
+          300: '#D5D0C7',
+          400: '#A5A097',
+          500: '#767169',
+          600: '#56524C',
+          700: '#413E39',
+          800: '#272522',
+          900: '#181715',
+          950: '#0E0E0D',
         },
         // @project-doc docs/architecture/frontend_ui_conventions.md#dark_colors
-        // Dark text and surface colors use this ramp; border, divide, and ring intensity comes from darkEdges.
+        // Warm obsidian neutral ramp for dark editorial surfaces; border, divide, and ring intensity comes from darkEdges.
         dark: {
-          50: '#FAFAFA', // Heading and emphasis text.
-          100: '#DEE0E2', // Body, navigation, and header foreground.
-          200: '#D4D4D8', // Secondary strong foreground.
-          300: '#A1A1AA', // Secondary text foreground.
-          400: '#8B8B94', // Hints and table headings.
-          500: '#5F5F67', // Icons and disabled foreground.
-          600: '#3D3D42', // Strong neutral fill.
-          700: '#27272A', // Chips and disabled fills.
-          800: '#17171A', // Row hover and nested surfaces.
-          900: '#0F0F10', // Cards, dialogs, and dropdowns.
-          950: '#141416', // Input, secondary-control, tab-track, and code surfaces.
+          50: '#FAF9F6', // Heading and emphasis text.
+          100: '#EFECE6', // Body, navigation, and header foreground.
+          200: '#D8D4CC', // Secondary strong foreground.
+          300: '#A8A39A', // Secondary text foreground.
+          400: '#7B766E', // Hints and table headings.
+          500: '#5A5650', // Icons and disabled foreground.
+          600: '#3D3A36', // Strong neutral fill.
+          700: '#2A2825', // Chips, borders, and disabled fills.
+          800: '#211F1D', // Row hover and nested surfaces.
+          900: '#181715', // Cards, dialogs, and dropdowns.
+          950: '#0E0E0D', // Page canvas, inputs, secondary controls, and code surfaces.
         },
       },
       fontFamily: {
-        // Latin text first selects the bundled Plus Jakarta Sans family. CJK glyphs
-        // prefer an installed PingFang face, then the bundled Noto Sans SC face.
+        // Modern all-sans editorial typography: Plus Jakarta Sans for Latin, PingFang SC / Noto Sans SC for CJK.
         sans: [
           '"Plus Jakarta Sans Variable"',
           '"PingFang SC"',
@@ -154,10 +151,7 @@ export default {
           'system-ui',
           '-apple-system',
           'BlinkMacSystemFont',
-          'Segoe UI',
-          'Roboto',
           'Helvetica Neue',
-          'Arial',
           'Hiragino Sans GB',
           'Microsoft YaHei',
           'sans-serif',
@@ -173,17 +167,16 @@ export default {
         ],
       },
       boxShadow: {
-        // Structural surfaces use border separation; floating surfaces and branded
-        // effects retain their explicitly selected shadow utilities.
-        DEFAULT: 'none',
-        sm: 'none',
-        glass: 'none',
-        'glass-sm': 'none',
-        glow: '0 0 20px rgba(0, 210, 255, 0.28)',
-        'glow-lg': '0 0 40px rgba(18, 167, 232, 0.35)',
-        card: 'none',
-        'card-hover': 'none',
-        'inner-glow': 'inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+        // Refined ambient shadows supporting translucent Liquid Glass panels without heavy blur clutter.
+        DEFAULT: '0 1px 2px rgb(24 23 21 / 0.04), 0 4px 12px -4px rgb(24 23 21 / 0.05)',
+        sm: '0 1px 2px rgb(24 23 21 / 0.04)',
+        glass: '0 2px 6px rgb(24 23 21 / 0.03), 0 16px 40px -12px rgb(24 23 21 / 0.08)',
+        'glass-sm': '0 1px 3px rgb(24 23 21 / 0.04), 0 8px 20px -8px rgb(24 23 21 / 0.06)',
+        glow: '0 0 24px rgb(var(--color-primary-500) / 0.16)',
+        'glow-lg': '0 0 40px rgb(var(--color-primary-500) / 0.22)',
+        card: '0 2px 6px rgb(24 23 21 / 0.03), 0 12px 32px -10px rgb(24 23 21 / 0.07)',
+        'card-hover': '0 6px 16px -4px rgb(24 23 21 / 0.06), 0 22px 44px -12px rgb(24 23 21 / 0.11)',
+        'inner-glow': 'inset 0 1px 0 rgb(255 255 255 / 0.85)',
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',

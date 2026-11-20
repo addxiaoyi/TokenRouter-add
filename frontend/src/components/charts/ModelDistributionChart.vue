@@ -1,5 +1,5 @@
 <template>
-  <div class="card p-4">
+  <div class="py-3 lg:pr-6">
     <div class="mb-4 flex items-center justify-between gap-3">
       <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
         {{
@@ -86,15 +86,27 @@
       </template>
       <table class="w-full text-xs">
         <thead>
-          <tr class="text-gray-500 dark:text-gray-400">
-            <th class="pb-2 text-left">{{ t('admin.dashboard.model') }}</th>
-            <th class="pb-2 text-right">{{ t('admin.dashboard.requests') }}</th>
-            <th class="pb-2 text-right">{{ t('admin.dashboard.tokens') }}</th>
-            <th class="pb-2 text-right">{{ t('admin.dashboard.actual') }}</th>
-            <th v-if="showProviderCost" class="pb-2 text-right">
+          <tr class="text-[#5e5d59] dark:text-[#b0aea5]">
+            <th class="pb-2.5 pr-3 text-left font-medium">{{ t('admin.dashboard.model') }}</th>
+            <th class="whitespace-nowrap px-2 pb-2.5 text-right font-medium">
+              {{ t('admin.dashboard.requests') }}
+            </th>
+            <th class="whitespace-nowrap px-2 pb-2.5 text-right font-medium">
+              {{ t('admin.dashboard.tokens') }}
+            </th>
+            <th class="whitespace-nowrap px-2 pb-2.5 text-right font-medium">
+              {{ t('admin.dashboard.actual') }}
+            </th>
+            <th
+              v-if="showProviderCost"
+              class="whitespace-nowrap px-2 pb-2.5 text-right font-medium"
+            >
               {{ t('admin.dashboard.providerCost') }}
             </th>
-            <th v-if="showStandardCost" class="pb-2 text-right">
+            <th
+              v-if="showStandardCost"
+              class="whitespace-nowrap pl-2 pb-2.5 text-right font-medium"
+            >
               {{ t('admin.dashboard.standard') }}
             </th>
           </tr>
@@ -109,9 +121,11 @@
           <template v-for="model in displayModelStats" :key="model.model">
             <tr
               data-icon-trigger
-              class="group/breakdown border-t border-gray-100 transition-colors dark:border-dark-600"
+              class="group/breakdown border-t border-[#f0eee6] transition-colors dark:border-white/[0.06]"
               :class="
-                enableBreakdown ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-dark-700/40' : ''
+                enableBreakdown
+                  ? 'cursor-pointer hover:bg-[#e8e6dc]/45 dark:hover:bg-white/[0.035]'
+                  : ''
               "
               @click="enableBreakdown && toggleBreakdown('model', model.model)"
             >
@@ -120,10 +134,10 @@
                   their text color.
                 -->
               <td
-                class="max-w-[100px] truncate py-1.5 font-medium text-gray-900 dark:text-white"
+                class="max-w-[130px] truncate py-2 pr-3 font-medium text-[#141413] dark:text-[#f5f4ed]"
                 :class="
                   enableBreakdown
-                    ? 'group-hover/breakdown:text-primary-600 dark:group-hover/breakdown:text-primary-500'
+                    ? 'group-hover/breakdown:text-primary-600 dark:group-hover/breakdown:text-primary-400'
                     : ''
                 "
                 :title="model.model"
@@ -140,24 +154,24 @@
                   {{ model.model }}
                 </span>
               </td>
-              <td class="py-1.5 text-right text-gray-600 dark:text-gray-400">
+              <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-[#5e5d59] dark:text-[#b0aea5]">
                 {{ formatNumber(model.requests) }}
               </td>
-              <td class="py-1.5 text-right text-gray-600 dark:text-gray-400">
+              <td class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-[#5e5d59] dark:text-[#b0aea5]">
                 {{ formatTokens(model.total_tokens) }}
               </td>
-              <td class="py-1.5 text-right text-green-600 dark:text-green-400">
+              <td class="whitespace-nowrap px-2 py-2 text-right font-medium tabular-nums text-teal-700 dark:text-teal-400">
                 {{ balanceUnitSymbol }}{{ formatCost(model.actual_cost) }}
               </td>
               <td
                 v-if="showProviderCost"
-                class="py-1.5 text-right text-orange-500 dark:text-orange-400"
+                class="whitespace-nowrap px-2 py-2 text-right tabular-nums text-amber-700 dark:text-amber-400"
               >
                 {{ usdUnitSymbol }}{{ formatCost(model.provider_cost) }}
               </td>
               <td
                 v-if="showStandardCost"
-                class="py-1.5 text-right text-gray-400 dark:text-gray-500"
+                class="whitespace-nowrap pl-2 py-2 text-right tabular-nums text-[#87867f] dark:text-[#8a8f98]"
               >
                 {{ usdUnitSymbol }}{{ formatCost(model.cost) }}
               </td>

@@ -23,10 +23,10 @@
 
 | token | 值 | 用途 |
 |---|---|---|
-| `rounded-compact` | 6px | 徽章、chip、tab 项、骨架屏、行内代码、小图标块 |
-| `rounded-control` | 8px | 按钮、输入框、下拉框、侧栏链接、浮层面板 |
-| `rounded-surface` | 12px | 卡片、表格容器、toast、代码块 |
-| `rounded-dialog` | 16px | 桌面端弹窗（移动端弹窗用 surface） |
+| `rounded-compact` | 8px | 徽章、chip、tab 项、骨架屏、行内代码、小图标块 |
+| `rounded-control` | 10px | 按钮、输入框、下拉框、侧栏链接、浮层面板 |
+| `rounded-surface` | 16px | 卡片、表格容器、toast、代码块 |
+| `rounded-dialog` | 20px | 桌面端弹窗（移动端弹窗用 surface） |
 | `rounded-full` / `rounded-none` | 无 | 胶囊、进度条、开关；需要直角时覆盖 |
 
 系统设置页的吸顶导航是胶囊分段样式：外壳、一级标签和网关二级标签都用 `rounded-full`。选中态由淡品牌青底、边框和图标文字着色组成。网关页多出一行二级标签时，外壳改用 `rounded-dialog`。外壳是不透明底色加一层下投影，深色模式用比卡片亮一档的 `dark-500` 边线。外壳放在 `.settings-tabs-sticky` 容器里，容器吸顶在顶栏下方 1rem，用页面底色铺底，并用 box-shadow 向上铺满到顶栏，盖住页签上方缝隙和圆角两侧的滚动内容。

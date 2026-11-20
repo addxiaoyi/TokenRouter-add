@@ -7,11 +7,13 @@
 
   <AuthLayout>
     <div class="space-y-6">
-      <div class="text-center">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+      <div class="text-left">
+        <h2
+          class="text-2xl font-medium tracking-[-0.028em] text-gray-950 dark:text-white"
+        >
           {{ t('auth.welcomeBack') }}
         </h2>
-        <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
+        <p class="mt-1.5 text-base leading-6 text-gray-700 dark:text-dark-200">
           {{ t('auth.signInToAccount') }}
         </p>
       </div>
