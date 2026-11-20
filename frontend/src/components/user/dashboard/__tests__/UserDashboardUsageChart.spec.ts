@@ -154,6 +154,7 @@ describe('UserDashboardUsageChart', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     localStorage.clear()
   })
 
@@ -290,10 +291,12 @@ describe('UserDashboardUsageChart', () => {
     expect(button.attributes('disabled')).toBeDefined()
   })
 
-  // Token mode receives a current-day observation within the default interval. The test
-  // protects four unstacked unfilled lines, the incomplete-bucket dashed segment, and both
-  // drawing plugins.
+  // Token mode renders two completed local hours and the current partial hour.
+  // The test protects four unstacked unfilled lines, the dash into the partial bucket,
+  // the prior solid segment, and both drawing plugins.
   it('Token 画成四条不堆叠的折线，未结束的末段画虚线，并挂上竖线和描线插件', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-21T02:30:00'))
     const today = formatDayKey(new Date())
     vi.mocked(usageAPI.getDashboardTrend).mockResolvedValue(
       trendOf([{ date: `${today} 00:00`, requests: 3, actual_cost: 1 }]) as any,
@@ -321,8 +324,10 @@ describe('UserDashboardUsageChart', () => {
     ).toBe(true)
     expect(line.props('options').scales.y.stacked).toBeUndefined()
 
-    // Today includes the current hour, so its final incoming segment is dashed while earlier segments remain solid.
-    const lastIndex = line.props('data').labels.length - 1
+    // The chart ends at the open local hour rather than rendering future placeholders.
+    const labels = line.props('data').labels
+    expect(labels).toEqual(['00:00', '01:00', '02:00'])
+    const lastIndex = labels.length - 1
     expect(datasets[0].segment.borderDash({ p1DataIndex: lastIndex })).toEqual([4, 4])
     expect(datasets[0].segment.borderDash({ p1DataIndex: lastIndex - 1 })).toBeUndefined()
 

@@ -868,6 +868,12 @@ async function saveFromSaveBar(wrapper: ReturnType<typeof mountView>) {
   await flushPromises()
 }
 
+// expectSaveBarInactive checks that a clean draft cannot be submitted from the bar.
+// A leaving bar is inert until Vue removes it, so either transition stage is valid.
+function expectSaveBarInactive(wrapper: ReturnType<typeof mountView>) {
+  expect(wrapper.find('[data-testid="settings-save-bar"]:not([inert])').exists()).toBe(false)
+}
+
 // openGatewayTab reveals gateway controls and their platform navigation.
 // Call after the page loads; it waits for pending promises so controls and
 // dependent components are ready for the next interaction.
@@ -1090,7 +1096,7 @@ describe('admin SettingsView payment visible method controls', () => {
       updatePanelRateLimitSettings.mock.invocationCallOrder[0]!,
     )
     expect(showSuccess).toHaveBeenCalledWith('admin.settings.settingsSaved')
-    expect(wrapper.get('[data-testid="settings-save-bar"]').attributes('inert')).toBeDefined()
+    expectSaveBarInactive(wrapper)
   })
 
   // Bulk persistence can succeed while the separate search request fails.
@@ -1127,8 +1133,7 @@ describe('admin SettingsView payment visible method controls', () => {
     // Returning search to its loaded value isolates the bulk snapshot: a dirty
     // bulk snapshot would keep the save bar active after this reversal.
     await wrapper.get('input#web-search-emulation-enabled').setValue(false)
-    const cleanSaveBar = wrapper.find('[data-testid="settings-save-bar"]')
-    expect(!cleanSaveBar.exists() || cleanSaveBar.attributes('inert') !== undefined).toBe(true)
+    expectSaveBarInactive(wrapper)
     await wrapper.get('input#web-search-emulation-enabled').setValue(true)
     await saveFromSaveBar(wrapper)
     expect(updateSettings).toHaveBeenCalledTimes(2)
@@ -1138,8 +1143,7 @@ describe('admin SettingsView payment visible method controls', () => {
     )
     expect(updateWebSearchEmulationConfig).toHaveBeenCalledTimes(2)
     expect(showSuccess).toHaveBeenCalledWith('admin.settings.settingsSaved')
-    const retrySaveBar = wrapper.find('[data-testid="settings-save-bar"]')
-    expect(!retrySaveBar.exists() || retrySaveBar.attributes('inert') !== undefined).toBe(true)
+    expectSaveBarInactive(wrapper)
   })
 
   // A failed bulk target and an edited panel rate limit share one submission.
@@ -1174,7 +1178,7 @@ describe('admin SettingsView payment visible method controls', () => {
     expect(updateSettings).toHaveBeenCalledTimes(2)
     expect(updatePanelRateLimitSettings).toHaveBeenCalledTimes(1)
     expect(showSuccess).toHaveBeenCalledWith('admin.settings.settingsSaved')
-    expect(wrapper.get('[data-testid="settings-save-bar"]').attributes('inert')).toBeDefined()
+    expectSaveBarInactive(wrapper)
   })
 
   // An older server response omits bStats controls. The new draft keeps official
@@ -1206,7 +1210,7 @@ describe('admin SettingsView payment visible method controls', () => {
       }),
     )
     expect((enabled.element as HTMLInputElement).checked).toBe(false)
-    expect(wrapper.get('[data-testid="settings-save-bar"]').attributes('inert')).toBeDefined()
+    expectSaveBarInactive(wrapper)
     getSettings.mockResolvedValue({
       ...baseSettingsResponse,
       bstats_enabled: false,
@@ -3040,9 +3044,7 @@ describe('admin SettingsView security tab controls', () => {
     await flushPromises()
 
     expect(updateSettings).toHaveBeenCalled()
-    // jsdom keeps the leaving node during its transition; inert records that
-    // the saved state has deactivated its controls before animation completion.
-    expect(wrapper.get('[data-testid="settings-save-bar"]').attributes('inert')).toBeDefined()
+    expectSaveBarInactive(wrapper)
   })
 
   // A security switch is edited after its server value loads. Discarding reloads
