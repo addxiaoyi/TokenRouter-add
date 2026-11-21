@@ -351,6 +351,36 @@ func (r *UserStore) GetByEmail(ctx context.Context, email string) (*identitycore
 	return out, nil
 }
 
+// GetByUsername resolves an exact, case-sensitive username for password login.
+// Surrounding input whitespace is ignored, while stored usernames and account
+// mailboxes remain unchanged. Missing accounts return ErrUserNotFound and
+// duplicate current usernames return an error rather than selecting a user.
+//
+// The bounded query detects ambiguity before loading the account through
+// GetByID, which applies the repository's normal soft-delete filtering and
+// hydrates group restrictions. Authentication still checks the returned account
+// password and status; finding a username alone grants no access.
+func (r *UserStore) GetByUsername(ctx context.Context, username string) (*identitycore.User, error) {
+	username = strings.TrimSpace(username)
+	if username == "" {
+		return nil, identitycore.ErrUserNotFound
+	}
+	matches, err := r.client.User.Query().
+		Where(dbuser.UsernameEQ(username)).
+		Limit(2).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(matches) == 0 {
+		return nil, identitycore.ErrUserNotFound
+	}
+	if len(matches) > 1 {
+		return nil, fmt.Errorf("username lookup matched multiple users")
+	}
+	return r.GetByID(ctx, matches[0].ID)
+}
+
 // Update delegates flagged account edits and related group/email identity
 // writes to the shared guarded updater. Nil user or empty flags succeeds
 // without persistence; the helper selects transaction completion
