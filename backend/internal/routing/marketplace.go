@@ -13,7 +13,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
-	"github.com/TokenFlux/TokenRouter/internal/provider/modelrules"
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
@@ -142,7 +141,7 @@ type MarketplaceModelDef struct {
 	// AttributeTargets keeps complete provider/model routes and execution
 	// conditions, while the public ID remains the key used to return resolved
 	// attributes.
-	AttributeTargets []modelrules.Target     // resolved provider attribute routes
+	AttributeTargets []modelcatalog.Target   // resolved provider attribute routes
 	UpstreamModels   []string                // resolved upstream model IDs
 	Protocols        []capability.ProtocolID // ordered requestable client protocols
 	NativeProtocols  []capability.ProtocolID // protocols native across resolved routes

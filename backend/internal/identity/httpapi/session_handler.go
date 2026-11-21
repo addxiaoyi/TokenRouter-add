@@ -132,7 +132,7 @@ type SendVerifyCodeResponse struct {
 // LoginRequest carries password credentials and enabled CAPTCHA provider proof
 // for panel login.
 type LoginRequest struct {
-	Email                 string `json:"email" binding:"required,email"` // account email address input
+	Email                 string `json:"email" binding:"required,max=255"` // account email or username input
 	Password              string `json:"password" binding:"required"`    // account plaintext password input
 	TurnstileToken        string `json:"turnstile_token"`                // shared enabled CAPTCHA proof
 	TencentCaptchaTicket  string `json:"tencent_captcha_ticket"`         // Tencent action ticket text
