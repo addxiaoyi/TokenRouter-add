@@ -6,9 +6,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	gocache "github.com/patrickmn/go-cache"
 	"golang.org/x/sync/singleflight"
-
-	"github.com/TokenFlux/TokenRouter/internal/pkg/querycache"
 )
 
 // group_rate_resolver.go resolves user-group billing multipliers with caching
@@ -46,8 +45,8 @@ type GroupRateResolver struct {
 	// cache stores both overrides and selected defaults by user/group key.
 	// Supplied caches can be shared, so their entries need matching source and
 	// default rules.
-	cache    *querycache.TTLMap[float64] // effective user group multipliers
-	cacheTTL time.Duration               // cached multiplier entry lifetime
+	cache    *gocache.Cache // effective user group multipliers
+	cacheTTL time.Duration  // cached multiplier entry lifetime
 	// sf shares misses by user/group key and uses the load winner's context.
 	// Waiting callers receive that outcome before applying their own error
 	// fallback.
@@ -75,7 +74,7 @@ type GroupRateMetrics struct {
 // instances; supplied instances are shared and must use matching
 // repository/default rules for their user/group keys. Nil observation disables
 // logging.
-func NewGroupRateResolver(repo UserGroupRateRepository, cache *querycache.TTLMap[float64], cacheTTL time.Duration, sf *singleflight.Group, logComponent string, observe func(string, string, ...any)) *GroupRateResolver {
+func NewGroupRateResolver(repo UserGroupRateRepository, cache *gocache.Cache, cacheTTL time.Duration, sf *singleflight.Group, logComponent string, observe func(string, string, ...any)) *GroupRateResolver {
 	if observe == nil {
 		observe = func(string, string, ...any) {}
 	}
@@ -83,7 +82,7 @@ func NewGroupRateResolver(repo UserGroupRateRepository, cache *querycache.TTLMap
 		cacheTTL = defaultUserGroupRateCacheTTL
 	}
 	if cache == nil {
-		cache = querycache.NewTTLMap[float64](cacheTTL)
+		cache = gocache.New(cacheTTL, 0)
 	}
 	if logComponent == "" {
 		logComponent = "service.gateway"
@@ -119,9 +118,11 @@ func (r *GroupRateResolver) Resolve(ctx context.Context, userID, groupID int64, 
 
 	key := fmt.Sprintf("%d:%d", userID, groupID)
 	if r.cache != nil {
-		if multiplier, ok := r.cache.Get(key); ok {
-			groupRateMetrics.Hit.Add(1)
-			return multiplier
+		if cached, ok := r.cache.Get(key); ok {
+			if multiplier, castOK := cached.(float64); castOK {
+				groupRateMetrics.Hit.Add(1)
+				return multiplier
+			}
 		}
 	}
 	if r.repo == nil {
@@ -133,9 +134,11 @@ func (r *GroupRateResolver) Resolve(ctx context.Context, userID, groupID int64, 
 	// populate this pair after the initial miss but before this loader runs.
 	value, err, shared := r.sf.Do(key, func() (any, error) {
 		if r.cache != nil {
-			if multiplier, ok := r.cache.Get(key); ok {
-				groupRateMetrics.Hit.Add(1)
-				return multiplier, nil
+			if cached, ok := r.cache.Get(key); ok {
+				if multiplier, castOK := cached.(float64); castOK {
+					groupRateMetrics.Hit.Add(1)
+					return multiplier, nil
+				}
 			}
 		}
 

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"log"
 	"log/slog"
 	"slices"
 	"time"
@@ -14,14 +15,14 @@ import (
 	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/infra/httpclient"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
+	"github.com/TokenFlux/TokenRouter/internal/modelcatalog"
 	catalogprovider "github.com/TokenFlux/TokenRouter/internal/modelcatalog/provider"
+	openaiprotocol "github.com/TokenFlux/TokenRouter/internal/protocol/openai"
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	providerhttp "github.com/TokenFlux/TokenRouter/internal/provider/httpapi"
-	"github.com/TokenFlux/TokenRouter/internal/provider/modelrules"
 	providerpostgres "github.com/TokenFlux/TokenRouter/internal/provider/postgres"
 	provideradapter "github.com/TokenFlux/TokenRouter/internal/provider/provider"
 	"github.com/TokenFlux/TokenRouter/internal/routing"
-	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/antigravity"
 	openaiws "github.com/TokenFlux/TokenRouter/internal/upstream/openai/ws"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/qoder"
@@ -43,7 +44,7 @@ func provideAgentTaskCoordinator() *provider.OpenAITaskCoordinator {
 // provideProviderExpiry constructs one-minute provider expiry maintenance with
 // shared storage and clock.
 func provideProviderExpiry(store *providerpostgres.ProviderStore) *provider.ExpiryService {
-	return provider.NewExpiryService(store, provider.ExpiryOptions{Interval: time.Minute, Now: time.Now, Observe: func(format string, args ...any) { logging.LegacyPrintf("service.provider_test", format, args...) }})
+	return provider.NewExpiryService(store, provider.ExpiryOptions{Interval: time.Minute, Now: time.Now, Observe: log.Printf})
 }
 
 // provideProviderProbeTasks binds agent identity tasks to conditional provider
@@ -103,21 +104,18 @@ func provideProviderTests(store *providerpostgres.ProviderStore, geminiToken *pr
 	// Assemblies that supply only a catalogue still resolve default capabilities.
 	// Production supplies the profile service so tests can load their selected group.
 	if modelAttributes == nil && catalog != nil {
-		modelAttributes = &routing.ModelAttributeService{Catalog: routing.ModelAttributeCatalog{View: func() modelrules.View { return modelrules.NewView(catalog.Publication()) }}}
+		modelAttributes = &routing.ModelAttributeService{Catalog: routing.ModelAttributeCatalog{View: catalog.CapabilityView}}
 	}
-	probeAttributes := func(ctx context.Context, value *provider.Record, groupID int64, model, protocol string) (modelrules.Resolution, error) {
+	probeAttributes := func(ctx context.Context, value *provider.Record, groupID int64, model, protocol string) (modelcatalog.Resolution, error) {
 		route := provider.TestProtocolRouteFromContext(ctx)
 		if route.UpstreamProtocol != "" {
 			protocol = string(route.UpstreamProtocol)
 		}
-		clientProtocol := string(route.ClientProtocol)
-		if clientProtocol == "" {
-			clientProtocol = protocol
-			if value.IsQoderCosy() {
-				clientProtocol = string(capability.ProtocolOpenAIChatCompletions)
-			}
+		target := value.ModelAttributeTarget(model, protocol)
+		target.ClientProtocol = protocol
+		if route.ClientProtocol != "" {
+			target.ClientProtocol = string(route.ClientProtocol)
 		}
-		target := value.ModelAttributeRoute(model, clientProtocol, protocol)
 		session := routing.ModelAttributesFromContext(ctx)
 		if session == nil {
 			session = modelAttributes.NewSession()
@@ -135,13 +133,15 @@ func provideProviderTests(store *providerpostgres.ProviderStore, geminiToken *pr
 	targets := &provideradapter.TestTargets{
 		Jev:  &provideradapter.JevProviderTest{Attributes: probeAttributes, Transport: transport, ValidateURL: urlPolicy.Validate},
 		Read: store.GetByID, OpenAI: openaiTest, Gemini: geminiTest, Anthropic: anthropicTest,
-		Qoder:  &provideradapter.QoderProviderTest{Attributes: probeAttributes, Sessions: qoderSessions, Client: qoder.NewClient(qoder.APIBaseURL), Transport: transport, Profiles: profiles},
+		Qoder:  &provideradapter.QoderProviderTest{Attributes: probeAttributes, Sessions: qoderSessions, Client: qoder.NewClient(qoder.APIBaseURL), Transport: transport, Profiles: profiles, RewriteModel: openaiprotocol.ReplaceModelInBody},
 		Grok:   &provideradapter.GrokProviderTest{Attributes: probeAttributes, Tokens: grokToken, Transport: transport, Store: store, OperatorValidator: urlPolicy.Validate, DefaultBaseURL: gatewayprovider.GrokDefaultBaseURLReader(settings)},
 		Native: &provideradapter.NativeProtocolTest{Attributes: probeAttributes, Transport: transport, Profiles: profiles, Store: store, ValidateURL: urlPolicy.Validate, Responses: openaiTest},
 		Antigravity: &provideradapter.AntigravityProviderTest{Probe: func(ctx context.Context, value *provider.Record, request provider.PreparedTestRequest) (*antigravity.TestConnectionResult, error) {
 			probe := *ag
 			if system != nil {
-				probe.Retry = ag.Retry.WithDo(system.Do)
+				retry := *ag.Retry
+				retry.Do = system.Do
+				probe.Retry = &retry
 			}
 			probe.Attributes = probeAttributes
 			return probe.Execute(ctx, value, request)
@@ -152,9 +152,7 @@ func provideProviderTests(store *providerpostgres.ProviderStore, geminiToken *pr
 			return ctx
 		}
 		return routing.WithModelAttributes(ctx, modelAttributes)
-	}, Error: func(message string) {
-		logging.LegacyPrintf("service.provider_test", "Provider test error: %s", message)
-	}, WriteError: func(err error) { logging.LegacyPrintf("service.provider_test", "failed to write SSE event: %v", err) }})
+	}, Error: func(message string) { log.Printf("Provider test error: %s", message) }, WriteError: func(err error) { log.Printf("failed to write SSE event: %v", err) }})
 	return core
 }
 

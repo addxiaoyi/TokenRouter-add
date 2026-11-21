@@ -3,9 +3,9 @@ package usage
 import (
 	"context"
 	"errors"
+	"log"
 	"time"
 
-	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 	p "github.com/TokenFlux/TokenRouter/internal/settings/preaggregation"
 )
@@ -47,8 +47,9 @@ type Options struct {
 	UsageCleanup  UsageCleanupConfig         // administrator cleanup deployment settings
 	UsageExport   UsageExportConfig          // background CSV export deployment settings
 	Dashboard     DashboardConfig            // dashboard snapshot deployment settings
-	// Logf receives component, format, and arguments. Nil selects logUsage, which
-	// forwards the component, format, and arguments to logging.LegacyPrintf.
+	// Logf receives component, format, and arguments. Nil selects the service's
+	// standard logger path, whose logUsage helper forwards the format and
+	// arguments to log.Printf.
 	Logf func(string, string, ...any) // usage component reporting callback
 }
 
@@ -169,10 +170,8 @@ type (
 	SingletonLocker func(context.Context, string, string, time.Duration) (func(), bool)
 )
 
-// logUsage forwards component-tagged usage service diagnostics to logging.LegacyPrintf when no custom reporter is configured.
-func logUsage(component, format string, args ...any) {
-	logging.LegacyPrintf(component, format, args...)
-}
+// logUsage writes format and arguments through the standard Go logger.
+func logUsage(component, format string, args ...any) { log.Printf(format, args...) }
 
 // usageReporter returns the supplied component-aware logging callback for
 // service construction. Nil options or nil Logf leave the result nil so each

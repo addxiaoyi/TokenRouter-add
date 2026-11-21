@@ -14,9 +14,9 @@ import (
 // existing or newly created accounts.
 // A verified provider mailbox does not replace the stable provider subject as
 // account identity. GitHub, Google and OIDC login first resolve that
-// subject's owner; that owner decides the account even when the provider
-// now reports a different mailbox, and only an unresolved subject falls
-// back to email-based account lookup or creation.
+// subject's owner before considering email-based account lookup or creation.
+// A bound GitHub user keeps that account when the provider mailbox changes;
+// Google and OIDC retain their existing mailbox-mismatch checks.
 //
 // The caller supplies trusted upstream proof through EmailVerified and stable
 // identity/profile observations. Account creation and identity writes finish
@@ -71,8 +71,9 @@ func (s *AuthService) LoginOrRegisterVerifiedEmailOAuthWithSignupCodes(
 // to a current account, or uses its normalized email for existing-account
 // lookup and creation. Callers prove the upstream email before setting
 // EmailVerified; this method validates the flag, syntax, reserved addresses
-// and strict suffix policy; a stored subject owner stays authoritative
-// even when the provider-observed email differs from the account email.
+// and strict suffix policy. A stored GitHub subject keeps its owner regardless
+// of a different profile email; other providers reject that mismatch. The
+// provider email never overwrites the bound account's local mailbox.
 //
 // Identity persistence precedes optional username update, grant/promotion
 // selection, login recording and token issuance. The creation-helper branch
@@ -126,6 +127,11 @@ func (s *AuthService) AuthLoginOrRegisterVerifiedEmailOAuth(
 	identityUser, err := s.AuthFindEmailOAuthIdentityOwner(ctx, providerType, providerKey, providerSubject)
 	if err != nil {
 		return nil, nil, err
+	}
+	// A verified GitHub subject is the migrated account's durable login binding.
+	// Profile mailbox changes must not select another account or replace local email.
+	if identityUser != nil && providerType != "github" && !strings.EqualFold(strings.TrimSpace(identityUser.Email), email) {
+		return nil, nil, infraerrors.Conflict("AUTH_IDENTITY_EMAIL_MISMATCH", "oauth identity belongs to a different email")
 	}
 
 	user := identityUser
