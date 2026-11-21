@@ -404,6 +404,8 @@ func resolveEasyPayReturnedRef(apiBase, ref string) string {
 // resolveURLs returns notification and return destinations, taking each
 // nonempty request value before its configured value. The check uses literal
 // emptiness, so whitespace supplied by a caller also overrides configuration.
+// The return destination passes through sanitizeEasyPayReturnURL because
+// some gateways refuse return URLs that carry a merchant order number.
 func (e *EasyPay) resolveURLs(req payment.CreatePaymentRequest) (string, string) {
 	notifyURL := req.NotifyURL
 	if notifyURL == "" {
@@ -413,7 +415,27 @@ func (e *EasyPay) resolveURLs(req payment.CreatePaymentRequest) (string, string)
 	if returnURL == "" {
 		returnURL = e.config["returnUrl"]
 	}
-	return notifyURL, returnURL
+	return notifyURL, sanitizeEasyPayReturnURL(returnURL)
+}
+
+// sanitizeEasyPayReturnURL removes the out_trade_no query parameter from a
+// return destination. Checkout return URLs built for the result page carry
+// that parameter, and some EasyPay gateways reject any return URL containing
+// it, which would fail otherwise valid payment creation. The remaining
+// parameters (order id, status, resume token) keep the result-page flow
+// intact. Unparseable or hostless values are returned unchanged.
+func sanitizeEasyPayReturnURL(raw string) string {
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Host == "" {
+		return raw
+	}
+	query := parsed.Query()
+	if _, ok := query["out_trade_no"]; !ok {
+		return raw
+	}
+	query.Del("out_trade_no")
+	parsed.RawQuery = query.Encode()
+	return parsed.String()
 }
 
 // customMethods decodes custom mappings into a fresh slice and trims each
