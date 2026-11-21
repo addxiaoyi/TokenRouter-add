@@ -5,12 +5,12 @@
 // names stay inside persisted records.
 //
 // Start here:
-//   - public.go: submits jobs, manages pricing holds, and checks ownership.
+//   - public.go: validates submission, binds the provider and checks ownership.
 //   - worker.go: coordinates queue visits and cancellation through held leases.
 //   - processor.go: polls the provider and reconciles results before settlement.
 //
 // File groups:
-//   - public*.go, job.go and contracts.go: public submission, catalog discovery, request validation, and persisted records.
+//   - job.go and contracts.go: define persisted records and provider/public values.
 //   - billing.go, pricing.go and settlement.go: reserve and settle frozen funding.
 //   - pipeline.go, recovery.go and runtime.go: resume stages and manage work loops.
 //   - download.go and cleanup.go: stream retained results and remove resources.
