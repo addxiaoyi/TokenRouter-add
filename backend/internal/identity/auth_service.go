@@ -31,7 +31,7 @@ import (
 // challenge failures for HTTP callers while preserving the shared identities
 // used by wrapped-error checks.
 var (
-	ErrInvalidCredentials = infraerrors.Unauthorized("INVALID_CREDENTIALS", "invalid email or password")
+	ErrInvalidCredentials = infraerrors.Unauthorized("INVALID_CREDENTIALS", "invalid email, username or password")
 	ErrUserNotActive      = infraerrors.Forbidden("USER_NOT_ACTIVE", "user is not active")
 	ErrEmailExists        = infraerrors.Conflict("EMAIL_EXISTS", "email already exists")
 	ErrEmailReserved      = infraerrors.BadRequest("EMAIL_RESERVED", "email is reserved")
@@ -508,13 +508,28 @@ func (s *AuthService) IsEmailVerifyEnabled(ctx context.Context) bool {
 	return s.Settings.IsEmailVerifyEnabled(ctx)
 }
 
-// Login checks the supplied password against a current active account and
-// returns its access token. Missing accounts and wrong passwords become
-// invalid-credentials, while other lookup failures become
-// service-unavailable; surrounding HTTP flows own CAPTCHA, second-factor and
-// login-recording decisions.
-func (s *AuthService) Login(ctx context.Context, email, password string) (string, *User, error) {
-	user, err := s.Users.GetByEmail(ctx, email)
+// Login checks a password against an email or exact username and returns the
+// active account's access token. Email lookup takes precedence; username lookup
+// runs only when no email account exists, preserving the identity selected when
+// an email address also appears as another account's username.
+//
+// Missing accounts and wrong passwords become invalid-credentials. Other lookup
+// failures become service-unavailable, and a password failure never selects a
+// different account. HTTP callers retain CAPTCHA, second-factor and login
+// recording responsibilities; registration and recovery continue to use email.
+func (s *AuthService) Login(ctx context.Context, identifier, password string) (string, *User, error) {
+	identifier = strings.TrimSpace(identifier)
+	if identifier == "" {
+		return "", nil, ErrInvalidCredentials
+	}
+	user, err := s.Users.GetByEmail(ctx, identifier)
+	if errors.Is(err, ErrUserNotFound) {
+		// Migrated users retain their original usernames, including accounts whose
+		// stored mailbox is a placeholder. Keep this fallback inside password login.
+		if usernames, ok := s.Users.(UsernameUserRepository); ok {
+			user, err = usernames.GetByUsername(ctx, identifier)
+		}
+	}
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
 			return "", nil, ErrInvalidCredentials

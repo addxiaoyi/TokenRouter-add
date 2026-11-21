@@ -213,15 +213,29 @@ func TestDefaultBillingModeIgnoresModelSpelling(t *testing.T) {
 	}
 }
 
-// TestPerRequestDisplayRequiresDeclaredImageDimensions compares generic
-// per-request prices with an explicitly labeled free image tier. Display keeps
-// unit evidence separate from model spelling and accepts case-insensitive labels.
-func TestPerRequestDisplayRequiresDeclaredImageDimensions(t *testing.T) {
+// TestPerRequestDisplayPreservesUnits compares fixed requests with a declared
+// image tier and variable context prices. The quote retains free requests and
+// applies the group rate without inventing an image size from the model name.
+func TestPerRequestDisplayPreservesUnits(t *testing.T) {
 	zero := 0.0
-	generic := &ResolvedPricing{Mode: BillingModePerRequest, Source: PricingSourceConfig, DefaultPerRequestPricePresent: true}
-	if _, ok := DisplayPricingFromResolved("gpt-image-unregistered", 1, generic); ok {
-		t.Fatal("a model name converted an unlabeled per-request price into image units")
-	}
+	generic := &ResolvedPricing{Mode: BillingModePerRequest, Source: PricingSourceConfig, DefaultPerRequestPrice: 0.25, DefaultPerRequestPricePresent: true}
+	fixed, ok := DisplayPricingFromResolved("gpt-image-unregistered", 2, generic)
+	require.True(t, ok)
+	require.Equal(t, "per_request", fixed.PricingMode)
+	require.NotNil(t, fixed.RequestPrice)
+	require.InDelta(t, 0.50, *fixed.RequestPrice, 1e-12)
+	require.Empty(t, fixed.ImagePriceSizes)
+
+	generic.DefaultPerRequestPrice = zero
+	free, ok := DisplayPricingFromResolved("gpt-image-unregistered", 2, generic)
+	require.True(t, ok)
+	require.NotNil(t, free.RequestPrice)
+	require.Zero(t, *free.RequestPrice)
+
+	extra := 0.52
+	generic.RequestTiers = []PricingInterval{{MinTokens: 100, PerRequestPrice: &extra}}
+	_, ok = DisplayPricingFromResolved("gpt-image-unregistered", 2, generic)
+	require.False(t, ok)
 	image := &ResolvedPricing{Mode: BillingModePerRequest, Source: PricingSourceConfig, RequestTiers: []PricingInterval{{TierLabel: "1k", PerRequestPrice: &zero}}}
 	result, ok := DisplayPricingFromResolved("canvas", 1, image)
 	if !ok || result.PriceStatus != "priced" || len(result.ImagePriceSizes) != 1 || result.ImagePriceSizes[0] != "1K" || result.ImagePrice1K != 0 {

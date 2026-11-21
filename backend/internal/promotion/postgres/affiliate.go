@@ -6,12 +6,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/lib/pq"
 
 	dbent "github.com/TokenFlux/TokenRouter/ent"
+	"github.com/TokenFlux/TokenRouter/ent/setting"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/promotion"
 )
@@ -22,8 +25,9 @@ import (
 // retain fund observations that later balance edits would otherwise hide.
 // Thaw clears deadlines on existing grant rows while moving their quota
 // between frozen and available totals. Binding claims an unset inviter before
-// incrementing its count; accrual records a source user and optional payment
-// order alongside frozen or immediately available quota.
+// incrementing its count and issuing any configured signup grants; accrual
+// records a source user and optional payment order alongside frozen or
+// immediately available quota.
 //
 // Transactions may be owned here or supplied by an outer caller. Thaw clears
 // due ledger deadlines before moving their sum between profile totals;
@@ -86,6 +90,13 @@ LEFT JOIN (
 ) matured ON matured.user_id = ua.user_id
 WHERE ua.user_id = $1
 LIMIT 1`
+)
+
+// These setting keys select separate fixed USD signup grants and default to
+// zero when a deployment has configured only recharge rebates.
+const (
+	affiliateSignupInviterUSD = "affiliate_signup_inviter_usd" // available affiliate quota
+	affiliateSignupInviteeUSD = "affiliate_signup_invitee_usd" // invitee account credit
 )
 
 // affiliateCodeCharset supplies the generated invitation alphabet, omitting
@@ -169,15 +180,15 @@ func (r *affiliateRepository) GetAffiliateByCode(ctx context.Context, code strin
 	return queryAffiliateByCode(ctx, client, code)
 }
 
-// BindInviter conditionally assigns an inviter and records its invitation
-// count in one transaction.
+// BindInviter conditionally assigns an inviter, increments their invitation
+// count, and credits configured signup bonuses in one transaction.
 //
 // It ensures both profiles, then changes only an invitee whose inviter is
-// still NULL. Zero affected rows return false before changing the count, so
-// competing or repeated bindings cannot increment it again. A successful
-// claim increments the inviter before transaction completion. Callers
-// validate self-invitation and acceptable identities before invoking this
-// persistence operation.
+// still NULL. Zero affected rows return false before increasing the count or
+// granting funds, so retries and previously migrated relationships cannot earn
+// bonuses again. When a new claim succeeds, every credit uses the enclosing
+// transaction and a grant failure rolls back the claim with the count. Callers
+// validate identities and self-invitation before persistence.
 func (r *affiliateRepository) BindInviter(ctx context.Context, userID, inviterID int64) (bool, error) {
 	var bound bool
 	err := r.withTx(ctx, func(txCtx context.Context, txClient *dbent.Client) error {
@@ -212,6 +223,11 @@ func (r *affiliateRepository) BindInviter(ctx context.Context, userID, inviterID
 		); err != nil {
 			return fmt.Errorf("increment inviter aff_count: %w", err)
 		}
+		// Issue signup grants only after winning the relationship claim, within its
+		// transaction, so an incomplete payment cannot leave a claimed relationship.
+		if err := r.grantSignupRewards(txCtx, txClient, userID, inviterID); err != nil {
+			return err
+		}
 		bound = true
 		return nil
 	})
@@ -219,6 +235,48 @@ func (r *affiliateRepository) BindInviter(ctx context.Context, userID, inviterID
 		return false, err
 	}
 	return bound, nil
+}
+
+// grantSignupRewards applies fixed rewards to the successful signup claim in
+// ctx. Missing settings safely select zero, and invalid saved amounts fail the
+// owning transaction so the inviter assignment and count can be retried.
+// The inviter receives available affiliate quota with a ledger entry, whereas
+// the new user receives ordinary balance without a recharge. Both operations
+// reuse the enclosing transaction so a credit or ledger failure rolls back the
+// other write as well as the inviter claim.
+func (r *affiliateRepository) grantSignupRewards(ctx context.Context, client *dbent.Client, userID, inviterID int64) error {
+	settings, err := client.Setting.Query().Where(setting.KeyIn(affiliateSignupInviterUSD, affiliateSignupInviteeUSD)).All(ctx)
+	if err != nil {
+		return fmt.Errorf("read affiliate signup grants: %w", err)
+	}
+	amounts := make(map[string]float64, len(settings))
+	for _, setting := range settings {
+		amount, err := strconv.ParseFloat(strings.TrimSpace(setting.Value), 64)
+		if err != nil || amount < 0 || math.IsNaN(amount) || math.IsInf(amount, 0) {
+			return fmt.Errorf("invalid affiliate signup grant for %s", setting.Key)
+		}
+		amounts[setting.Key] = amount
+	}
+	if amount := amounts[affiliateSignupInviterUSD]; amount > 0 {
+		// Reuse the affiliate ledger for transferable quota so that the inviter's
+		// balance and history both identify the signup that earned the grant.
+		accrued, err := r.AccrueQuota(ctx, inviterID, userID, amount, 0, nil)
+		if err != nil {
+			return fmt.Errorf("credit inviter signup grant: %w", err)
+		}
+		if !accrued {
+			return fmt.Errorf("inviter signup grant did not reach an affiliate profile")
+		}
+	}
+	if amount := amounts[affiliateSignupInviteeUSD]; amount > 0 {
+		if r.balances == nil {
+			return fmt.Errorf("affiliate signup balance writer unavailable")
+		}
+		if err := r.balances(dbent.TxFromContext(ctx)).AddBalance(ctx, userID, amount); err != nil {
+			return fmt.Errorf("credit invitee signup grant: %w", err)
+		}
+	}
+	return nil
 }
 
 // AccrueQuota adds a positive grant to inviter totals and records its source

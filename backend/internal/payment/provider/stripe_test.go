@@ -125,7 +125,7 @@ func TestBuildStripeCheckoutSessionCreateParamsUsesDashboardPaymentMethods(t *te
 		BillingInfo: &payment.BillingInfo{
 			Email: "payer@example.com",
 		},
-	}, 1292, "42", "CNY")
+	}, 1292, "42", "CNY", "")
 
 	if params.Customer == nil || *params.Customer != "cus_123" {
 		t.Fatalf("customer = %#v, want cus_123", params.Customer)
@@ -183,6 +183,21 @@ func TestBuildStripeCheckoutSessionCreateParamsUsesDashboardPaymentMethods(t *te
 	if !strings.Contains(gotExpand, "invoice") || !strings.Contains(gotExpand, "payment_intent") {
 		t.Fatalf("expand = %q, want invoice and payment_intent", gotExpand)
 	}
+}
+
+// TestStripeCheckoutPreservesCatalogProduct checks that an existing recharge
+// item keeps Stripe's tax classification. The line item still uses the buyer's
+// specific amount and supplies no competing inline product definition.
+func TestStripeCheckoutPreservesCatalogProduct(t *testing.T) {
+	t.Parallel()
+
+	lines := buildStripeCheckoutLineItems(payment.CreatePaymentRequest{OrderID: "sample"}, 1250, "CNY", "prod_test_recharge")
+	require.Len(t, lines, 1)
+	price := lines[0].PriceData
+	require.NotNil(t, price)
+	require.Equal(t, "prod_test_recharge", stripe.StringValue(price.Product))
+	require.EqualValues(t, 1250, stripe.Int64Value(price.UnitAmount))
+	require.Nil(t, price.ProductData)
 }
 
 // TestStripeCheckoutExpiresAtClampsSupportedWindow uses a fixed now and
@@ -550,7 +565,7 @@ func TestParseStripeCheckoutSessionUsesPaymentIntentAndInvoiceMetadata(t *testin
 
 	notification, err := parseStripeCheckoutSession(&stripe.Event{
 		Data: &stripe.EventData{Raw: checkoutRaw},
-	}, payment.ProviderStatusSuccess, rawBody)
+	}, payment.ProviderStatusSuccess, rawBody, false)
 	if err != nil {
 		t.Fatalf("parse checkout session: %v", err)
 	}
@@ -601,7 +616,7 @@ func TestParseStripeCheckoutSessionIgnoresUnpaidCompletedSession(t *testing.T) {
 
 	notification, err := parseStripeCheckoutSession(&stripe.Event{
 		Data: &stripe.EventData{Raw: checkoutRaw},
-	}, payment.ProviderStatusSuccess, "{}")
+	}, payment.ProviderStatusSuccess, "{}", false)
 	if err != nil {
 		t.Fatalf("parse checkout session: %v", err)
 	}
@@ -631,7 +646,7 @@ func TestParseStripeCheckoutSessionMarksUnpaidCompletedSessionProcessing(t *test
 
 	notification, err := parseStripeCheckoutSession(&stripe.Event{
 		Data: &stripe.EventData{Raw: checkoutRaw},
-	}, payment.ProviderStatusProcessing, "{}")
+	}, payment.ProviderStatusProcessing, "{}", false)
 	if err != nil {
 		t.Fatalf("parse checkout session: %v", err)
 	}
@@ -655,7 +670,7 @@ func TestParseStripeCheckoutSessionIgnoresCompletedWithoutExplicitPaymentStatus(
 	})
 	notification, err := parseStripeCheckoutSession(&stripe.Event{
 		Data: &stripe.EventData{Raw: checkoutRaw},
-	}, payment.ProviderStatusProcessing, "{}")
+	}, payment.ProviderStatusProcessing, "{}", false)
 	if err != nil {
 		t.Fatalf("parse checkout session: %v", err)
 	}
@@ -683,7 +698,7 @@ func TestParseStripeCheckoutSessionKeepsAsyncFailureNotification(t *testing.T) {
 
 	notification, err := parseStripeCheckoutSession(&stripe.Event{
 		Data: &stripe.EventData{Raw: checkoutRaw},
-	}, payment.ProviderStatusFailed, "{}")
+	}, payment.ProviderStatusFailed, "{}", false)
 	if err != nil {
 		t.Fatalf("parse checkout session: %v", err)
 	}
@@ -709,7 +724,7 @@ func TestParseStripeEventOnlyTreatsTerminalCheckoutFailuresAsFailed(t *testing.T
 		stripe.EventType(stripeEventPaymentFailed),
 		stripe.EventType(stripeEventInvoiceFailed),
 	} {
-		notification, err := parseStripeEvent(&stripe.Event{Type: eventType}, "{}")
+		notification, err := parseStripeEvent(&stripe.Event{Type: eventType}, "{}", false)
 		if err != nil {
 			t.Fatalf("parse retryable event %q: %v", eventType, err)
 		}
@@ -731,12 +746,54 @@ func TestParseStripeEventOnlyTreatsTerminalCheckoutFailuresAsFailed(t *testing.T
 	notification, err := parseStripeEvent(&stripe.Event{
 		Type: stripe.EventType(stripeEventCheckoutAsyncFailed),
 		Data: &stripe.EventData{Raw: checkoutRaw},
-	}, "{}")
+	}, "{}", false)
 	if err != nil {
 		t.Fatalf("parse terminal checkout failure: %v", err)
 	}
 	if notification == nil || notification.Status != payment.ProviderStatusFailed {
 		t.Fatalf("terminal checkout failure notification = %#v, want failed", notification)
+	}
+}
+
+// TestStripeManagedCheckoutReconcilesExclusiveTax uses a paid session to
+// distinguish sales tax from the amount covering the local order. Standard
+// sessions and observations with discounts retain the reported gross amount.
+func TestStripeManagedCheckoutReconcilesExclusiveTax(t *testing.T) {
+	t.Parallel()
+
+	for _, test := range []struct {
+		name     string  // case description
+		managed  bool    // instance uses managed payments
+		total    int64   // customer total in minor units
+		discount int64   // reported discount in minor units
+		want     float64 // amount used for local settlement
+	}{
+		{name: "managed exclusive tax", managed: true, total: 1130, want: 10},
+		{name: "managed inclusive tax", managed: true, total: 1000, want: 10},
+		{name: "managed with discount", managed: true, total: 1130, discount: 30, want: 11.30},
+		{name: "standard checkout", total: 1130, want: 11.30},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			raw := stripeCheckoutSessionEventRaw(t, map[string]any{
+				"id":              "cs_tax_test",
+				"object":          "checkout.session",
+				"currency":        "cny",
+				"payment_status":  "paid",
+				"amount_total":    test.total,
+				"amount_subtotal": 1000,
+				"total_details":   map[string]any{"amount_tax": 130, "amount_discount": test.discount},
+				"metadata":        map[string]string{"orderId": "tax_order"},
+			})
+			event := &stripe.Event{
+				Type: stripe.EventType(stripeEventCheckoutDone),
+				Data: &stripe.EventData{Raw: raw},
+			}
+			notification, err := parseStripeEvent(event, "{}", test.managed)
+			require.NoError(t, err)
+			require.NotNil(t, notification)
+			require.Equal(t, payment.ProviderStatusSuccess, notification.Status)
+			require.InDelta(t, test.want, notification.Amount, 1e-9)
+		})
 	}
 }
 

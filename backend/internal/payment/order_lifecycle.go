@@ -27,7 +27,8 @@ import (
 // Alipay/WeChat/GMPay candidates instead. Cancellation-failure history adds an
 // updated_at cooldown, while stale processing is audited after a longer age.
 // Provider references retain merchant/session/invoice/payment identities
-// according to adapter query needs.
+// according to adapter query needs. Buyer verification rereads persisted paid
+// state after a competing fulfillment lease, without claiming that lease again.
 
 // Lifecycle result labels distinguish provider payment/cancellation
 // observations, while limits and ages bound recovery page selection, retry
@@ -532,7 +533,11 @@ func PaymentOrderShouldPersistUpstreamTradeNo(queryRef, upstreamTradeNo, current
 // CheckPaid can suppress query failure into unchanged saved state. Accepted
 // paid/processing outcome with nil application error triggers a numeric row
 // reread before return, reflecting the conditional transition rather than the
-// initial observation. Processing recovery for already-processing rows remains
+// initial observation. If a paid query loses a fulfillment race, a conflict can
+// instead return a reread paid, recharging or completed order with a paid
+// timestamp. Other errors and unconfirmed states retain their error result;
+// this read does not acquire a lease or grant balance again.
+// Processing recovery for already-processing rows remains
 // with the background reconciler, and this lookup does not expand aliases or
 // the callback legacy numeric form.
 func (s *OrderLifecycle) VerifyOrderByOutTradeNo(ctx context.Context, outTradeNo string, userID int64) (*Order, error) {
@@ -553,6 +558,21 @@ func (s *OrderLifecycle) VerifyOrderByOutTradeNo(ctx context.Context, outTradeNo
 	if o.Status == OrderStatusPending || o.Status == OrderStatusExpired {
 		result, checkErr := s.CheckPaid(ctx, o)
 		if checkErr != nil {
+			// A callback or reconciler can own fulfillment after this buyer queried
+			// payment. Return only persisted confirmation of that progress, keeping
+			// the competing lease and all balance writes with its existing owner.
+			if result == LifecycleCheckPaidResultAlreadyPaid && infraerrors.Reason(checkErr) == "CONFLICT" {
+				current, readErr := s.store.Order(ctx, o.ID)
+				if readErr != nil {
+					return nil, fmt.Errorf("reload order after concurrent fulfillment: %w", readErr)
+				}
+				if current.PaidAt != nil {
+					switch current.Status {
+					case OrderStatusPaid, OrderStatusRecharging, OrderStatusCompleted:
+						return current, nil
+					}
+				}
+			}
 			return nil, checkErr
 		}
 		if result == LifecycleCheckPaidResultAlreadyPaid || result == LifecycleCheckPaidResultProcessing {

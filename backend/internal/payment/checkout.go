@@ -484,6 +484,7 @@ func (s *Checkout) InvokeProvider(ctx context.Context, order *Order, req CreateO
 	}
 	providerReq := BuildProviderCreatePaymentRequest(CreateOrderRequest{
 		PaymentType: req.PaymentType,
+		OrderType:   order.OrderType,
 		OpenID:      req.OpenID,
 		ClientIP:    req.ClientIP,
 		IsMobile:    req.IsMobile,
@@ -591,11 +592,12 @@ func RemovePostgresTextNUL(value string) string {
 
 // BuildProviderCreatePaymentRequest assembles adapter input from the caller's
 // merchant number, formatted amount, subject and expiration. It trims payer
-// OpenID and carries selected subtype text; BillingInfo remains the supplied
+// OpenID and carries the order type and subtype text; BillingInfo remains the supplied
 // pointer and must already have been validated for its provider.
 func BuildProviderCreatePaymentRequest(req CreateOrderRequest, sel *InstanceSelection, orderID, amount, subject string, expiresAt time.Time) CreatePaymentRequest {
 	return CreatePaymentRequest{
 		OrderID:            orderID,
+		OrderType:          req.OrderType,
 		Amount:             amount,
 		PaymentType:        req.PaymentType,
 		Subject:            subject,

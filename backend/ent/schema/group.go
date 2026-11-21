@@ -64,9 +64,10 @@ func (Group) Fields() []ent.Field {
 			Optional().
 			Nillable().
 			SchemaType(map[string]string{dialect.Postgres: "text"}),
-		// Base user pricing multiplier.
+		// Base user pricing multiplier, stored to ten decimal places so sales
+		// rates such as 0.114514 survive persistence without four-place rounding.
 		field.Float("rate_multiplier").
-			SchemaType(map[string]string{dialect.Postgres: "decimal(10,4)"}).
+			SchemaType(map[string]string{dialect.Postgres: "decimal(20,10)"}).
 			Default(1.0),
 		// is_exclusive distinguishes explicitly granted groups from public groups.
 		// Access resolution combines this value with user grants and public-group

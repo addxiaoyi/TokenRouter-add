@@ -132,11 +132,11 @@ type SendVerifyCodeResponse struct {
 // LoginRequest carries password credentials and enabled CAPTCHA provider proof
 // for panel login.
 type LoginRequest struct {
-	Email                 string `json:"email" binding:"required,email"` // account email address input
-	Password              string `json:"password" binding:"required"`    // account plaintext password input
-	TurnstileToken        string `json:"turnstile_token"`                // shared enabled CAPTCHA proof
-	TencentCaptchaTicket  string `json:"tencent_captcha_ticket"`         // Tencent action ticket text
-	TencentCaptchaRandstr string `json:"tencent_captcha_randstr"`        // Tencent ticket random string
+	Email                 string `json:"email" binding:"required,max=255"` // account email or username input
+	Password              string `json:"password" binding:"required"`      // account plaintext password input
+	TurnstileToken        string `json:"turnstile_token"`                  // shared enabled CAPTCHA proof
+	TencentCaptchaTicket  string `json:"tencent_captcha_ticket"`           // Tencent action ticket text
+	TencentCaptchaRandstr string `json:"tencent_captcha_randstr"`          // Tencent ticket random string
 }
 
 // TotpLoginResponse asks the browser to complete a temporary authenticator
@@ -147,11 +147,11 @@ type TotpLoginResponse struct {
 	UserEmailMasked string `json:"user_email_masked,omitempty"` // masked challenge account email
 }
 
-// Login2FARequest supplies the temporary login challenge and six-character
-// authenticator proof.
+// Login2FARequest supplies the temporary login challenge and authenticator or
+// imported eight-character recovery proof, with its optional separator retained.
 type Login2FARequest struct {
-	TempToken string `json:"temp_token" binding:"required"`      // temporary authenticator login token
-	TotpCode  string `json:"totp_code" binding:"required,len=6"` // six-character authenticator verification code
+	TempToken string `json:"temp_token" binding:"required"`            // temporary authenticator login token
+	TotpCode  string `json:"totp_code" binding:"required,min=6,max=9"` // authenticator or legacy recovery proof
 }
 
 // ValidatePromoCodeRequest supplies the signup promotion code whose

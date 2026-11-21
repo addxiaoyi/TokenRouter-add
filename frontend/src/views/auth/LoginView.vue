@@ -7,11 +7,11 @@
 
   <AuthLayout>
     <div class="space-y-6">
-      <div class="text-left">
-        <h2 class="text-2xl font-medium tracking-[-0.028em] text-gray-950 dark:text-white">
+      <div class="text-center">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
           {{ t('auth.welcomeBack') }}
         </h2>
-        <p class="mt-1.5 text-base leading-6 text-gray-700 dark:text-dark-200">
+        <p class="mt-2 text-sm text-gray-500 dark:text-dark-400">
           {{ t('auth.signInToAccount') }}
         </p>
       </div>
@@ -19,7 +19,7 @@
       <form @submit.prevent="handleLogin" :novalidate="agreementGateActive" class="space-y-5">
         <div>
           <label for="email" class="input-label">
-            {{ t('auth.emailLabel') }}
+            {{ t('auth.loginIdentifierLabel') }}
           </label>
           <div class="input-icon-wrap input-icon-lg">
             <div class="input-icon">
@@ -28,14 +28,14 @@
             <input
               id="email"
               v-model="formData.email"
-              type="email"
+              type="text"
               required
               autofocus
-              autocomplete="email"
+              autocomplete="username"
               :disabled="authActionDisabled"
               class="input input-has-icon"
               :class="{ 'input-error': errors.email }"
-              :placeholder="t('auth.emailPlaceholder')"
+              :placeholder="t('auth.loginIdentifierPlaceholder')"
             />
           </div>
         </div>
@@ -375,7 +375,7 @@ const totpModalRef = ref<InstanceType<typeof TotpLoginModal> | null>(null) // pa
 const googleOneTapRef = ref<InstanceType<typeof GoogleOneTap> | null>(null) // parent-driven Google prompt cancellation
 
 const formData = reactive({
-  email: '', // entered account email
+  email: '', // entered email or username
   password: '', // entered account password
 }) // editable authentication form draft
 
@@ -655,10 +655,7 @@ function validateForm(): boolean {
   if (!ensureAgreementAccepted()) return false
 
   if (!formData.email.trim()) {
-    errors.email = t('auth.emailRequired')
-    isValid = false
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-    errors.email = t('auth.invalidEmail')
+    errors.email = t('auth.loginIdentifierRequired')
     isValid = false
   }
 
@@ -703,7 +700,7 @@ async function handleLogin(): Promise<void> {
     // turnstile_token, while Tencent uses its ticket and random-string fields for
     // the same guarded action.
     const response = await authStore.login({
-      email: formData.email,
+      email: formData.email.trim(),
       password: formData.password,
       turnstile_token:
         turnstileEnabled.value || aliyunCaptchaEnabled.value ? turnstileToken.value : undefined,

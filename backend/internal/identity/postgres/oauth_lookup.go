@@ -39,11 +39,7 @@ func (d *PendingFlowDatabase) FindLinuxDoCompatEmailUser(ctx context.Context, em
 	}
 
 	email = strings.TrimSpace(strings.ToLower(email))
-	if email == "" ||
-		strings.HasSuffix(email, identitycore.LinuxDoConnectSyntheticEmailDomain) ||
-		strings.HasSuffix(email, identitycore.OIDCConnectSyntheticEmailDomain) ||
-		strings.HasSuffix(email, identitycore.WeChatConnectSyntheticEmailDomain) ||
-		strings.HasSuffix(email, identitycore.DingTalkConnectSyntheticEmailDomain) {
+	if email == "" || identitycore.IsReservedEmail(email) {
 		return nil, nil
 	}
 
@@ -74,11 +70,7 @@ func (d *PendingFlowDatabase) FindOIDCCompatEmailUser(ctx context.Context, email
 	}
 
 	email = strings.TrimSpace(strings.ToLower(email))
-	if email == "" ||
-		strings.HasSuffix(email, identitycore.LinuxDoConnectSyntheticEmailDomain) ||
-		strings.HasSuffix(email, identitycore.OIDCConnectSyntheticEmailDomain) ||
-		strings.HasSuffix(email, identitycore.WeChatConnectSyntheticEmailDomain) ||
-		strings.HasSuffix(email, identitycore.DingTalkConnectSyntheticEmailDomain) {
+	if email == "" || identitycore.IsReservedEmail(email) {
 		return nil, nil
 	}
 
@@ -106,11 +98,7 @@ func (d *PendingFlowDatabase) FindDingTalkCompatEmailUser(ctx context.Context, e
 	}
 
 	email = strings.TrimSpace(strings.ToLower(email))
-	if email == "" ||
-		strings.HasSuffix(email, identitycore.DingTalkConnectSyntheticEmailDomain) ||
-		strings.HasSuffix(email, identitycore.LinuxDoConnectSyntheticEmailDomain) ||
-		strings.HasSuffix(email, identitycore.OIDCConnectSyntheticEmailDomain) ||
-		strings.HasSuffix(email, identitycore.WeChatConnectSyntheticEmailDomain) {
+	if email == "" || identitycore.IsReservedEmail(email) {
 		return nil, nil
 	}
 

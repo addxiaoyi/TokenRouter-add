@@ -199,13 +199,8 @@
           </div>
         </dl>
         <div class="mt-5 flex justify-center">
-          <div :class="['relative rounded-control border bg-white p-3', qrBorderClass]">
-            <canvas ref="qrCanvas" class="mx-auto"></canvas>
-            <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <span :class="['rounded-full p-2 shadow ring-2 ring-white', qrLogoBgClass]">
-                <img :src="qrLogoIcon" alt="" class="h-5 w-5 brightness-0 invert" />
-              </span>
-            </div>
+          <div :class="['max-w-full rounded-control border bg-white p-3', qrBorderClass]">
+            <canvas ref="qrCanvas" class="mx-auto h-auto w-80 max-w-full"></canvas>
           </div>
         </div>
         <p class="mt-4 text-center text-sm leading-6 text-gray-600 dark:text-dark-300">
@@ -245,16 +240,11 @@
         <!-- The QR retains a white background in both themes so its dark modules remain recognizable by scanning applications. -->
         <div
           :class="[
-            'relative mx-auto mt-5 inline-block rounded-control border bg-white p-3',
+            'mx-auto mt-5 inline-block max-w-full rounded-control border bg-white p-3',
             qrBorderClass,
           ]"
         >
-          <canvas ref="qrCanvas" class="mx-auto"></canvas>
-          <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <span :class="['rounded-full p-2 shadow ring-2 ring-white', qrLogoBgClass]">
-              <img :src="qrLogoIcon" alt="" class="h-5 w-5 brightness-0 invert" />
-            </span>
-          </div>
+          <canvas ref="qrCanvas" class="mx-auto h-auto w-80 max-w-full"></canvas>
         </div>
         <p v-if="scanHint" class="mt-4 text-sm text-gray-500 dark:text-dark-400">{{ scanHint }}</p>
         <button v-if="payUrl" class="btn btn-secondary mt-4 text-sm" @click="reopenPopup">
@@ -392,9 +382,6 @@ import { formatPaymentAmount, normalizePaymentCurrency } from '@/utils/payment/c
 import type { PaymentOrder } from '@/api/payment.types'
 import Icon from '@/components/icons/Icon.vue'
 import QRCode from 'qrcode'
-import alipayIcon from '@/assets/icons/alipay.svg'
-import wxpayIcon from '@/assets/icons/wxpay.svg'
-import paymentIcon from '@/assets/icons/payment.svg'
 import {
   createAlipayDeepLinkLauncher,
   type AlipayDeepLinkLauncher,
@@ -405,7 +392,8 @@ import {
  * PaymentStatusPanel.vue owns the waiting state for a created checkout order, including QR
  * rendering, popup reopening, mobile Alipay handoff, cancellation, and status recovery.
  * Its parent receives settlement and success events and decides when to leave the purchase
- * page or clear stored checkout data.
+ * page or clear stored checkout data. QR canvases retain a four-module quiet zone and
+ * unobstructed payment data, with extra bitmap resolution for dense cashier links.
  *
  * Polling distinguishes gateway PROCESSING from terminal payment outcomes and slows its
  * cadence while processing. Pending wallet orders can request bounded upstream
@@ -535,18 +523,6 @@ const qrBorderClass = computed(() => {
   return 'border-gray-200 dark:border-dark-600'
 })
 
-const qrLogoBgClass = computed(() => {
-  if (isAlipay.value) return 'bg-[#00AEEF]'
-  if (isWxpay.value) return 'bg-[#2BB741]'
-  return 'bg-gray-400'
-})
-
-const qrLogoIcon = computed(() => {
-  if (isAlipay.value) return alipayIcon
-  if (isWxpay.value) return wxpayIcon
-  return paymentIcon
-})
-
 const scanTitle = computed(() => {
   if (isAlipay.value) return t('payment.qr.scanAlipay')
   if (isWxpay.value) return t('payment.qr.scanWxpay')
@@ -643,14 +619,17 @@ function setOutcome(next: PaymentOutcome) {
 /**
  * renderQR waits for Vue to expose the canvas before drawing payment instructions. Hidden
  * mobile deep-link fallback and missing QR data skip drawing, keeping application handoff
- * separate from QR presentation.
+ * separate from QR presentation. The bitmap has twice the nominal CSS width, while the
+ * four-module quiet zone remains part of the image when it is resized or downloaded.
  */
 async function renderQR() {
   await nextTick()
   if (!showQRCode.value || !qrCanvas.value || !qrUrl.value) return
+  // Dense signed cashier URLs need more pixels and an intact quiet zone; the canvas
+  // stays unobstructed so scanning does not depend on repairing a covered center.
   await QRCode.toCanvas(qrCanvas.value, qrUrl.value, {
-    width: 220,
-    margin: 2,
+    width: 640,
+    margin: 4,
     errorCorrectionLevel: 'M',
   })
 }

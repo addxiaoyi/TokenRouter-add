@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -23,6 +24,10 @@ import (
 // delimiter-bearing structured fields. Query fixtures exercise status
 // precedence across JSON layouts and reject paid observations lacking actual
 // upstream transaction references.
+// Checkout fixtures reject reserved return-query names while preserving the
+// local order and signed session context needed by the merchant result page.
+// Desktop QR-mode fixtures also accept a cashier URL without replacing an
+// upstream QR payload or changing mobile launch behavior.
 //
 // Loopback refund fixtures capture alternative identifier forms in order,
 // returning missing-order text before a successful trade-reference attempt.
@@ -515,7 +520,10 @@ func TestEasyPayNotificationParameters(t *testing.T) {
 			var calls atomic.Int32
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				calls.Add(1)
-				if r.URL.Query().Get("pid") != "1000" || r.URL.Query().Get("out_trade_no") != "ORDER123" {
+				if err := r.ParseForm(); err != nil {
+					t.Errorf("ParseForm: %v", err)
+				}
+				if r.PostForm.Get("pid") != "1000" || r.PostForm.Get("out_trade_no") != "ORDER123" {
 					t.Error("confirmation used a different merchant or order")
 				}
 				_, _ = w.Write([]byte(`{"code":1,"status":1,"money":"650.00","trade_no":"UPSTREAM123"}`))
@@ -636,7 +644,8 @@ func TestEasyPayNotificationRejectsInvalidFields(t *testing.T) {
 // TestEasyPayQueryOrderStatusMapping serves top-level, nested, numeric and
 // absent query fields from loopback endpoints. It checks textual-state
 // precedence, required paid references, money and merchant query form
-// values for each fixture.
+// values for each fixture. Strict gateway fixtures reject URL parameters to
+// protect callback confirmation from mixed URL/body request failures.
 func TestEasyPayQueryOrderStatusMapping(t *testing.T) {
 	t.Parallel()
 
@@ -715,10 +724,10 @@ func TestEasyPayQueryOrderStatusMapping(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				// Serve the fixed response for client parser assertions; handler Write
 				// errors are discarded while callers check channel results or diagnostics.
-				for _, key := range []string{"act", "pid", "key", "out_trade_no"} {
-					if r.URL.Query().Get(key) == "" {
-						t.Errorf("missing URL query parameter: %s", key)
-					}
+				if r.URL.RawQuery != "" {
+					t.Error("strict gateway rejects URL parameters with a POST body")
+					w.WriteHeader(http.StatusBadRequest)
+					return
 				}
 				if r.Method != http.MethodPost {
 					t.Errorf("method = %q, want %q", r.Method, http.MethodPost)
@@ -738,9 +747,6 @@ func TestEasyPayQueryOrderStatusMapping(t *testing.T) {
 				gotForm = make(url.Values, len(r.PostForm))
 				for key, values := range r.PostForm {
 					gotForm[key] = append([]string(nil), values...)
-					if r.URL.Query().Get(key) != r.PostForm.Get(key) {
-						t.Errorf("query/form mismatch for %s", key)
-					}
 				}
 				w.Header().Set("Content-Type", "application/json")
 				_, _ = w.Write([]byte(tt.body))
@@ -1503,6 +1509,96 @@ func TestResolveEasyPayReturnedRef(t *testing.T) {
 			if got := resolveEasyPayReturnedRef(tt.apiBase, tt.ref); got != tt.want {
 				t.Fatalf("resolveEasyPayReturnedRef(%q, %q) = %q, want %q", tt.apiBase, tt.ref, got, tt.want)
 			}
+		})
+	}
+}
+
+// TestEasyPayCreatePaymentLeavesReturnOrderNumberToGateway reproduces shared
+// checkout result URLs against a gateway rejecting reserved return fields.
+// API and hosted checkout retain the local order and resume token while signing
+// the URL without a prefilled gateway merchant-order parameter.
+func TestEasyPayCreatePaymentLeavesReturnOrderNumberToGateway(t *testing.T) {
+	t.Parallel()
+	for _, mode := range []string{"popup", "redirect"} {
+		for _, useOverride := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/override=%t", mode, useOverride), func(t *testing.T) {
+				t.Parallel()
+				server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					require.NoError(t, r.ParseForm())
+					target, err := url.Parse(r.Form.Get("return_url"))
+					require.NoError(t, err)
+					if target.Query().Has("out_trade_no") {
+						// A prefilled merchant number conflicts with the gateway's signed
+						// return fields, so the fixture rejects it before accepting checkout.
+						w.WriteHeader(http.StatusBadRequest)
+						_, _ = io.WriteString(w, `{"code":-1,"msg":"reserved callback parameter"}`)
+						return
+					}
+					require.Equal(t, "42", target.Query().Get("order_id"))
+					require.Equal(t, "signed-session", target.Query().Get("resume_token"))
+					require.Equal(t, "success", target.Query().Get("status"))
+					require.Equal(t, "ORDER42", r.Form.Get("out_trade_no"))
+					params := make(map[string]string, len(r.Form))
+					for key := range r.Form {
+						params[key] = r.Form.Get(key)
+					}
+					require.True(t, easyPayVerifySign(params, "pkey-1", params["sign"]))
+					// The client assertions inspect the accepted transaction reference;
+					// response-write failures need no separate recovery in this loopback fixture.
+					_, _ = io.WriteString(w, `{"code":1,"trade_no":"gateway-42","qrcode":"qr-payload"}`)
+				}))
+				t.Cleanup(server.Close)
+				gateway := newTestEasyPay(t, server.URL)
+				gateway.config["paymentMode"] = mode
+				returnURL := "https://example.com/payment/result?order_id=42&out_trade_no=ORDER42&resume_token=signed-session&status=success"
+				req := payment.CreatePaymentRequest{OrderID: "ORDER42", Amount: "10.00", PaymentType: payment.TypeAlipay, Subject: "recharge", ClientIP: "127.0.0.1"}
+				if useOverride {
+					req.ReturnURL = returnURL
+				} else {
+					gateway.config["returnUrl"] = returnURL
+				}
+				created, err := gateway.CreatePayment(context.Background(), req)
+				require.NoError(t, err)
+				if mode == "popup" {
+					// Hosted creation only signs a URL. Opening it exercises the same
+					// strict gateway check used by API checkout before reporting success.
+					response, err := http.Get(created.PayURL)
+					require.NoError(t, err)
+					defer response.Body.Close()
+					require.Equal(t, http.StatusOK, response.StatusCode)
+				} else {
+					require.Equal(t, "gateway-42", created.TradeNo)
+				}
+			})
+		}
+	}
+}
+
+// TestEasyPayDesktopQRModeAcceptsCashierURL serves API checkout without a
+// dedicated QR value. Only explicit QR-mode desktop Alipay reuses the cashier
+// address; redirect, mobile, and upstream-provided QR values keep their behavior.
+func TestEasyPayDesktopQRModeAcceptsCashierURL(t *testing.T) {
+	t.Parallel()
+	for _, test := range []struct {
+		name   string // checkout presentation case
+		mode   string // configured presentation mode
+		mobile bool   // payer device indication
+		qr     string // upstream QR payload
+		wantQR string // expected QR payload
+	}{
+		{name: "desktop cashier", mode: "qrcode", wantQR: "https://pay.example.com/cashier"},
+		{name: "upstream QR wins", mode: "qrcode", qr: "upstream-qr", wantQR: "upstream-qr"},
+		{name: "redirect stays linked", mode: "redirect"},
+		{name: "mobile stays linked", mode: "qrcode", mobile: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			gateway, _ := newEasyPayMapiStub(t, "", fmt.Sprintf(`{"code":1,"trade_no":"gateway-qr","payurl":"https://pay.example.com/cashier","qrcode":%q}`, test.qr))
+			gateway.config["paymentMode"] = test.mode
+			created, err := gateway.CreatePayment(context.Background(), payment.CreatePaymentRequest{OrderID: "QR42", Amount: "10.00", PaymentType: payment.TypeAlipay, IsMobile: test.mobile})
+			require.NoError(t, err)
+			require.Equal(t, "https://pay.example.com/cashier", created.PayURL)
+			require.Equal(t, test.wantQR, created.QRCode)
 		})
 	}
 }

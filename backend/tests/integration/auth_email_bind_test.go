@@ -227,7 +227,7 @@ func TestAuthServiceBindEmailIdentity_UpdatesEmailAndAppliesFirstBindDefaults(t 
 
 	ctx := context.Background()
 	user, err := client.User.Create().
-		SetEmail("legacy-user" + identity.LinuxDoConnectSyntheticEmailDomain).
+		SetEmail("legacy-user" + identity.LegacyMigrationSyntheticEmailDomain).
 		SetUsername("legacy-user").
 		SetPasswordHash("old-hash").
 		SetBalance(2.5).

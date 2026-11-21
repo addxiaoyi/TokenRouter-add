@@ -523,8 +523,8 @@ func (s *TotpService) Disable(ctx context.Context, userID int64, emailCode, pass
 	return nil
 }
 
-// VerifyCode validates an enabled account's encrypted-secret TOTP against
-// operation time. A readable attempt count at the configured maximum rejects
+// VerifyCode validates an enabled account's encrypted-secret TOTP or imported
+// one-time recovery proof. A readable attempt count at the configured maximum rejects
 // the request before account lookup; count read failure allows verification
 // to continue. The global feature switch is not checked here.
 //
@@ -592,6 +592,17 @@ func (s *TotpService) VerifyCode(ctx context.Context, userID int64, code string)
 		"secret_prefix", secretPrefix)
 
 	valid := s.validateCode(code, secret)
+	if !valid && len(code) != 6 {
+		// Imported recovery proofs share the existing account-wide attempt limit.
+		// The optional store consumes successful proofs atomically and binds them
+		// to the account's unchanged TOTP enrollment before admitting this login.
+		if recovery, ok := s.userRepo.(LegacyTotpBackupCodeRepository); ok {
+			valid, err = recovery.ConsumeLegacyTotpBackupCode(ctx, userID, code)
+			if err != nil {
+				return infraerrors.InternalServer("TOTP_VERIFY_ERROR", "failed to verify recovery code")
+			}
+		}
+	}
 	slog.Debug("totp_verify_result",
 		"user_id", userID,
 		"valid", valid,

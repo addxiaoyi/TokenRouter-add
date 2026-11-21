@@ -159,6 +159,11 @@ func (s *Stripe) currency() string {
 	return currency
 }
 
+// managedPayments reports whether Stripe collects taxes and issues receipts for this instance.
+func (s *Stripe) managedPayments() bool {
+	return strings.EqualFold(strings.TrimSpace(s.config["managedPayments"]), "true")
+}
+
 // CreatePayment converts money for configured currency, requires a nonblank
 // return destination and creates a customer followed by a hosted checkout
 // session. Customer and session calls use separate order-derived idempotency
@@ -192,7 +197,19 @@ func (s *Stripe) CreatePayment(ctx context.Context, req payment.CreatePaymentReq
 		return nil, fmt.Errorf("stripe create customer: %w", err)
 	}
 
-	checkoutParams := buildStripeCheckoutSessionCreateParams(customer.ID, req, amountInMinorUnit, s.instanceID, currency)
+	productID := ""
+	if req.OrderType == payment.OrderTypeBalance {
+		// Reuse the configured recharge product so its tax classification applies
+		// to a new price for the buyer's selected amount.
+		productID = strings.TrimSpace(s.config["productId"])
+	}
+	checkoutParams := buildStripeCheckoutSessionCreateParams(customer.ID, req, amountInMinorUnit, s.instanceID, currency, productID)
+	if s.managedPayments() {
+		// Managed Payments handles invoicing and sends receipts to the Stripe
+		// customer; asking for either from Checkout duplicates that responsibility.
+		checkoutParams.PaymentIntentData.ReceiptEmail = nil
+		checkoutParams.InvoiceCreation = nil
+	}
 	// Associate session retries with the merchant order independently of customer
 	// creation; local response persistence happens after the returned session.
 	checkoutParams.SetIdempotencyKey(fmt.Sprintf("cs-%s", req.OrderID))
@@ -218,7 +235,8 @@ func (s *Stripe) CreatePayment(ctx context.Context, req payment.CreatePaymentReq
 // buildStripeCheckoutSessionCreateParams assembles a payment-mode session for
 // the already created customer and one quantity-one line item. Invalid
 // supplied currency uses the payment default, and the caller provides the
-// minor-unit amount for that currency.
+// minor-unit amount for that currency. A nonempty productID reuses the Stripe
+// catalog item associated with the provider's balance checkout configuration.
 //
 // Success and cancellation destinations replace their status query value,
 // while order and instance metadata also accompany invoice and intent
@@ -226,7 +244,7 @@ func (s *Stripe) CreatePayment(ctx context.Context, req payment.CreatePaymentReq
 // instruction for the customer form data. PaymentMethodTypes is omitted for
 // Dashboard selection, related objects are expanded, and session expiry is
 // clamped using the adapter time policy.
-func buildStripeCheckoutSessionCreateParams(customerID string, req payment.CreatePaymentRequest, amountInMinorUnit int64, instanceID string, currency string) *stripe.CheckoutSessionCreateParams {
+func buildStripeCheckoutSessionCreateParams(customerID string, req payment.CreatePaymentRequest, amountInMinorUnit int64, instanceID, currency, productID string) *stripe.CheckoutSessionCreateParams {
 	normalizedCurrency, err := payment.NormalizePaymentCurrency(currency)
 	if err != nil {
 		// Use the payment default when supplied currency is invalid; line-item
@@ -243,7 +261,7 @@ func buildStripeCheckoutSessionCreateParams(customerID string, req payment.Creat
 		SuccessURL:        stripe.String(stripeCheckoutReturnURL(req.ReturnURL, "success")),
 		CancelURL:         stripe.String(stripeCheckoutReturnURL(req.ReturnURL, "cancelled")),
 		InvoiceCreation:   buildStripeCheckoutInvoiceCreationParams(req, instanceID),
-		LineItems:         buildStripeCheckoutLineItems(req, amountInMinorUnit, normalizedCurrency),
+		LineItems:         buildStripeCheckoutLineItems(req, amountInMinorUnit, normalizedCurrency, productID),
 		Metadata:          metadata,
 		PaymentIntentData: buildStripeCheckoutPaymentIntentDataParams(req, instanceID),
 		BillingAddressCollection: stripe.String(
@@ -291,25 +309,29 @@ func buildStripeCheckoutPaymentIntentDataParams(req payment.CreatePaymentRequest
 }
 
 // buildStripeCheckoutLineItems returns one quantity-one product using the
-// supplied minor-unit amount and lowercase currency text. A blank trimmed
-// subject receives the TokenRouter payment label; product metadata carries the
-// merchant order with an empty instance label.
-func buildStripeCheckoutLineItems(req payment.CreatePaymentRequest, amountInMinorUnit int64, currency string) []*stripe.CheckoutSessionCreateLineItemParams {
-	productName := strings.TrimSpace(req.Subject)
-	if productName == "" {
-		productName = "TokenRouter payment"
+// supplied minor-unit amount and lowercase currency text. A supplied product
+// ID preserves the Stripe catalog item's tax configuration while the checkout
+// still sets an order-specific price. Without a configured ID, a blank subject
+// receives the TokenRouter payment label and inline product metadata preserves
+// the order identifier.
+func buildStripeCheckoutLineItems(req payment.CreatePaymentRequest, amountInMinorUnit int64, currency, productID string) []*stripe.CheckoutSessionCreateLineItemParams {
+	price := &stripe.CheckoutSessionCreateLineItemPriceDataParams{
+		Currency:   stripe.String(strings.ToLower(currency)),
+		UnitAmount: stripe.Int64(amountInMinorUnit),
 	}
-	return []*stripe.CheckoutSessionCreateLineItemParams{{
-		Quantity: stripe.Int64(1),
-		PriceData: &stripe.CheckoutSessionCreateLineItemPriceDataParams{
-			Currency:   stripe.String(strings.ToLower(currency)),
-			UnitAmount: stripe.Int64(amountInMinorUnit),
-			ProductData: &stripe.CheckoutSessionCreateLineItemPriceDataProductDataParams{
-				Name:     stripe.String(productName),
-				Metadata: stripePaymentMetadata(req.OrderID, ""),
-			},
-		},
-	}}
+	if productID != "" {
+		price.Product = stripe.String(productID)
+	} else {
+		productName := strings.TrimSpace(req.Subject)
+		if productName == "" {
+			productName = "TokenRouter payment"
+		}
+		price.ProductData = &stripe.CheckoutSessionCreateLineItemPriceDataProductDataParams{
+			Name:     stripe.String(productName),
+			Metadata: stripePaymentMetadata(req.OrderID, ""),
+		}
+	}
+	return []*stripe.CheckoutSessionCreateLineItemParams{{Quantity: stripe.Int64(1), PriceData: price}}
 }
 
 // stripeCheckoutReturnURL trims the destination and replaces its status query
@@ -461,13 +483,30 @@ func (s *Stripe) queryCheckoutSession(ctx context.Context, sessionID string) (*p
 		tradeNo = sessionID
 	}
 	return &payment.QueryOrderResponse{
-		TradeNo: tradeNo,
-		Status:  status,
-		// AmountTotal follows session currency precision, with configured currency
-		// filling an absent or invalid channel value for core confirmation.
-		Amount:   payment.MinorUnitToAmount(session.AmountTotal, currency),
+		TradeNo:  tradeNo,
+		Status:   status,
+		Amount:   payment.MinorUnitToAmount(stripeCheckoutSettlementMinor(session, s.managedPayments()), currency),
 		Metadata: stripeCheckoutMetadata(session, currency),
 	}, nil
+}
+
+// stripeCheckoutSettlementMinor returns the amount that covers the local order.
+// A Managed Payments session can add sales tax to the customer total after the
+// merchant sets the line-item price. Only use the subtotal when the authenticated
+// session accounts for the entire difference as positive tax, with no shipping or
+// discount. This keeps the normal total and amount validation for other sessions
+// and for provider observations whose amounts cannot be reconciled.
+func stripeCheckoutSettlementMinor(session *stripe.CheckoutSession, managed bool) int64 {
+	details := session.TotalDetails
+	if !managed || details == nil || details.AmountTax <= 0 ||
+		details.AmountDiscount != 0 || details.AmountShipping != 0 {
+		return session.AmountTotal
+	}
+	if session.AmountSubtotal > 0 && session.AmountTotal >= details.AmountTax &&
+		session.AmountTotal-details.AmountTax == session.AmountSubtotal {
+		return session.AmountSubtotal
+	}
+	return session.AmountTotal
 }
 
 // stripeCheckoutProviderStatus combines session payment, intent and invoice
@@ -627,13 +666,14 @@ func (s *Stripe) VerifyNotification(_ context.Context, rawBody string, headers m
 	if err != nil {
 		return nil, fmt.Errorf("stripe verify notification: %w", err)
 	}
-	return parseStripeEvent(&event, rawBody)
+	return parseStripeEvent(&event, rawBody, s.managedPayments())
 }
 
 // parseStripeEvent maps supported verified event names to checkout, invoice or
 // intent observations. Nil and unrelated events return nil, nil; callers
 // provide authenticated data because this helper performs no signature
-// verification and actionable events require usable event.Data.
+// verification and actionable events require usable event.Data. The configured
+// managed flag controls how checkout events reconcile tax collected by Stripe.
 //
 // Completed checkout starts as processing and its parser consults payment
 // status. Expired or asynchronous failed sessions produce failure, while paid
@@ -641,19 +681,19 @@ func (s *Stripe) VerifyNotification(_ context.Context, rawBody string, headers m
 // intent-attempt failures are ignored because they describe a retryable
 // attempt rather than a closing session outcome; later actionable events or
 // queries decide order progression.
-func parseStripeEvent(event *stripe.Event, rawBody string) (*payment.PaymentNotification, error) {
+func parseStripeEvent(event *stripe.Event, rawBody string, managed bool) (*payment.PaymentNotification, error) {
 	if event == nil {
 		return nil, nil
 	}
 	switch event.Type {
 	case stripeEventCheckoutDone:
-		return parseStripeCheckoutSession(event, payment.ProviderStatusProcessing, rawBody)
+		return parseStripeCheckoutSession(event, payment.ProviderStatusProcessing, rawBody, managed)
 	case stripeEventCheckoutExpired:
-		return parseStripeCheckoutSession(event, payment.ProviderStatusFailed, rawBody)
+		return parseStripeCheckoutSession(event, payment.ProviderStatusFailed, rawBody, managed)
 	case stripeEventCheckoutAsyncSucceeded:
-		return parseStripeCheckoutSession(event, payment.ProviderStatusSuccess, rawBody)
+		return parseStripeCheckoutSession(event, payment.ProviderStatusSuccess, rawBody, managed)
 	case stripeEventCheckoutAsyncFailed:
-		return parseStripeCheckoutSession(event, payment.ProviderStatusFailed, rawBody)
+		return parseStripeCheckoutSession(event, payment.ProviderStatusFailed, rawBody, managed)
 	case stripeEventInvoicePaid:
 		return parseStripeInvoice(event, payment.ProviderStatusSuccess, rawBody)
 	case stripeEventPaymentSuccess:
@@ -678,7 +718,7 @@ func parseStripeEvent(event *stripe.Event, rawBody string) (*payment.PaymentNoti
 // input also requires session PaymentStatus paid, even when another expanded
 // object is paid. Failure input remains actionable as supplied by the event
 // selector, leaving local transition validation to the payment core.
-func parseStripeCheckoutSession(event *stripe.Event, status string, rawBody string) (*payment.PaymentNotification, error) {
+func parseStripeCheckoutSession(event *stripe.Event, status string, rawBody string, managed bool) (*payment.PaymentNotification, error) {
 	var session stripe.CheckoutSession
 	if err := json.Unmarshal(event.Data.Raw, &session); err != nil {
 		return nil, fmt.Errorf("stripe parse checkout session: %w", err)
@@ -708,11 +748,9 @@ func parseStripeCheckoutSession(event *stripe.Event, status string, rawBody stri
 		return nil, nil
 	}
 	return &payment.PaymentNotification{
-		TradeNo: tradeNo,
-		OrderID: session.Metadata["orderId"],
-		// Session event money follows reported currency precision, using CNY when
-		// the reported label is absent or invalid.
-		Amount:   payment.MinorUnitToAmount(session.AmountTotal, currency),
+		TradeNo:  tradeNo,
+		OrderID:  session.Metadata["orderId"],
+		Amount:   payment.MinorUnitToAmount(stripeCheckoutSettlementMinor(&session, managed), currency),
 		Status:   status,
 		RawData:  rawBody,
 		Metadata: stripeCheckoutMetadata(&session, currency),

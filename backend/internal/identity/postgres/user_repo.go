@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
 	"github.com/lib/pq"
+	"golang.org/x/crypto/bcrypt"
 
 	dbent "github.com/TokenFlux/TokenRouter/ent"
 	"github.com/TokenFlux/TokenRouter/ent/apikey"
@@ -351,6 +352,36 @@ func (r *UserStore) GetByEmail(ctx context.Context, email string) (*identitycore
 	return out, nil
 }
 
+// GetByUsername resolves an exact, case-sensitive username for password login.
+// Surrounding input whitespace is ignored, while stored usernames and account
+// mailboxes remain unchanged. Missing accounts return ErrUserNotFound and
+// duplicate current usernames return an error rather than selecting a user.
+//
+// The bounded query detects ambiguity before loading the account through
+// GetByID, which applies the repository's normal soft-delete filtering and
+// hydrates group restrictions. Authentication still checks the returned account
+// password and status; finding a username alone grants no access.
+func (r *UserStore) GetByUsername(ctx context.Context, username string) (*identitycore.User, error) {
+	username = strings.TrimSpace(username)
+	if username == "" {
+		return nil, identitycore.ErrUserNotFound
+	}
+	matches, err := r.client.User.Query().
+		Where(dbuser.UsernameEQ(username)).
+		Limit(2).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(matches) == 0 {
+		return nil, identitycore.ErrUserNotFound
+	}
+	if len(matches) > 1 {
+		return nil, fmt.Errorf("username lookup matched multiple users")
+	}
+	return r.GetByID(ctx, matches[0].ID)
+}
+
 // Update delegates flagged account edits and related group/email identity
 // writes to the shared guarded updater. Nil user or empty flags succeeds
 // without persistence; the helper selects transaction completion
@@ -584,18 +615,15 @@ func IdentityReplaceEmailAuthIdentityWithClient(ctx context.Context, client *dbe
 }
 
 // IdentityNormalizeEmailAuthIdentitySubject returns trimmed lowercase
-// real-email text for account identity. Blank input and the four configured
-// provider synthetic-email suffixes return empty, so those addresses do not
+// real-email text for account identity. Blank input and reserved
+// provider or migration placeholder suffixes return empty, so those addresses do not
 // create local email identities.
 func IdentityNormalizeEmailAuthIdentitySubject(email string) string {
 	normalized := strings.ToLower(strings.TrimSpace(email))
 	if normalized == "" {
 		return ""
 	}
-	if strings.HasSuffix(normalized, identitycore.LinuxDoConnectSyntheticEmailDomain) ||
-		strings.HasSuffix(normalized, identitycore.OIDCConnectSyntheticEmailDomain) ||
-		strings.HasSuffix(normalized, identitycore.WeChatConnectSyntheticEmailDomain) ||
-		strings.HasSuffix(normalized, identitycore.DingTalkConnectSyntheticEmailDomain) {
+	if identitycore.IsReservedEmail(normalized) {
 		return ""
 	}
 	return normalized
@@ -2059,6 +2087,63 @@ func (r *UserStore) DisableTotp(ctx context.Context, userID int64) error {
 		return translatePersistenceError(err, identitycore.ErrUserNotFound, nil)
 	}
 	return nil
+}
+
+// ConsumeLegacyTotpBackupCode validates an imported recovery proof and consumes
+// its row only while the original TOTP enrollment and account remain active.
+// It uses this store's SQL executor and does not join an Ent transaction.
+//
+// The candidate query binds each hash to the current encrypted enrollment, so
+// disabling or replacing TOTP invalidates imported proofs without a separate
+// cleanup write. Bcrypt checks happen outside the database; the guarded update
+// then repeats account, enrollment, and unused-state checks. Concurrent callers
+// can validate the same hash, but only one update reports successful admission.
+func (r *UserStore) ConsumeLegacyTotpBackupCode(ctx context.Context, userID int64, code string) (bool, error) {
+	clean := strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(code), "-", ""))
+	if len(clean) != 8 {
+		return false, nil
+	}
+	for _, char := range clean {
+		if !((char >= 'A' && char <= 'Z') || (char >= '0' && char <= '9')) {
+			return false, nil
+		}
+	}
+	normalized := clean[:4] + "-" + clean[4:]
+	result, err := r.sql.QueryContext(ctx, `SELECT b.id,b.code_hash
+FROM legacy_totp_backup_codes b JOIN users u ON u.id=b.user_id
+WHERE b.user_id=$1 AND NOT b.used AND b.deleted_at IS NULL
+AND u.totp_enabled AND u.deleted_at IS NULL AND u.status='active'
+AND b.enrollment_ciphertext=u.totp_secret_encrypted ORDER BY b.id LIMIT 32`, userID)
+	if err != nil {
+		return false, err
+	}
+	defer result.Close()
+	for result.Next() {
+		var id int64
+		var hash string
+		if err := result.Scan(&id, &hash); err != nil {
+			return false, err
+		}
+		if bcrypt.CompareHashAndPassword([]byte(hash), []byte(normalized)) != nil {
+			continue
+		}
+		if err := result.Close(); err != nil {
+			return false, err
+		}
+		// Repeat enrollment and unused checks during consumption because another
+		// login or security-settings change may have committed during bcrypt work.
+		updated, err := r.sql.ExecContext(ctx, `UPDATE legacy_totp_backup_codes b
+SET used=true,used_at=NOW() FROM users u WHERE b.id=$1 AND b.user_id=$2
+AND u.id=b.user_id AND NOT b.used AND b.deleted_at IS NULL
+AND u.totp_enabled AND u.deleted_at IS NULL AND u.status='active'
+AND b.enrollment_ciphertext=u.totp_secret_encrypted`, id, userID)
+		if err != nil {
+			return false, err
+		}
+		count, err := updated.RowsAffected()
+		return count == 1, err
+	}
+	return false, result.Err()
 }
 
 // IdentityBillingBalance returns billing storage participating in the injected

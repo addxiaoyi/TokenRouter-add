@@ -130,6 +130,7 @@ type PaymentType = string
 // adapter.
 type CreatePaymentRequest struct {
 	OrderID               string // stored merchant order number
+	OrderType             string // balance top-up or subscription purchase
 	Amount                string // formatted gateway currency amount
 	PaymentType           string // selected visible payment method
 	Subject               string // recorded checkout product description

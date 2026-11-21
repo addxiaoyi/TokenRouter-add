@@ -39,6 +39,11 @@ import (
 //
 // Query responses support top-level and nested variants, with pointer presence
 // deciding which representation wins even when the winning value is empty.
+// Checkout return URLs retain local order and session context while leaving
+// out_trade_no for the gateway to append, avoiding reserved callback parameters
+// that strict gateways reject before creating an order.
+// Explicit QR mode can display a desktop Alipay cashier URL as its QR payload
+// when the gateway supplies no separate code; mobile checkout retains its link.
 // Refund submission tries the merchant order label before the upstream trade
 // label and advances only for an explicit order-not-found rejection. Unknown
 // outcomes keep the workflow's prepared deduction available for recovery.
@@ -309,6 +314,8 @@ func (e *EasyPay) createRedirectPayment(req payment.CreatePaymentRequest) (*paym
 // and QR references resolve against the instance base; other references retain
 // their exact text so opaque QR payloads and application links remain usable
 // by checkout consumers.
+// In explicit qrcode mode, desktop Alipay can use an absolute HTTP cashier
+// address as its QR payload when the provider supplies no separate QR value.
 // With merchant-number compatibility enabled, an exact echoed order number
 // leaves TradeNo empty so later verified confirmation can bind its real reference.
 func (e *EasyPay) createAPIPayment(ctx context.Context, req payment.CreatePaymentRequest) (*payment.CreatePaymentResponse, error) {
@@ -358,6 +365,15 @@ func (e *EasyPay) createAPIPayment(ctx context.Context, req payment.CreatePaymen
 		payURL = resp.PayURL2
 	}
 	base := e.apiBase()
+	payURL = resolveEasyPayReturnedRef(base, payURL)
+	qrCode := resolveEasyPayReturnedRef(base, resp.QRCode)
+	// QR-only desktop presentation can scan a web cashier link. Keep supplied
+	// QR payloads authoritative and leave mobile application handoff unchanged.
+	if e.config["paymentMode"] == "qrcode" && !req.IsMobile && paymentType == payment.TypeAlipay && qrCode == "" {
+		if target, err := url.Parse(payURL); err == nil && target.Host != "" && (target.Scheme == "https" || target.Scheme == "http") {
+			qrCode = payURL
+		}
+	}
 	tradeNo := resp.TradeNo
 	if e.config[payment.ConfigEasyPayAllowMerchantOrderNoAsTradeNo] == "true" && tradeNo == req.OrderID {
 		// An echoed merchant number cannot bind a provider transaction. Leave the
@@ -366,8 +382,8 @@ func (e *EasyPay) createAPIPayment(ctx context.Context, req payment.CreatePaymen
 	}
 	return &payment.CreatePaymentResponse{
 		TradeNo: tradeNo,
-		PayURL:  resolveEasyPayReturnedRef(base, payURL),
-		QRCode:  resolveEasyPayReturnedRef(base, resp.QRCode),
+		PayURL:  payURL,
+		QRCode:  qrCode,
 	}, nil
 }
 
@@ -404,8 +420,12 @@ func resolveEasyPayReturnedRef(apiBase, ref string) string {
 // resolveURLs returns notification and return destinations, taking each
 // nonempty request value before its configured value. The check uses literal
 // emptiness, so whitespace supplied by a caller also overrides configuration.
-// The return destination passes through sanitizeEasyPayReturnURL because
-// some gateways refuse return URLs that carry a merchant order number.
+//
+// EasyPay appends out_trade_no when returning the payer to the merchant.
+// Shared checkout URLs already carry that query name, which strict gateways
+// reject as a reserved callback field. Removing the prefilled entry preserves
+// order_id, signed resume tokens and other return context. Unparseable return
+// URLs remain unchanged for the upstream to reject through its usual path.
 func (e *EasyPay) resolveURLs(req payment.CreatePaymentRequest) (string, string) {
 	notifyURL := req.NotifyURL
 	if notifyURL == "" {
@@ -415,27 +435,17 @@ func (e *EasyPay) resolveURLs(req payment.CreatePaymentRequest) (string, string)
 	if returnURL == "" {
 		returnURL = e.config["returnUrl"]
 	}
-	return notifyURL, sanitizeEasyPayReturnURL(returnURL)
-}
-
-// sanitizeEasyPayReturnURL removes the out_trade_no query parameter from a
-// return destination. Checkout return URLs built for the result page carry
-// that parameter, and some EasyPay gateways reject any return URL containing
-// it, which would fail otherwise valid payment creation. The remaining
-// parameters (order id, status, resume token) keep the result-page flow
-// intact. Unparseable or hostless values are returned unchanged.
-func sanitizeEasyPayReturnURL(raw string) string {
-	parsed, err := url.Parse(raw)
-	if err != nil || parsed.Host == "" {
-		return raw
+	// Leave the gateway-owned merchant number out of the redirect target so its
+	// signed return parameters can supply that identity without a duplicate.
+	if target, err := url.Parse(returnURL); err == nil {
+		query := target.Query()
+		if query.Has("out_trade_no") {
+			query.Del("out_trade_no")
+			target.RawQuery = query.Encode()
+			returnURL = target.String()
+		}
 	}
-	query := parsed.Query()
-	if _, ok := query["out_trade_no"]; !ok {
-		return raw
-	}
-	query.Del("out_trade_no")
-	parsed.RawQuery = query.Encode()
-	return parsed.String()
+	return notifyURL, returnURL
 }
 
 // customMethods decodes custom mappings into a fresh slice and trims each
@@ -487,8 +497,9 @@ func (e *EasyPay) upstreamPaymentType(paymentType string) string {
 }
 
 // QueryOrder posts a merchant order lookup using the instance's credentials.
-// Identical query and form parameters support V1 servers reading either input;
-// ctx cancels the request. Transport failures expose a fixed diagnostic, with
+// Merchant parameters appear only in the POST form because strict V1 gateways
+// reject mixed URL/body inputs. The context cancels the request. Transport
+// failures expose a fixed diagnostic, with
 // cancellation and deadline identities retained for callers checking errors.Is.
 // Enabled merchant-number compatibility requires explicit identities on paid
 // responses before issuing internal permission for the first transaction binding.
@@ -497,11 +508,7 @@ func (e *EasyPay) QueryOrder(ctx context.Context, tradeNo string) (*payment.Quer
 		"act": "order", "pid": e.config["pid"],
 		"key": e.config["pkey"], "out_trade_no": tradeNo,
 	}
-	query := url.Values{}
-	for key, value := range params {
-		query.Set(key, value)
-	}
-	body, statusCode, err := e.postRaw(ctx, e.apiBase()+"/api.php?"+query.Encode(), params)
+	body, statusCode, err := e.postRaw(ctx, e.apiBase()+"/api.php", params)
 	if err != nil {
 		// Both outer request errors and nested redirect diagnostics can embed the
 		// merchant key. Expose known context sentinels or a fixed message so neither

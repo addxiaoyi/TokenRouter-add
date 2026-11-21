@@ -137,14 +137,6 @@ func (UsageLog) Fields() []ent.Field {
 		// One-hour cache-creation token count.
 		field.Int("cache_creation_1h_tokens").
 			Default(0),
-		// Reported thirty-minute writes, or NULL when the split is unavailable.
-		field.Int("cache_creation_30m_tokens").Optional().Nillable(),
-		// Reported twelve-hour writes, or NULL when the split is unavailable.
-		field.Int("cache_creation_12h_tokens").Optional().Nillable(),
-		// Administrator diagnostics for inconsistent upstream cache-write details; null on normal rows.
-		field.JSON("cache_write_anomaly", map[string]any{}).
-			Optional().
-			SchemaType(map[string]string{dialect.Postgres: "jsonb"}),
 
 		// USD input-token cost.
 		field.Float("input_cost").
@@ -193,10 +185,11 @@ func (UsageLog) Fields() []ent.Field {
 		// rate_multiplier records the selected user pricing multiplier. When
 		// settlement returns an effective multiplier for positive base cost,
 		// ApplyResultToLog replaces it with the total funded amount divided by
-		// that base, reflecting mixed subscription and balance funding.
+		// that base, reflecting mixed subscription and balance funding. Ten
+		// decimal places retain the precision of configured group sales rates.
 		field.Float("rate_multiplier").
 			Default(1).
-			SchemaType(map[string]string{dialect.Postgres: "decimal(10,4)"}),
+			SchemaType(map[string]string{dialect.Postgres: "decimal(20,10)"}),
 		// long_context_billing_applied records whether the resolved long-context
 		// rules increased this request's cost. Merely crossing a configured context
 		// threshold does not establish an increase when the resulting price is free.

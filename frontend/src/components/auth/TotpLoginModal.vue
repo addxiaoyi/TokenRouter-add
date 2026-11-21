@@ -22,7 +22,29 @@
       </p>
     </div>
 
-    <div class="mb-6">
+    <form v-if="useRecoveryCode" class="mb-6" @submit.prevent="submitRecoveryCode">
+      <label for="legacy-recovery-code" class="mb-2 block text-sm font-medium">
+        {{ t('profile.totp.legacyRecoveryCode') }}
+      </label>
+      <input
+        id="legacy-recovery-code"
+        v-model="recoveryCode"
+        type="text"
+        autocomplete="one-time-code"
+        maxlength="9"
+        class="input w-full"
+        :disabled="verifying"
+      />
+      <button
+        type="submit"
+        class="btn btn-primary mt-3 w-full"
+        :disabled="verifying || !validRecoveryCode"
+      >
+        {{ verifying ? t('common.verifying') : t('profile.totp.verifyRecoveryCode') }}
+      </button>
+    </form>
+
+    <div v-else class="mb-6">
       <!--
         Keep a hidden target for system OTP autofill while password managers use
         the first visible cell, which accepts a complete six-digit value.
@@ -72,6 +94,17 @@
 
     <button
       type="button"
+      class="mb-3 w-full text-sm text-primary-600 dark:text-primary-400"
+      :disabled="verifying"
+      @click="useRecoveryCode = !useRecoveryCode"
+    >
+      {{
+        t(useRecoveryCode ? 'profile.totp.useAuthenticator' : 'profile.totp.useLegacyRecoveryCode')
+      }}
+    </button>
+
+    <button
+      type="button"
       class="btn btn-secondary w-full"
       :disabled="verifying"
       @click="$emit('cancel')"
@@ -84,7 +117,7 @@
 <script setup lang="ts">
 import Icon from '@/components/icons/Icon.vue'
 import AuthCardDialog from '@/components/common/AuthCardDialog.vue'
-import { ref, watch, nextTick, onMounted } from 'vue'
+import { computed, ref, watch, nextTick, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores'
 
@@ -97,7 +130,8 @@ import { useAppStore } from '@/stores'
 // busy or reset rejected input. A remembered submitted value suppresses duplicate
 // input and change notifications for the same complete code until the draft
 // changes or an error resets it. Paste uses the same distribution path and focuses
-// the next available cell after Vue updates the view.
+// the next available cell after Vue updates the view. Imported recovery codes
+// use a separate explicit submission form while the same parent owns verification.
 
 withDefaults(
   defineProps<{
@@ -122,7 +156,7 @@ withDefaults(
 const emit = defineEmits<{
   'after-leave': [] // completed dialog leave transition
 
-  verify: [code: string] // complete numeric OTP value
+  verify: [code: string] // complete OTP or recovery proof
 
   cancel: [] // user cancelled authentication challenge
 }>() // parent component event dispatcher
@@ -145,12 +179,28 @@ const hiddenOtpInputRef = ref<HTMLInputElement | null>(null) // system autofill 
 // again.
 const lastSubmittedCode = ref('') // last automatically submitted OTP
 
+// Recovery mode keeps imported alphanumeric proofs separate from numeric OTP
+// autofill. The parent sends either proof through the same temporary challenge.
+const useRecoveryCode = ref(false) // legacy recovery form visibility
+const recoveryCode = ref('') // imported recovery proof draft
+const validRecoveryCode = computed(() =>
+  /^[a-zA-Z0-9]{4}-?[a-zA-Z0-9]{4}$/.test(recoveryCode.value),
+) // accepted legacy proof shape
+
+// submitRecoveryCode emits one explicitly submitted imported proof when valid.
+// The parent owns request state, so duplicate submissions stay blocked while it
+// marks verification busy and errors can clear the draft through setError.
+function submitRecoveryCode(): void {
+  if (!verifying.value && validRecoveryCode.value) emit('verify', recoveryCode.value)
+}
+
 // When the joined draft reaches six digits, emit it once per completed value. The
 // remembered value suppresses duplicate notifications from multiple autofill
 // targets.
 watch(
   () => code.value.join(''),
   (newCode) => {
+    if (useRecoveryCode.value) return
     if (!/^[0-9]{6}$/.test(newCode)) {
       lastSubmittedCode.value = ''
       return
@@ -175,6 +225,7 @@ defineExpose({
       appStore.showError(message)
     }
     code.value = ['', '', '', '', '', '']
+    recoveryCode.value = ''
     lastSubmittedCode.value = ''
     // The visible cells also hold direct DOM values from autofill. Clear them with
     // the reactive draft so rejected digits are no longer displayed.

@@ -216,6 +216,53 @@ func TestAffiliateRepository_AccrueQuota_ReusesOuterTransaction(t *testing.T) {
 		"AccrueQuota must propagate the outer tx — found persisted rows after rollback")
 }
 
+// TestAffiliateRepository_SignupGrants checks the migrated fixed rewards
+// through the same transaction used at signup. Rebinding must leave balances,
+// referral counts, and the inviter's grant receipt unchanged.
+func TestAffiliateRepository_SignupGrants(t *testing.T) {
+	ctx := context.Background()
+	tx := testEntTx(t)
+	txCtx := dbent.NewTxContext(ctx, tx)
+	client := tx.Client()
+	_, err := client.ExecContext(txCtx, `
+INSERT INTO settings (key, value)
+VALUES ('affiliate_signup_inviter_usd', '1.599998'), ('affiliate_signup_invitee_usd', '1.553086')
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`)
+	require.NoError(t, err)
+
+	inviter := mustCreateUser(t, client, &identity.User{
+		Email:        fmt.Sprintf("signup-inviter-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash", Role: identity.RoleUser, Status: billing.StatusActive,
+	})
+	invitee := mustCreateUser(t, client, &identity.User{
+		Email:        fmt.Sprintf("signup-invitee-%d@example.com", time.Now().UnixNano()),
+		PasswordHash: "hash", Role: identity.RoleUser, Status: billing.StatusActive,
+	})
+	repo := promotionpostgres.NewAffiliateRepository(client, func(tx *dbent.Tx) promotionpostgres.TransferBalance {
+		return billingpostgres.BalanceInTx(tx)
+	})
+	bound, err := repo.BindInviter(txCtx, invitee.ID, inviter.ID)
+	require.NoError(t, err)
+	require.True(t, bound)
+	bound, err = repo.BindInviter(txCtx, invitee.ID, inviter.ID)
+	require.NoError(t, err)
+	require.False(t, bound)
+
+	profile, err := repo.EnsureUserAffiliate(txCtx, inviter.ID)
+	require.NoError(t, err)
+	require.InDelta(t, 1.599998, profile.AffQuota, 1e-9)
+	require.InDelta(t, 1.599998, profile.AffHistoryQuota, 1e-9)
+	require.EqualValues(t, 1, profile.AffCount)
+	user, err := client.User.Get(txCtx, invitee.ID)
+	require.NoError(t, err)
+	require.InDelta(t, 1.553086, user.Balance, 1e-9)
+	require.Zero(t, user.TotalRecharged)
+	receipts := querySingleFloat(t, txCtx, client, `
+SELECT COUNT(*)::double precision FROM user_affiliate_ledger
+WHERE user_id = $1 AND source_user_id = $2 AND action = 'accrue'`, inviter.ID, invitee.ID)
+	require.Equal(t, 1.0, receipts)
+}
+
 // TestAffiliateRepository_TransferQuotaToBalance_EmptyQuota supplies an
 // affiliate profile with zero available quota. Transfer returns the empty-quota
 // error with zero result amounts, while the stored wallet retains 3.21.
