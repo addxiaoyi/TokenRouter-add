@@ -23,7 +23,6 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/timing"
 	infraerrors "github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 	"github.com/TokenFlux/TokenRouter/internal/protocol/systemone"
-	"github.com/TokenFlux/TokenRouter/internal/protocol/wirejson"
 	"github.com/TokenFlux/TokenRouter/internal/server/httpx"
 )
 
@@ -312,8 +311,7 @@ func RewriteCompositeGeminiParams(c *gin.Context, actualModel string) {
 // Successful body reading restores bytes for downstream handlers. SystemOne
 // multipart reads the model inside its first request JSON part; other multipart
 // endpoints use a model field. Missing or empty model values return the
-// composite-prefix-required error, while malformed, duplicate-key, or
-// case-ambiguous bodies return a bad-request application error.
+// composite-prefix-required error, while decoding failures stop admission.
 func CompositeModelFromRequest(request *http.Request) (string, error) {
 	if IsSystemOneEndpoint(request.URL.Path) {
 		body, err := ReadAndRestoreRequestBody(request)
@@ -321,13 +319,10 @@ func CompositeModelFromRequest(request *http.Request) (string, error) {
 			return "", err
 		}
 		model, err := systemone.RequestModel(body, request.Header.Get("Content-Type"))
-		if err != nil {
-			return "", infraerrors.BadRequest("INVALID_REQUEST_BODY", err.Error())
-		}
-		if model == "" {
+		if err == nil && model == "" {
 			return "", apikey.ErrCompositeKeyPrefixRequired
 		}
-		return model, nil
+		return model, err
 	}
 	// Use the parsed media type for multipart dispatch; other results take JSON
 	// handling, whose model check supplies the composite admission error when needed.
@@ -339,10 +334,7 @@ func CompositeModelFromRequest(request *http.Request) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := wirejson.ValidateRequestObject(bytes.TrimPrefix(body, utf8ByteOrderMark)); err != nil {
-		return "", infraerrors.BadRequest("INVALID_REQUEST_BODY", RequestBodyParseErrorMessage(err))
-	}
-	model := strings.TrimSpace(gjson.GetBytes(bytes.TrimPrefix(body, utf8ByteOrderMark), "model").String())
+	model := strings.TrimSpace(gjson.GetBytes(body, "model").String())
 	if model == "" {
 		return "", apikey.ErrCompositeKeyPrefixRequired
 	}
@@ -409,9 +401,6 @@ func RewriteCompositeAdditionalModels(request *http.Request, apiKey *apikey.APIK
 	body, err := ReadAndRestoreRequestBody(request)
 	if err != nil {
 		return err
-	}
-	if err := wirejson.ValidateRequestObject(bytes.TrimPrefix(body, utf8ByteOrderMark)); err != nil {
-		return infraerrors.BadRequest("INVALID_REQUEST_BODY", RequestBodyParseErrorMessage(err))
 	}
 	rewritten := body
 	for index, tool := range gjson.GetBytes(body, "tools").Array() {
@@ -501,61 +490,41 @@ func SetRequestBody(request *http.Request, body []byte) {
 	request.Header.Set("Content-Length", fmt.Sprintf("%d", len(body)))
 }
 
-// MultipartModel reads the unique scalar multipart field named model and trims its value.
+// MultipartModel reads the first multipart field named model and trims its value.
 // It restores the request body before parsing. Missing fields, empty values, or
 // an invalid multipart content type return the composite-prefix-required error;
-// duplicate or case-variant model fields and malformed multipart bodies return
-// bad-request application errors.
+// part-read failures are returned directly.
 func MultipartModel(request *http.Request) (string, error) {
 	body, err := ReadAndRestoreRequestBody(request)
 	if err != nil {
 		return "", err
 	}
 	mediaType, params, err := mime.ParseMediaType(request.Header.Get("Content-Type"))
-	if err != nil || !strings.HasPrefix(mediaType, "multipart/") || strings.TrimSpace(params["boundary"]) == "" {
+	if err != nil || !strings.HasPrefix(mediaType, "multipart/") {
 		return "", apikey.ErrCompositeKeyPrefixRequired
 	}
 	reader := multipart.NewReader(bytes.NewReader(body), params["boundary"])
-	foundModel := false
-	selectedModel := ""
 	for {
 		part, nextErr := reader.NextPart()
 		if errors.Is(nextErr, io.EOF) {
 			break
 		}
 		if nextErr != nil {
-			return "", infraerrors.BadRequest("INVALID_REQUEST_BODY", "Failed to parse multipart request body")
+			return "", nextErr
 		}
-		name := strings.TrimSpace(part.FormName())
-		fileName := strings.TrimSpace(part.FileName())
-		if fileName == "" && strings.EqualFold(name, "model") {
-			if name != "model" {
-				_ = part.Close()
-				return "", infraerrors.BadRequest("INVALID_REQUEST_BODY", "ambiguous multipart model field")
-			}
-			if foundModel {
-				_ = part.Close()
-				return "", infraerrors.BadRequest("INVALID_REQUEST_BODY", "duplicate multipart model field")
-			}
+		if part.FormName() == "model" {
 			value, readErr := io.ReadAll(part)
-			_ = part.Close()
 			if readErr != nil {
-				return "", infraerrors.BadRequest("INVALID_REQUEST_BODY", "Failed to parse multipart request body")
+				return "", readErr
 			}
-			foundModel = true
-			selectedModel = strings.TrimSpace(string(value))
-			continue
-		}
-		_, copyErr := io.Copy(io.Discard, part)
-		_ = part.Close()
-		if copyErr != nil {
-			return "", infraerrors.BadRequest("INVALID_REQUEST_BODY", "Failed to parse multipart request body")
+			model := strings.TrimSpace(string(value))
+			if model == "" {
+				return "", apikey.ErrCompositeKeyPrefixRequired
+			}
+			return model, nil
 		}
 	}
-	if !foundModel || selectedModel == "" {
-		return "", apikey.ErrCompositeKeyPrefixRequired
-	}
-	return selectedModel, nil
+	return "", apikey.ErrCompositeKeyPrefixRequired
 }
 
 // RewriteMultipartModel rebuilds multipart input with actualModel in every model field.

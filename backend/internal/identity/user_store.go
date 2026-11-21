@@ -77,6 +77,15 @@ type UserUpdateFields struct {
 // BalanceChange is the billing result type exposed to identity callers.
 type BalanceChange = billing.BalanceChange
 
+// UsernameUserRepository supplies exact username lookup for migrated password
+// accounts without changing email-only registration and recovery operations.
+type UsernameUserRepository interface {
+	// GetByUsername reads one undeleted account with the supplied exact username.
+	// Implementations trim surrounding input whitespace, reject ambiguous matches,
+	// and return ErrUserNotFound when no current account matches.
+	GetByUsername(ctx context.Context, username string) (*User, error)
+}
+
 // UserRepository supplies account persistence, profile relationships and
 // atomic funding operations to identity callers.
 type UserRepository interface {

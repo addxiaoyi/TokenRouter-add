@@ -31,7 +31,7 @@ import (
 // seconds, and fixed fetch/result limits for selecting rollback candidates.
 const (
 	updateCacheTTL        = 1200                    // cached release lifetime in seconds
-	githubRepo            = "addxiaoyi/TokenRouter-add" // queried GitHub owner/repository identity
+	githubRepo            = "TokenFlux/TokenRouter" // queried GitHub owner/repository identity
 	maxRollbackVersions   = 3                       // maximum displayed rollback candidate count
 	rollbackFetchPageSize = 15                      // requested recent release page count
 )
