@@ -431,14 +431,14 @@ func TestAPIContracts(t *testing.T) {
 			}`,
 		},
 		{
-			name: "POST /api/v1/keys with Ultrafast policy",
+			name: "POST /api/v1/keys",
 			setup: func(t *testing.T, deps *contractDeps) {
 				t.Helper()
 				deps.groupRepo.SetActive([]routing.Group{{ID: 10, Status: "active"}})
 			},
 			method: http.MethodPost,
 			path:   "/api/v1/keys",
-			body:   `{"name":"Key One","custom_key":"sk_custom_1234567890","group_id":10,"fast_mode_policy":"force_ultrafast"}`,
+			body:   `{"name":"Key One","custom_key":"sk_custom_1234567890","group_id":10}`,
 			headers: map[string]string{
 				"Content-Type": "application/json",
 			},
@@ -458,7 +458,7 @@ func TestAPIContracts(t *testing.T) {
 					"is_composite": false,
 					"composite_groups": [],
 					"status": "active",
-					"fast_mode_policy": "force_ultrafast",
+					"fast_mode_policy": "follow_request",
 					"force_claude_1h_cache": false,
 					"billing_mode": "auto",
 					"preferred_subscription_id": null,
@@ -1049,7 +1049,7 @@ func TestAPIContracts(t *testing.T) {
 							"output_tokens": 20,
 							"cache_creation_tokens": 1,
 							"cache_read_tokens": 2,
-							"cache_creation_5m_tokens": 1,
+							"cache_creation_5m_tokens": 0,
 							"cache_creation_1h_tokens": 0,
 							"input_cost": 0,
 							"output_cost": 0,
@@ -3563,6 +3563,12 @@ func (r *stubApiKeyRepo) ListKeysByGroupID(ctx context.Context, groupID int64) (
 	return nil, errors.New("not implemented")
 }
 
+// IncrementQuotaUsed rejects key quota writes with the fixture's
+// unimplemented-operation error.
+func (r *stubApiKeyRepo) IncrementQuotaUsed(ctx context.Context, id int64, amount float64) (float64, error) {
+	return 0, errors.New("not implemented")
+}
+
 // UpdateLastUsed records usedAt as LastUsedAt and UpdatedAt for an existing ID,
 // then republishes an outer key copy in its current lookup views. Missing IDs
 // return ErrAPIKeyNotFound; nested key references remain shared and callers
@@ -3582,6 +3588,25 @@ func (r *stubApiKeyRepo) UpdateLastUsed(ctx context.Context, id int64, usedAt ti
 	r.byID[id] = &clone
 	r.byKey[clone.Key] = &clone
 	return nil
+}
+
+// IncrementRateLimitUsage accepts spending updates and leaves seeded key
+// counters unchanged.
+func (r *stubApiKeyRepo) IncrementRateLimitUsage(ctx context.Context, id int64, cost float64) error {
+	return nil
+}
+
+// ResetRateLimitWindows accepts window resets and leaves seeded key counters
+// unchanged.
+func (r *stubApiKeyRepo) ResetRateLimitWindows(ctx context.Context, id int64) error {
+	return nil
+}
+
+// GetRateLimitData reports successful absence of repository rate observations
+// for every key ID. This response fixture stores no separate rate data, so
+// callers receive nil rather than synthesized counters.
+func (r *stubApiKeyRepo) GetRateLimitData(ctx context.Context, id int64) (*apikey.APIKeyRateLimitData, error) {
+	return nil, nil
 }
 
 // newStubUsageLogRepo initializes an empty user-indexed usage map for one
