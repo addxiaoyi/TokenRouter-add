@@ -1,0 +1,2 @@
+FROM tokenrouter:migration-stripe-complete-20261120
+COPY --chmod=755 tokenrouter-completion /app/tokenrouter

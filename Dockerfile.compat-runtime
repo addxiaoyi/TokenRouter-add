@@ -1,0 +1,3 @@
+FROM tokenrouter:rollback-20261119-113526
+COPY --chmod=755 tokenrouter-compat /app/tokenrouter
+LABEL org.opencontainers.image.version="0.7.4-legacy-compat"

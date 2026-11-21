@@ -32,6 +32,20 @@ vi.mock('@/stores', () => ({
 }))
 
 describe('TotpLoginModal', () => {
+  // Imported recovery codes use an explicit form instead of numeric autofill.
+  // The same verification event carries the complete proof to the login parent.
+  it('submits an imported recovery code through the login challenge', async () => {
+    const wrapper = mount(TotpLoginModal, { props: { tempToken: 'temp-token' } })
+    const recoveryToggle = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('profile.totp.useLegacyRecoveryCode'))
+    await recoveryToggle!.trigger('click')
+    await wrapper.get('#legacy-recovery-code').setValue('abcd-1234')
+    await wrapper.get('form').trigger('submit')
+    expect(wrapper.emitted('verify')).toEqual([['abcd-1234']])
+    expect(wrapper.find('[data-testid="totp-digit-input"]').exists()).toBe(false)
+  })
+
   // Reset the dependency fixtures before each case so request histories and
   // configured responses belong to the scenario being asserted in that case.
   beforeEach(() => {

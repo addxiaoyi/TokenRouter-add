@@ -1,0 +1,2 @@
+FROM tokenrouter:payment-return-qr-20261119
+COPY --chmod=755 tokenrouter-scanfix /app/tokenrouter

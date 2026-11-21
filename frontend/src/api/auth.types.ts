@@ -8,7 +8,7 @@ import type { User } from '@/api/identity.types'
 // LoginRequest supplies account credentials and optional human-verification proof for
 // authentication.
 export interface LoginRequest {
-  email: string // Account email address.
+  email: string // Account email or username.
   password: string // Account authentication password.
   turnstile_token?: string // Human-verification challenge proof.
   tencent_captcha_ticket?: string // Tencent verification ticket.

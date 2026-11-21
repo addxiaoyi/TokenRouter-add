@@ -66,17 +66,20 @@ export function videoPricingEntries(pricing: MarketplaceModelPricing): VideoPric
  * unavailable status returns unpriced even when amount fields remain populated, and
  * token mode is accepted directly after the status check.
  *
- * Image and video modes additionally require at least one finite nonnegative unit
+ * Request, image, and video modes require at least one finite nonnegative unit
  * price. This distinguishes zero-cost quotes from missing or invalid amounts: a free
- * media unit is priced, while a media mode with no usable quote remains unpriced.
+ * unit is priced, while a mode with no usable quote remains unpriced.
  * Unknown modes also remain unpriced.
  */
 export function pricingKind(
   pricing: MarketplaceModelPricing,
-): 'token' | 'image' | 'video' | 'unpriced' {
+): 'token' | 'per_request' | 'image' | 'video' | 'unpriced' {
   if (pricing.price_status !== 'priced') return 'unpriced'
   if (pricing.pricing_mode === 'video' && videoPricingEntries(pricing).length > 0) return 'video'
   if (pricing.pricing_mode === 'image' && hasImagePricing(pricing)) return 'image'
+  if (pricing.pricing_mode === 'per_request' && isUnitPrice(pricing.request_price)) {
+    return 'per_request'
+  }
   if (pricing.pricing_mode === 'token') return 'token'
   return 'unpriced'
 }

@@ -4,16 +4,27 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/gin-gonic/gin/binding"
 	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 )
 
-// Tencent action proof travels through the JSON request types in
+// captcha_requests_scenario_test.go verifies credential validation and Tencent
+// action proof through the JSON request types in
 // session_handler.go, pending_handler.go, oauth_start.go, and
 // passkey_handler.go. These cases decode the same payload into each request
 // and inspect ticket and random-string transport before any provider
 // verification runs.
+
+// TestLoginRequestAcceptsUsername preserves the legacy identifier in the email
+// JSON field. It checks that login accepts a username while registration still
+// rejects that same value as an invalid mailbox.
+func TestLoginRequestAcceptsUsername(t *testing.T) {
+	require.NoError(t, binding.Validator.ValidateStruct(&LoginRequest{Email: "legacy-user", Password: "old-password"}))
+	require.Error(t, binding.Validator.ValidateStruct(&LoginRequest{Password: "old-password"}))
+	require.Error(t, binding.Validator.ValidateStruct(&RegisterRequest{Email: "legacy-user", Password: "old-password"}))
+}
 
 // TestAuthRequestsBindTencentCaptchaProof decodes one Tencent ticket payload
 // through eight authentication request types. It checks that each resulting

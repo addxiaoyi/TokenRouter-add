@@ -22,8 +22,8 @@ import (
 // participate in a payment transaction and leave its commit or rollback to
 // that caller.
 
-// TransferBalance credits affiliate quota through the caller-owned billing
-// transaction.
+// TransferBalance credits affiliate transfers and signup grants through a
+// caller-owned billing transaction.
 type TransferBalance interface {
 	// CreditAffiliateTransfer adds transferred quota to user balance and
 	// positive cumulative recharges.
@@ -31,6 +31,10 @@ type TransferBalance interface {
 	// The writer participates in the supplied transaction; its caller owns
 	// completion and later cache publication.
 	CreditAffiliateTransfer(context.Context, int64, float64) error
+	// AddBalance credits a signup grant without classifying it as a recharge.
+	// The writer participates in the same transaction as the inviter claim, so
+	// its caller controls both completion and later cache publication.
+	AddBalance(context.Context, int64, float64) error
 }
 
 // TransferBalanceFactory binds a transfer balance writer to a supplied live

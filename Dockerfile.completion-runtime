@@ -1,0 +1,2 @@
+FROM tokenrouter:payment-scanfix-20261119
+COPY --chmod=755 tokenrouter-completion /app/tokenrouter

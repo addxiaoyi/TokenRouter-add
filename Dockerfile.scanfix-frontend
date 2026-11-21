@@ -1,0 +1,7 @@
+FROM tokenrouter-frontend:final-20261119
+COPY frontend/src/components/payment/PaymentStatusPanel.vue /app/frontend/src/components/payment/PaymentStatusPanel.vue
+RUN pnpm exec prettier --write src/components/payment/PaymentStatusPanel.vue
+RUN pnpm exec eslint src/components/payment/PaymentStatusPanel.vue
+RUN pnpm exec vitest run src/components/payment/__tests__/PaymentStatusPanel.spec.ts src/views/user/__tests__/PaymentView.spec.ts --maxWorkers=2
+RUN pnpm run check:comments && pnpm run check:ui
+RUN pnpm run build

@@ -1,0 +1,5 @@
+FROM tokenrouter-frontend:migration-completion-20261120
+COPY frontend/src/api/user.ts /app/frontend/src/api/user.ts
+RUN pnpm exec prettier --write src/api/user.ts
+RUN pnpm exec eslint src/api/user.ts
+RUN pnpm run build

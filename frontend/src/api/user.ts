@@ -95,23 +95,21 @@ export async function toggleNotifyEmail(email: string, disabled: boolean): Promi
 }
 
 /**
- * sendEmailBindingCode submits send email binding code and returns after the
- * request completes.
+ * sendEmailBindingCode requests a code for the email the user wants to bind.
  */
 export async function sendEmailBindingCode(email: string): Promise<void> {
-  await apiClient.post('/user/provider-bindings/email/send-code', { email })
+  await apiClient.post('/user/account-bindings/email/send-code', { email })
 }
 
 /**
- * bindEmailIdentity submits bind email identity and returns the server response
- * data.
+ * bindEmailIdentity submits the email code and password to the account endpoint.
  */
 export async function bindEmailIdentity(payload: {
   email: string // Account email address.
   verify_code: string // Recorded verify code.
   password: string // Submitted password text.
 }): Promise<User> {
-  const { data } = await apiClient.post<User>('/user/provider-bindings/email', payload)
+  const { data } = await apiClient.post<User>('/user/account-bindings/email', payload)
   return data
 }
 
@@ -122,11 +120,10 @@ export async function bindEmailIdentity(payload: {
 export type BindableOAuthProvider = Exclude<UserAuthProvider, 'email'>
 
 /**
- * unbindAuthIdentity removes unbind auth identity and returns the server
- * response data.
+ * unbindAuthIdentity removes the selected binding and returns the updated account.
  */
 export async function unbindAuthIdentity(provider: BindableOAuthProvider): Promise<User> {
-  const { data } = await apiClient.delete<User>(`/user/provider-bindings/${provider}`)
+  const { data } = await apiClient.delete<User>(`/user/account-bindings/${provider}`)
   return data
 }
 

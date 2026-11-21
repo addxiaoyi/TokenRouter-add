@@ -37,13 +37,14 @@ const (
 	// matches the supported database integer range validated by user operations.
 	DefaultUserAPIKeyLimit = 100
 	MaxUserAPIKeyLimit     = 2_147_483_647
-	// These reserved domain suffixes identify placeholder account addresses made
-	// from provider identities; authentication callers treat them as lacking a
-	// real mailbox.
+	// These reserved domain suffixes identify placeholders for provider and
+	// migrated accounts; authentication callers treat them as lacking a real
+	// mailbox.
 	LinuxDoConnectSyntheticEmailDomain  = "@linuxdo-connect.invalid"
 	OIDCConnectSyntheticEmailDomain     = "@oidc-connect.invalid"
 	WeChatConnectSyntheticEmailDomain   = "@wechat-connect.invalid"
 	DingTalkConnectSyntheticEmailDomain = "@dingtalk-connect.invalid"
+	LegacyMigrationSyntheticEmailDomain = "@legacy-migration.invalid"
 )
 
 // ErrUserNotFound identifies a missing current account for identity and billing
@@ -233,15 +234,16 @@ func MarshalNotifyEmails(entries []NotifyEmailEntry) string {
 }
 
 // IsReservedEmail reports whether trimmed lowercase text ends in a reserved
-// provider-placeholder suffix. It recognizes LinuxDo, OIDC, WeChat and DingTalk
-// addresses for mailbox eligibility checks and performs no complete email
-// validation.
+// provider or migration placeholder suffix. Reserved addresses cannot prove
+// control of a real mailbox, so first binding and profile display treat them as
+// unbound. The check performs no complete email validation.
 func IsReservedEmail(email string) bool {
 	normalized := strings.ToLower(strings.TrimSpace(email))
 	return strings.HasSuffix(normalized, LinuxDoConnectSyntheticEmailDomain) ||
 		strings.HasSuffix(normalized, OIDCConnectSyntheticEmailDomain) ||
 		strings.HasSuffix(normalized, WeChatConnectSyntheticEmailDomain) ||
-		strings.HasSuffix(normalized, DingTalkConnectSyntheticEmailDomain)
+		strings.HasSuffix(normalized, DingTalkConnectSyntheticEmailDomain) ||
+		strings.HasSuffix(normalized, LegacyMigrationSyntheticEmailDomain)
 }
 
 // IsValidBalanceRechargeMultiplier reports whether a recharge override is finite

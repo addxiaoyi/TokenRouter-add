@@ -12,8 +12,9 @@ import (
 // transitions from provider ownership, email matches, and local requirements.
 // Pending registration first distinguishes a provider identity owner from an
 // account found by normalized email. Those observations select account
-// creation or existing-account choice; a stored identity owner selects
-// its account regardless of the mailbox the provider currently reports.
+// creation or existing-account choice. Existing GitHub subjects retain their
+// account despite mailbox changes; other identity-email mismatches are rejected
+// instead of silently selecting another target.
 //
 // Legacy sessions can already carry a frontend step and need no storage
 // rewrite. Newly imposed email requirements upgrade otherwise completed state
@@ -25,9 +26,9 @@ import (
 
 // EmailShouldCreatePendingRegistration decides whether an email OAuth
 // observation lacks both an identity owner and a matching account. An
-// existing identity owner returns false without comparing mailboxes: the
-// stored subject already selects an existing account, so this observation
-// never creates a pending registration.
+// existing GitHub identity keeps its owner even when its profile mailbox differs.
+// Other identity owners must match the supplied lowercased/trimmed email; a
+// mismatch returns a conflict instead of account-creation eligibility.
 //
 // Without that identity, only ErrUserNotFound from normalized account lookup
 // returns true. A successful lookup, even nil data without an error, returns
@@ -48,6 +49,11 @@ func (f *PendingFlow) EmailShouldCreatePendingRegistration(ctx context.Context, 
 	}
 	email := strings.TrimSpace(strings.ToLower(input.Email))
 	if identityUser != nil {
+		// Keep migrated GitHub ownership consistent with final login resolution;
+		// a profile mailbox change must not send its owner into account registration.
+		if !strings.EqualFold(strings.TrimSpace(input.ProviderType), "github") && !strings.EqualFold(strings.TrimSpace(identityUser.Email), email) {
+			return false, infraerrors.Conflict("AUTH_IDENTITY_EMAIL_MISMATCH", "oauth identity belongs to a different email")
+		}
 		return false, nil
 	}
 	if _, err := f.Database.FindUserByNormalizedEmail(ctx, email); err != nil {

@@ -18,6 +18,7 @@ Choose an entry point for your deployment. See the [deployment guide](https://gi
 - [Caddyfile](Caddyfile): a reverse proxy baseline. Replace the example domain before use.
 - [tokenrouter.service](tokenrouter.service): a systemd template for manual installation. The installer generates a service definition using the actual installation paths.
 - [codex-instructions.md.tmpl](codex-instructions.md.tmpl): an optional Codex request instructions template, enabled by setting its path in the application configuration.
+- [browser-auto-update.js](browser-auto-update.js) and the two `browser-auto-update*.nginx.conf` snippets: optional browser refresh after deployed frontend assets change. Installation, editing guards, cache requirements, and verification are documented in [browser version refresh](../docs/operations/deployment_and_migrations.md#browser_auto_update).
 
 The first start upgrades legacy configuration, saves `config.yaml.v1.bak`, and
 imports the old environment settings. Current files are not rewritten. For a
