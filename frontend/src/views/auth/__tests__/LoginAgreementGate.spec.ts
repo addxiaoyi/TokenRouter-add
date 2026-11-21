@@ -227,6 +227,25 @@ describe.each(['login', 'register'] as const)('%s 协议提交门禁', (page) =>
     expect(mocks.warning).not.toHaveBeenCalled()
   })
 
+  // Legacy usernames pass the login form after consent, while registration
+  // continues to validate mailboxes. The request retains the existing email
+  // field name so the server can resolve either credential identifier.
+  it('登录接受旧用户名并保持注册邮箱校验', async () => {
+    const view = await mountPage(page)
+    await view.get('#email').setValue('legacy-user')
+    await view.get('#password').setValue('original-password')
+    await view.get('#login-agreement-consent').setValue(true)
+    await view.get('form').trigger('submit')
+    await flushPromises()
+    if (page === 'login') {
+      expect(view.get('#email').attributes('type')).toBe('text')
+      expect(view.get('#email').attributes('autocomplete')).toBe('username')
+      expect(mocks.login).toHaveBeenCalledWith(expect.objectContaining({ email: 'legacy-user' }))
+    } else {
+      expect(mocks.register).not.toHaveBeenCalled()
+    }
+  })
+
   // Each listed provider action starts without checkbox consent. The page must
   // show the agreement reminder before invoking captcha verification or requesting
   // a provider authorization URL.

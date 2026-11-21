@@ -23,7 +23,8 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/promotion"
 )
 
-// Email-backed OAuth callbacks can send a new profile to password and
+// auth_email_oauth_test.go verifies email-backed OAuth callbacks and bound
+// GitHub account selection. Callbacks can send a new profile to password and
 // invitation completion while an existing active email account receives login
 // tokens directly. The cases invoke callbacks with supplied provider profiles
 // and inspect SQLite users, pending-session claims, cookie state, and identity
@@ -35,6 +36,60 @@ import (
 // observes its password hash, recorded inviter relationship, and invitation
 // owner. The affiliate fixture captures those relationships in memory; the
 // callback profile injection supplies no external provider exchange.
+
+// TestEmailOAuthCallbackBoundSubjectKeepsAccount supplies a verified profile
+// whose mailbox belongs to another local user. GitHub must retain its bound
+// owner, while Google keeps rejecting the mismatched profile mailbox.
+func TestEmailOAuthCallbackBoundSubjectKeepsAccount(t *testing.T) {
+	for _, provider := range []string{"github", "google"} {
+		t.Run(provider, func(t *testing.T) {
+			handler, client := newOAuthPendingFlowTestHandler(t, true)
+			ctx := context.Background()
+			owner, err := client.User.Create().SetEmail("local@example.com").
+				SetUsername("original-user").SetPasswordHash("original-hash").
+				SetRole(identity.RoleUser).SetStatus(billing.StatusActive).Save(ctx)
+			require.NoError(t, err)
+			_, err = client.User.Create().SetEmail("profile@example.com").
+				SetUsername("other-user").SetPasswordHash("other-hash").
+				SetRole(identity.RoleUser).SetStatus(billing.StatusActive).Save(ctx)
+			require.NoError(t, err)
+			_, err = client.AuthIdentity.Create().SetUserID(owner.ID).
+				SetProviderType(provider).SetProviderKey(provider).
+				SetProviderSubject("stable-subject").Save(ctx)
+			require.NoError(t, err)
+			recorder := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(recorder)
+			c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/auth/oauth/"+provider+"/callback", nil)
+			handler.Email.EmailOAuthCallbackWithProfile(c, provider, identity.EmailOAuthOptions{},
+				"/auth/oauth/callback", "/dashboard", &identityprovider.EmailOAuthProfile{
+					Subject: "stable-subject", Email: "profile@example.com", EmailVerified: true,
+				})
+			location, err := url.Parse(recorder.Header().Get("Location"))
+			require.NoError(t, err)
+			fragment, err := url.ParseQuery(location.Fragment)
+			require.NoError(t, err)
+			if provider == "github" {
+				require.NotEmpty(t, fragment.Get("access_token"))
+				claims, err := handler.authService.ValidateToken(fragment.Get("access_token"))
+				require.NoError(t, err)
+				require.Equal(t, owner.ID, claims.UserID)
+			} else {
+				require.Contains(t, recorder.Header().Get("Location"), "AUTH_IDENTITY_EMAIL_MISMATCH")
+				require.Empty(t, fragment.Get("access_token"))
+			}
+			stored, err := client.User.Get(ctx, owner.ID)
+			require.NoError(t, err)
+			require.Equal(t, "local@example.com", stored.Email)
+			require.Equal(t, "original-hash", stored.PasswordHash)
+			binding, err := client.AuthIdentity.Query().Where(
+				authidentity.ProviderTypeEQ(provider),
+				authidentity.ProviderSubjectEQ("stable-subject"),
+			).Only(ctx)
+			require.NoError(t, err)
+			require.Equal(t, owner.ID, binding.UserID)
+		})
+	}
+}
 
 // TestEmailOAuthCallbackRequiresPendingRegistrationWhenInvitationEnabled
 // supplies a new GitHub profile while invitations are required. Callback

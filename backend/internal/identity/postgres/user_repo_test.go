@@ -18,7 +18,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/migrations"
 )
 
-// SQLite account tests compare normalized email lookup, mailbox alias probes,
+// user_repo_test.go compares email and username lookup, mailbox alias probes,
 // registration-domain guards, and two-caller creation results. SQL mocks inspect
 // redeem adjustment expressions and missing-row results, while a
 // migration-text assertion compares the normalized email expression after
@@ -426,4 +426,89 @@ func seedAliasUser(t *testing.T, repo *UserStore, email string) *identity.User {
 	}
 	require.NoError(t, repo.Create(context.Background(), user))
 	return user
+}
+
+// TestUsernamePasswordLoginPreservesLegacyAccounts loads a migrated username
+// through the real account store. It protects unchanged password hashes,
+// whitespace handling, exact case, invalid passwords, and disabled-account denial.
+func TestUsernamePasswordLoginPreservesLegacyAccounts(t *testing.T) {
+	repo, _ := newUserEntRepo(t)
+	ctx := context.Background()
+	svc := identity.NewAuthService(&identity.AuthDependencies{
+		Users: repo,
+		Options: &identity.AuthOptions{JWT: identity.SessionOptions{
+			Secret: "username-compat-test-secret", AccessTokenExpireMinutes: 60,
+		}},
+	}, nil)
+	hash, err := svc.HashPassword("legacy-password")
+	require.NoError(t, err)
+	user := &identity.User{Email: "legacy@migration.invalid", Username: "LegacyUser",
+		PasswordHash: hash, Role: identity.RoleUser, Status: identity.StatusActive}
+	require.NoError(t, repo.Create(ctx, user))
+	token, got, err := svc.Login(ctx, " LegacyUser ", "legacy-password")
+	require.NoError(t, err)
+	require.NotEmpty(t, token)
+	require.Equal(t, user.ID, got.ID)
+	require.Equal(t, hash, got.PasswordHash)
+	require.True(t, got.GroupRestrictionsLoaded)
+	_, _, err = svc.Login(ctx, "legacyuser", "legacy-password")
+	require.ErrorIs(t, err, identity.ErrInvalidCredentials)
+	_, _, err = svc.Login(ctx, "LegacyUser", "wrong-password")
+	require.ErrorIs(t, err, identity.ErrInvalidCredentials)
+	user.Status = "disabled"
+	require.NoError(t, repo.Update(ctx, user, identity.UserUpdateFields{Status: true}))
+	_, _, err = svc.Login(ctx, "LegacyUser", "legacy-password")
+	require.ErrorIs(t, err, identity.ErrUserNotActive)
+}
+
+// TestUsernameLookupRejectsAmbiguityAndDeletedAccounts creates duplicate
+// usernames beside a deleted account. It protects fail-closed ambiguity
+// handling and prevents deleted rows from acquiring password login access.
+func TestUsernameLookupRejectsAmbiguityAndDeletedAccounts(t *testing.T) {
+	repo, _ := newUserEntRepo(t)
+	ctx := context.Background()
+	first := seedAliasUser(t, repo, "first@example.com")
+	second := seedAliasUser(t, repo, "second@example.com")
+	first.Username = "duplicate"
+	second.Username = "duplicate"
+	require.NoError(t, repo.Update(ctx, first, identity.UserUpdateFields{Username: true}))
+	require.NoError(t, repo.Update(ctx, second, identity.UserUpdateFields{Username: true}))
+	_, err := repo.GetByUsername(ctx, "duplicate")
+	require.ErrorContains(t, err, "multiple users")
+	require.NoError(t, repo.Delete(ctx, second.ID))
+	got, err := repo.GetByUsername(ctx, "duplicate")
+	require.NoError(t, err)
+	require.Equal(t, first.ID, got.ID)
+	require.NoError(t, repo.Delete(ctx, first.ID))
+	_, err = repo.GetByUsername(ctx, "duplicate")
+	require.ErrorIs(t, err, identity.ErrUserNotFound)
+}
+
+// TestPasswordLoginGivesEmailPrecedence uses one account's email as another
+// account's username. It protects email ownership by rejecting the second
+// password instead of switching accounts after email lookup succeeds.
+func TestPasswordLoginGivesEmailPrecedence(t *testing.T) {
+	repo, _ := newUserEntRepo(t)
+	ctx := context.Background()
+	svc := identity.NewAuthService(&identity.AuthDependencies{
+		Users: repo,
+		Options: &identity.AuthOptions{JWT: identity.SessionOptions{
+			Secret: "email-precedence-test-secret", AccessTokenExpireMinutes: 60,
+		}},
+	}, nil)
+	first := seedAliasUser(t, repo, "owner@example.com")
+	ownerHash, err := svc.HashPassword("owner-password")
+	require.NoError(t, err)
+	first.PasswordHash = ownerHash
+	require.NoError(t, repo.Update(ctx, first, identity.UserUpdateFields{PasswordHash: true}))
+	second := seedAliasUser(t, repo, "other@example.com")
+	second.Username = first.Email
+	second.PasswordHash, err = svc.HashPassword("other-password")
+	require.NoError(t, err)
+	require.NoError(t, repo.Update(ctx, second, identity.UserUpdateFields{Username: true, PasswordHash: true}))
+	_, _, err = svc.Login(ctx, first.Email, "other-password")
+	require.ErrorIs(t, err, identity.ErrInvalidCredentials)
+	_, got, err := svc.Login(ctx, first.Email, "owner-password")
+	require.NoError(t, err)
+	require.Equal(t, first.ID, got.ID)
 }

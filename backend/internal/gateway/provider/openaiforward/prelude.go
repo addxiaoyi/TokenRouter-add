@@ -7,10 +7,7 @@ import (
 	"time"
 
 	"github.com/TokenFlux/TokenRouter/internal/egress"
-	gatewayprovider "github.com/TokenFlux/TokenRouter/internal/gateway/provider"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/requeststate"
-	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
-	protocolbridge "github.com/TokenFlux/TokenRouter/internal/protocol/bridge"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/openai"
 )
 
@@ -113,11 +110,16 @@ type Prelude struct {
 	SanitizedInputItemIDs        bool   // input item IDs already sanitized
 }
 
-// PreludePorts supplies stateful policy reads, identity setup, and attempt observations during request preparation.
+// PreludePorts supplies policy reads, body conversions, and observations during request preparation.
 type PreludePorts interface {
 	// BlockGroupImages reports whether the admitted Responses group blocks image
 	// generation.
 	BlockGroupImages() bool
+	// StripImages removes image-generation declarations from the supplied
+	// Responses bytes. Its change result identifies adopted bytes; parsing or
+	// patch errors stop preparation before another compatibility step uses the
+	// body.
+	StripImages([]byte) ([]byte, bool, error)
 	// Begin resets model and endpoint observations for the selected provider
 	// attempt.
 	Begin()
@@ -135,6 +137,10 @@ type PreludePorts interface {
 	// Reject publishes requested diagnostics and writes the local protocol error
 	// response.
 	Reject(Rejection)
+	// ToolSchemas returns platform-compatible tool declarations and reports
+	// whether bytes changed. PreparePrelude adopts changed output, and any parsing
+	// or patch error stops the request before transport selection.
+	ToolSchemas([]byte) ([]byte, bool, error)
 	// LiteHeader reports whether the incoming header requests Responses Lite
 	// execution.
 	LiteHeader() bool
@@ -148,6 +154,14 @@ type PreludePorts interface {
 	// CompactPath reports whether the incoming request targets legacy Responses
 	// Compact.
 	CompactPath() bool
+	// CompactBody applies the Compact field whitelist and compatibility
+	// normalization. Changed bytes replace the current body before API Key replay
+	// preparation; errors stop preparation before namespace policy is evaluated.
+	CompactBody([]byte) ([]byte, bool, error)
+	// CompactAPIKeyReplay repairs API Key reasoning replay for an active Compact
+	// request. The changed result identifies the bytes to adopt, and errors stop
+	// preparation before tool namespace handling.
+	CompactAPIKeyReplay([]byte) ([]byte, bool, error)
 	// FlattenRequired reports whether declarations need lowering for the resolved
 	// transport policy.
 	FlattenRequired(TransportDecision, bool, bool) bool
@@ -162,10 +176,31 @@ type PreludePorts interface {
 	// Compact and explicitly flattened routes use their endpoint rules; ordinary
 	// Responses retains historical tool identities across earlier turns.
 	KeepNamespaces(TransportDecision, bool, bool) bool
+	// StripNamespaces cleans historical call namespaces according to the supplied
+	// retention decision. It returns prepared bytes or a parsing error, which the
+	// prelude presents as an input rejection before dispatch.
+	StripNamespaces([]byte, bool) ([]byte, error)
+	// NeedsClientTools reports whether the request declares client tool
+	// representations needing conversion.
+	NeedsClientTools([]byte) bool
 	// AdaptClientTools lowers client tools and installs their response restoration
 	// mapping on success. Call after clearing attempt mappings; an error stops
 	// preparation before the body and view are published.
 	AdaptClientTools([]byte) ([]byte, error)
+	// ValidateEffort checks reasoning effort against the supplied request model
+	// identity.
+	ValidateEffort([]byte, string) error
+	// ReasoningReplay normalizes reasoning history for the selected OpenAI API Key
+	// or OAuth-like request. A changed result rebuilds the prepared view, and
+	// errors stop transport observation before execution.
+	ReasoningReplay([]byte) ([]byte, bool, error)
+	// InputItemIDs sanitizes item identifiers in prepared OpenAI input bytes.
+	// Changed bytes rebuild the cached view before bridge and client detection;
+	// failures stop dispatch with the repair error.
+	InputItemIDs([]byte) ([]byte, bool, error)
+	// MessagesBridge reports whether the request body represents converted
+	// Anthropic Messages input.
+	MessagesBridge([]byte) bool
 	// BindMessagesBridge records the attempt's bridge classification for later
 	// request construction.
 	BindMessagesBridge(bool)
@@ -180,6 +215,12 @@ type PreludePorts interface {
 	// MappedModel resolves the selected provider's upstream identity for a caller
 	// model.
 	MappedModel(string) string
+	// PassthroughEffort resolves effective effort from prepared bytes and the
+	// mapped model.
+	PassthroughEffort([]byte, string) *string
+	// Log writes the preparation diagnostic message with its supplied formatting
+	// arguments.
+	Log(string, ...any)
 }
 
 // PreparePrelude applies admission and compatibility preparation before
@@ -201,7 +242,7 @@ func PreparePrelude(ctx context.Context, body []byte, profile Profile, p Prelude
 	// later provider transforms cannot reintroduce declarations the group policy
 	// removed.
 	if p.BlockGroupImages() {
-		body, _, err = gatewayprovider.StripOpenAIImageGenerationToolsFromRawPayload(body)
+		body, _, err = p.StripImages(body)
 		if err != nil {
 			return nil, err
 		}
@@ -224,7 +265,7 @@ func PreparePrelude(ctx context.Context, body []byte, profile Profile, p Prelude
 	// Adopt platform-compatible tool schemas before route selection; later tool
 	// adaptation and namespace policy must inspect the same declarations being
 	// forwarded.
-	if updated, changed, err := gatewayprovider.SanitizeOpenAIResponsesToolSchemasForPlatform(body, profile.Platform); err != nil {
+	if updated, changed, err := p.ToolSchemas(body); err != nil {
 		return nil, err
 	} else if changed {
 		body = updated
@@ -258,13 +299,13 @@ func PreparePrelude(ctx context.Context, body []byte, profile Profile, p Prelude
 	// Compact preparation applies its field whitelist first, then repairs API Key
 	// replay state; namespace handling uses the adopted result of both steps.
 	if value.Compact {
-		if updated, changed, err := openai.NormalizeOpenAICompactRequestBody(body); err != nil {
+		if updated, changed, err := p.CompactBody(body); err != nil {
 			return nil, err
 		} else if changed {
 			body = updated
 		}
 		if profile.OpenAI && profile.APIKey {
-			if updated, changed, err := openai.NormalizeOpenAIAPIKeyStoreFalseReasoningReplay(body, true); err != nil {
+			if updated, changed, err := p.CompactAPIKeyReplay(body); err != nil {
 				return nil, err
 			} else if changed {
 				body = updated
@@ -287,7 +328,7 @@ func PreparePrelude(ctx context.Context, body []byte, profile Profile, p Prelude
 	// disposable.
 	if p.StripNamespacesRequired(value.Transport, profile.Passthrough) {
 		keep := p.KeepNamespaces(value.Transport, profile.Passthrough, value.Compact)
-		body, err = protocolbridge.StripOpenAIResponsesInputNamespaces(body, keep)
+		body, err = p.StripNamespaces(body, keep)
 		if err != nil {
 			p.Reject(Rejection{Status: 400, Type: "invalid_request_error", Message: err.Error(), Param: "input", ObserveUpstream: true})
 			return nil, err
@@ -296,7 +337,7 @@ func PreparePrelude(ctx context.Context, body []byte, profile Profile, p Prelude
 	// Native DeepSeek API Key Responses lowers client-tool shapes after namespace
 	// preparation, allowing the response adapter to restore those tools for the
 	// caller.
-	if profile.EncodeResponsesClientTools && profile.APIKey && !value.Compact && protocolbridge.NeedsOpenAIResponsesClientToolAdaptation(body) {
+	if profile.EncodeResponsesClientTools && profile.APIKey && !value.Compact && p.NeedsClientTools(body) {
 		body, err = p.AdaptClientTools(body)
 		if err != nil {
 			return nil, fmt.Errorf("adapt DeepSeek Responses client tools: %w", err)
@@ -313,7 +354,7 @@ func PreparePrelude(ctx context.Context, body []byte, profile Profile, p Prelude
 		}
 		return value, nil
 	}
-	if err := requeststate.ValidateOpenAIReasoningEffort(body, value.View.Model); err != nil {
+	if err := p.ValidateEffort(body, value.View.Model); err != nil {
 		p.Reject(Rejection{Status: 400, Type: "invalid_request_error", Message: err.Error(), Param: "reasoning.effort"})
 		return nil, err
 	}
@@ -329,7 +370,7 @@ func PreparePrelude(ctx context.Context, body []byte, profile Profile, p Prelude
 	// credentials; every adopted repair refreshes both byte snapshots and the
 	// decoded request view.
 	if profile.OpenAI && (profile.APIKey || profile.OAuthLike) {
-		if updated, changed, err := openai.NormalizeOpenAIResponsesReasoningContentReplay(body); err != nil {
+		if updated, changed, err := p.ReasoningReplay(body); err != nil {
 			return nil, fmt.Errorf("normalize OpenAI Responses reasoning content replay: %w", err)
 		} else if changed {
 			body = updated
@@ -338,7 +379,7 @@ func PreparePrelude(ctx context.Context, body []byte, profile Profile, p Prelude
 			value.View = requeststate.NewOpenAIRequestView(body)
 		}
 		value.SanitizedReasoningReplay = true
-		if updated, changed, err := gatewayprovider.SanitizeOpenAIResponsesInputItemIDs(body); err != nil {
+		if updated, changed, err := p.InputItemIDs(body); err != nil {
 			return nil, fmt.Errorf("sanitize OpenAI Responses input item IDs: %w", err)
 		} else if changed {
 			body = updated
@@ -348,7 +389,7 @@ func PreparePrelude(ctx context.Context, body []byte, profile Profile, p Prelude
 		}
 		value.SanitizedInputItemIDs = true
 	}
-	value.MessagesBridge = gatewayprovider.IsOpenAICompatMessagesBridgeBody(body)
+	value.MessagesBridge = p.MessagesBridge(body)
 	p.BindMessagesBridge(value.MessagesBridge)
 	value.CodexCLI = p.CodexClient()
 	if value.CodexCLI {
@@ -364,18 +405,17 @@ func PreparePrelude(ctx context.Context, body []byte, profile Profile, p Prelude
 		// capture; mark that invalidation so later image policy reevaluates the
 		// appropriate request evidence.
 		if value.ImageToolPolicy == "strip" {
-			if updated, changed, err := gatewayprovider.StripOpenAIImageGenerationToolsFromRawPayload(body); err != nil {
+			if updated, changed, err := p.StripImages(body); err != nil {
 				return nil, err
 			} else if changed {
 				body = updated
 				value.Body = body
 				value.OriginalBody = body
 				value.ImageIntentInvalidated = true
-				logging.LegacyPrintf("service.openai_gateway", "[OpenAI] Stripped /responses image_generation tool for Codex client by provider policy")
+				p.Log("[OpenAI] Stripped /responses image_generation tool for Codex client by provider policy")
 			}
 		}
-		mappedModel := p.MappedModel(value.View.Model)
-		value.ReasoningEffort = gatewayprovider.ApplyThinkingEnabledFallback(requeststate.ExtractOpenAIReasoningEffortFromBody(body), body, mappedModel)
+		value.ReasoningEffort = p.PassthroughEffort(body, p.MappedModel(value.View.Model))
 		value.Route = DispatchPassthrough
 	}
 	return value, nil
