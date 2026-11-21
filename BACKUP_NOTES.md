@@ -9,6 +9,7 @@ Server tree backed up on 2026-11-21 before deletion from the relay server
 - Deleted vs base: none.
 - Not backed up: compiled binaries at the tree root (tokenrouter-compat,
   tokenrouter-payfix, tokenrouter-qrfix, tokenrouter-returnfix,
-  tokenrouter-scanfix, tokenrouter-completion) — build outputs of this source.
+  tokenrouter-scanfix, tokenrouter-completion, payment-adapter-probe)
+  — build outputs of this source.
 
 Reconstruct: check out the base commit, then overlay the files on this branch.
