@@ -138,6 +138,27 @@ export default {
         requestsWithFirstToken: '首 Token 样本数',
       },
     },
+    cacheStats: {
+      title: '缓存命中监控',
+      groupFilter: '缓存统计分组',
+      failedToLoad: '加载缓存命中统计失败',
+      empty: '当前筛选条件下暂无缓存命中数据',
+      overall: {
+        hitRate: '整体命中率',
+        requestCount: '请求数',
+        totalInputTokens: '输入 Token 总量',
+        cacheReadTokens: '缓存读取 Token',
+        cacheCreationTokens: '缓存创建 Token',
+      },
+      table: {
+        group: '分组',
+        requestCount: '请求数',
+        inputTokens: '输入 Token',
+        cacheReadTokens: '缓存读取',
+        cacheCreationTokens: '缓存创建',
+        hitRate: '命中率',
+      },
+    },
     latencyBuckets: {
       settings: '设置时长分桶',
       title: '请求时长分桶设置',

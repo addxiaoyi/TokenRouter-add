@@ -15,6 +15,7 @@ vi.mock('@/api/client', () => ({
 }))
 
 import {
+  getCacheStats,
   getLatencyHistogram,
   getMetricThresholds,
   getRealtimeTrafficSummary,
@@ -25,8 +26,9 @@ import {
 /**
  * admin.ops.dashboard.spec.ts checks operations dashboard request serialization
  * and cancellation forwarding. Histogram boundaries join into comma-separated
- * query strings, token statistics retain scope filters, realtime traffic
- * forwards AbortSignal instances, and metric threshold helpers are exported.
+ * query strings, token statistics and cache statistics retain scope filters,
+ * realtime traffic forwards AbortSignal instances, and metric threshold
+ * helpers are exported.
  */
 
 describe('admin ops dashboard API', () => {
@@ -73,6 +75,24 @@ describe('admin ops dashboard API', () => {
         platform: 'anthropic',
         group_id: 7,
         top_n: 20,
+      },
+      signal: undefined,
+    })
+  })
+
+  /**
+   * Cache statistics include time range, platform and group filters. The
+   * wrapper sends them to the cache-statistics route with its cancellation
+   * option slot.
+   */
+  it('缓存统计使用缓存统计路由', async () => {
+    await getCacheStats({ time_range: '30d', platform: 'anthropic', group_id: 7 })
+
+    expect(get).toHaveBeenCalledWith('/admin/ops/dashboard/cache-stats', {
+      params: {
+        time_range: '30d',
+        platform: 'anthropic',
+        group_id: 7,
       },
       signal: undefined,
     })

@@ -14,11 +14,12 @@ import (
 )
 
 // ops_dashboard_handler.go parses historical dashboard requests and serves
-// overview, trend, histogram, and token-ranking responses.
+// overview, trend, histogram, token-ranking, and cache-statistics responses.
 // Historical dashboard charts share a requested time window and optional
 // platform and group filters. Most endpoints use the common Ops time parser
-// with a one-hour default, while model token statistics accept a finite preset
-// list and derive their own UTC range ending at the current time.
+// with a one-hour default, while model token statistics and cache statistics
+// accept a finite preset list and derive their own UTC range ending at the
+// current time.
 //
 // Throughput and error trends select one of three bucket widths from the
 // requested span. Histogram requests validate five ordered millisecond cutoffs
@@ -384,6 +385,77 @@ func parseOpsTokenStatsFilter(c *gin.Context) (*ops.OpsTokenStatsFilter, error) 
 			return nil, fmt.Errorf("invalid page_size")
 		}
 		filter.PageSize = pageSize
+	}
+	return filter, nil
+}
+
+// GetDashboardCacheStats returns overall and per-group cache token totals
+// with hit rates for the selected preset window. It checks monitoring before
+// parsing the range and filters, and maps parsing errors to bad request.
+// GET /api/v1/admin/ops/dashboard/cache-stats
+func (h *OpsHandler) GetDashboardCacheStats(c *gin.Context) {
+	if h.opsService == nil {
+		response.Error(c, http.StatusServiceUnavailable, "Ops service not available")
+		return
+	}
+	if err := h.opsService.RequireMonitoringEnabled(c.Request.Context()); err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	filter, err := parseOpsCacheStatsFilter(c)
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	data, err := h.opsService.GetCacheStats(c.Request.Context(), filter)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, data)
+}
+
+// parseOpsCacheStatsFilter builds a UTC cache-statistics window ending at the
+// current time from a supported preset. A nil context is invalid, blank
+// time_range selects thirty days, and platform is trimmed while a supplied
+// group ID must be positive.
+//
+// The preset list and duration conversion are shared with model token
+// statistics, so both grouped usage views accept the same time_range values
+// and derive their windows the same way.
+func parseOpsCacheStatsFilter(c *gin.Context) (*ops.OpsCacheStatsFilter, error) {
+	if c == nil {
+		return nil, fmt.Errorf("invalid request")
+	}
+
+	timeRange := strings.TrimSpace(c.Query("time_range"))
+	if timeRange == "" {
+		timeRange = "30d"
+	}
+	dur, ok := parseOpsTokenStatsDuration(timeRange)
+	if !ok {
+		return nil, fmt.Errorf("invalid time_range")
+	}
+	// Derive both endpoints from one UTC timestamp so the preset duration stays
+	// fixed even when parameter parsing takes time.
+	end := time.Now().UTC()
+	start := end.Add(-dur)
+
+	filter := &ops.OpsCacheStatsFilter{
+		TimeRange: timeRange,
+		StartTime: start,
+		EndTime:   end,
+		Platform:  strings.TrimSpace(c.Query("platform")),
+	}
+
+	if v := strings.TrimSpace(c.Query("group_id")); v != "" {
+		id, err := strconv.ParseInt(v, 10, 64)
+		if err != nil || id <= 0 {
+			return nil, fmt.Errorf("invalid group_id")
+		}
+		filter.GroupID = &id
 	}
 	return filter, nil
 }

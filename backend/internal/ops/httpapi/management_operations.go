@@ -202,6 +202,20 @@ var ManagementOperations = map[string]*adminapi.Operation{
 		BrowserPath: "/admin/ops",
 		Input:       adminapi.Arguments("/api/v1/admin/ops/concurrency", []string{"group_id", "platform"}, nil),
 	}),
+	"ops.dashboard.cache_stats.list": adminapi.Define(adminapi.Operation{
+		ID:     "ops.dashboard.cache_stats.list",
+		Module: "ops",
+		Title:  "Get Dashboard Cache Stats",
+		Description: "GetDashboardCacheStats returns overall and per-group cache token totals with hit rates " +
+			"for the selected preset window. It checks monitoring before parsing the range and filters, " +
+			"and maps parsing errors to bad request. This operation is available through read_operation.",
+		Method:      "GET",
+		Path:        "/api/v1/admin/ops/dashboard/cache-stats",
+		ReadOnly:    true,
+		Response:    "json",
+		BrowserPath: "/admin/ops",
+		Input:       adminapi.Arguments("/api/v1/admin/ops/dashboard/cache-stats", []string{"group_id", "platform", "time_range"}, nil),
+	}),
 	"ops.dashboard.error_distribution.list": adminapi.Define(adminapi.Operation{
 		ID:     "ops.dashboard.error_distribution.list",
 		Module: "ops",

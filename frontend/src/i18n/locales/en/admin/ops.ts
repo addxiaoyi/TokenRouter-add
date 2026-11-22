@@ -143,6 +143,27 @@ export default {
         requestsWithFirstToken: 'Requests With First Token',
       },
     },
+    cacheStats: {
+      title: 'Cache Hit Monitoring',
+      groupFilter: 'Cache stats group',
+      failedToLoad: 'Failed to load cache hit stats',
+      empty: 'No cache hit data for the current filters',
+      overall: {
+        hitRate: 'Overall Hit Rate',
+        requestCount: 'Requests',
+        totalInputTokens: 'Total Input Tokens',
+        cacheReadTokens: 'Cache Read Tokens',
+        cacheCreationTokens: 'Cache Creation Tokens',
+      },
+      table: {
+        group: 'Group',
+        requestCount: 'Requests',
+        inputTokens: 'Input Tokens',
+        cacheReadTokens: 'Cache Read',
+        cacheCreationTokens: 'Cache Creation',
+        hitRate: 'Hit Rate',
+      },
+    },
     latencyBuckets: {
       settings: 'Configure latency buckets',
       title: 'Request Latency Buckets',

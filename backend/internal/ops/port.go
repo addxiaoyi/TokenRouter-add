@@ -133,6 +133,11 @@ type OpsRepository interface {
 	// preserves total for an empty page and keeps absent rate/TTFT
 	// measurements as nil pointers.
 	GetTokenStats(ctx context.Context, filter *OpsTokenStatsFilter) (*OpsTokenStatsResponse, error)
+	// GetCacheStats returns overall and per-group cache token totals for saved
+	// usage rows in the supplied window. PostgreSQL orders groups by descending
+	// total input tokens and returns at most one hundred of them; slices
+	// without input-side tokens keep a nil hit rate instead of a zero rate.
+	GetCacheStats(ctx context.Context, filter *OpsCacheStatsFilter) (*OpsCacheStatsResponse, error)
 
 	// InsertSystemMetrics persists a nonnil sample, preserving explicit nullable
 	// zero/false for dedicated measurement encoders. PostgreSQL defaults

@@ -105,6 +105,7 @@ func RegisterOpsRoutes(admin *gin.RouterGroup, endpoint *OpsHandler) {
 		adminapi.Register(ops, ManagementOperations["ops.dashboard.latency_histogram.list"], endpoint.GetDashboardLatencyHistogram)
 		adminapi.Register(ops, ManagementOperations["ops.dashboard.error_trend.list"], endpoint.GetDashboardErrorTrend)
 		adminapi.Register(ops, ManagementOperations["ops.dashboard.error_distribution.list"], endpoint.GetDashboardErrorDistribution)
+		adminapi.Register(ops, ManagementOperations["ops.dashboard.cache_stats.list"], endpoint.GetDashboardCacheStats)
 		adminapi.Register(ops, ManagementOperations["ops.dashboard.token_stats.list"], endpoint.GetDashboardTokenStats)
 		// The historical OpenAI token-stats URL uses the same general token handler.
 		// Its filters and response shape follow that endpoint, preserving clients

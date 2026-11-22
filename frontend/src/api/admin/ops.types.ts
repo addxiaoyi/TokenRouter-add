@@ -353,6 +353,58 @@ export interface OpsTokenStatsParams {
 }
 
 /**
+ * OpsCacheStatsOverall reports request and input-side token totals for every
+ * usage row in a cache-statistics window.
+ */
+export interface OpsCacheStatsOverall {
+  request_count: number // Recorded request count.
+  input_tokens: number // Fresh input token total.
+  cache_creation_tokens: number // Cache creation token total.
+  cache_read_tokens: number // Cache read token total.
+  total_input_tokens: number // Summed input-side token total.
+  hit_rate?: number | null // Cache read share of total input tokens.
+}
+
+/**
+ * OpsCacheStatsGroupItem reports request and input-side token totals for one
+ * recorded group in a cache-statistics window.
+ */
+export interface OpsCacheStatsGroupItem {
+  group_id: number // Group record identifier.
+  group_name: string // Group display name.
+  request_count: number // Recorded request count.
+  input_tokens: number // Fresh input token total.
+  cache_creation_tokens: number // Cache creation token total.
+  cache_read_tokens: number // Cache read token total.
+  total_input_tokens: number // Summed input-side token total.
+  hit_rate?: number | null // Cache read share of total input tokens.
+}
+
+/**
+ * OpsCacheStatsResponse contains overall cache totals and the leading group
+ * breakdown for one cache-statistics window.
+ */
+export interface OpsCacheStatsResponse {
+  time_range: OpsTokenStatsTimeRange // Recorded time range.
+  start_time: string // Requested interval start.
+  end_time: string // Requested interval end.
+  platform?: string // Provider platform identifier.
+  group_id?: number | null // Group record identifier.
+  overall: OpsCacheStatsOverall // Totals across all matching usage rows.
+  groups: OpsCacheStatsGroupItem[] // Returned group entries.
+}
+
+/**
+ * OpsCacheStatsParams selects the cache-statistics interval, platform and
+ * group. The interval presets match the token-statistics presets.
+ */
+export interface OpsCacheStatsParams {
+  time_range?: OpsTokenStatsTimeRange // Requested time range.
+  platform?: string // Provider platform identifier.
+  group_id?: number | null // Group record identifier.
+}
+
+/**
  * OpsSystemMetricsSnapshot contains optional process, storage and connection
  * observations collected in one monitoring window.
  */

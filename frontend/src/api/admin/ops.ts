@@ -8,6 +8,8 @@ import type {
   EmailNotificationConfig,
   OpsAdvancedSettings,
   OpsAlertRuntimeSettings,
+  OpsCacheStatsParams,
+  OpsCacheStatsResponse,
   OpsConcurrencyStatsResponse,
   OpsDashboardFilterParams,
   OpsDashboardOverview,
@@ -256,6 +258,22 @@ export async function getTokenStats(
   options: OpsRequestOptions = {},
 ): Promise<OpsTokenStatsResponse> {
   const { data } = await apiClient.get<OpsTokenStatsResponse>('/admin/ops/dashboard/token-stats', {
+    params,
+    signal: options.signal,
+  })
+  return data
+}
+
+/**
+ * getCacheStats retrieves cache stats and returns the server response data.
+ * Options defaults to {}; the caller may cancel through the supplied
+ * AbortSignal.
+ */
+export async function getCacheStats(
+  params: OpsCacheStatsParams,
+  options: OpsRequestOptions = {},
+): Promise<OpsCacheStatsResponse> {
+  const { data } = await apiClient.get<OpsCacheStatsResponse>('/admin/ops/dashboard/cache-stats', {
     params,
     signal: options.signal,
   })
@@ -573,6 +591,7 @@ export const opsAPI = {
   getErrorTrend,
   getErrorDistribution,
   getTokenStats,
+  getCacheStats,
   getConcurrencyStats,
   getUserConcurrencyStats,
   getProviderAvailabilityStats,

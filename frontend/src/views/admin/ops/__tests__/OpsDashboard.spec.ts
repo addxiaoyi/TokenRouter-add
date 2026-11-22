@@ -116,6 +116,7 @@ function mountDashboard() {
         OpsErrorDistributionChart: EmptyStub,
         OpsErrorTrendChart: EmptyStub,
         OpsTokenStatsCard: EmptyStub,
+        OpsCacheStatsCard: EmptyStub,
         OpsAlertEventsCard: EmptyStub,
         OpsSystemLogTable: EmptyStub,
         OpsSettingsDialog: EmptyStub,

@@ -145,3 +145,68 @@ func TestPickThroughputBucketSeconds(t *testing.T) {
 	require.Equal(t, 300, pickThroughputBucketSeconds(6*time.Hour))
 	require.Equal(t, 3600, pickThroughputBucketSeconds(48*time.Hour))
 }
+
+// TestParseOpsCacheStatsFilter_Defaults parses an empty request and checks the
+// thirty-day interval. It also checks the optional platform and group filters
+// remain unset for the unrestricted query.
+func TestParseOpsCacheStatsFilter_Defaults(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+
+	before := time.Now().UTC()
+	filter, err := parseOpsCacheStatsFilter(c)
+	after := time.Now().UTC()
+
+	require.NoError(t, err)
+	require.NotNil(t, filter)
+	require.Equal(t, "30d", filter.TimeRange)
+	require.Nil(t, filter.GroupID)
+	require.Equal(t, "", filter.Platform)
+	require.True(t, filter.StartTime.Before(filter.EndTime))
+	// Allow two seconds of wall-clock movement around parsing while checking that
+	// the default start and end reflect the sampled window.
+	require.WithinDuration(t, before.Add(-30*24*time.Hour), filter.StartTime, 2*time.Second)
+	require.WithinDuration(t, after, filter.EndTime, 2*time.Second)
+}
+
+// TestParseOpsCacheStatsFilter_WithFilters supplies a one-hour range, a
+// platform, and a positive group. It checks those values and the one-hour
+// window derived from the shared preset conversion.
+func TestParseOpsCacheStatsFilter_WithFilters(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(
+		http.MethodGet,
+		"/?time_range=1h&platform=anthropic&group_id=12",
+		nil,
+	)
+
+	filter, err := parseOpsCacheStatsFilter(c)
+	require.NoError(t, err)
+	require.Equal(t, "1h", filter.TimeRange)
+	require.Equal(t, "anthropic", filter.Platform)
+	require.NotNil(t, filter.GroupID)
+	require.Equal(t, int64(12), *filter.GroupID)
+	require.WithinDuration(t, filter.StartTime.Add(time.Hour), filter.EndTime, 2*time.Second)
+}
+
+// TestParseOpsCacheStatsFilter_InvalidParams exercises an unsupported preset
+// and invalid group identities. Every listed input must return a parsing error
+// before a filter can reach the service.
+func TestParseOpsCacheStatsFilter_InvalidParams(t *testing.T) {
+	tests := []string{
+		"/?time_range=7d",
+		"/?group_id=0",
+		"/?group_id=abc",
+	}
+
+	for _, rawURL := range tests {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest(http.MethodGet, rawURL, nil)
+
+		_, err := parseOpsCacheStatsFilter(c)
+		require.Error(t, err, "url=%s", rawURL)
+	}
+}

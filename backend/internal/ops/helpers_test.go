@@ -220,6 +220,12 @@ func (m *opsRepoMock) GetTokenStats(ctx context.Context, filter *OpsTokenStatsFi
 	return &OpsTokenStatsResponse{}, nil
 }
 
+// GetCacheStats returns a new empty cache-statistics response for fixture
+// usage queries.
+func (m *opsRepoMock) GetCacheStats(ctx context.Context, filter *OpsCacheStatsFilter) (*OpsCacheStatsResponse, error) {
+	return &OpsCacheStatsResponse{}, nil
+}
+
 // InsertSystemMetrics accepts fixture metric rows without retaining any stored
 // measurements.
 func (m *opsRepoMock) InsertSystemMetrics(ctx context.Context, input *OpsInsertSystemMetricsInput) error {
