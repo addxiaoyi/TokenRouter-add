@@ -30,38 +30,80 @@ import (
 // SMS login setting keys name the persistent feature switch and the
 // Juhe provider credentials read by RuntimeSettings.
 const (
-	SettingKeySMSLoginEnabled         = "sms_login_enabled"
-	SettingKeySMSJuheKey              = "sms_juhe_key"
-	SettingKeySMSJuheTemplateID       = "sms_juhe_tpl_id"
-	SMSPhoneProviderType              = "phone" // authentication identity provider type for phone numbers
-	SMSPhoneProviderKey               = "juhe"  // provider key naming the configured SMS channel
-	SMSCodeTTL                        = 10 * time.Minute
-	SMSCodeCooldown                   = 1 * time.Minute
-	SMSCodeMaxAttempts                = 5
-	SMSCodeDailyLimit           int64 = 10
+	SettingKeySMSLoginEnabled   = "sms_login_enabled"
+	SettingKeySMSJuheKey        = "sms_juhe_key"
+	SettingKeySMSJuheTemplateID = "sms_juhe_tpl_id"
+
+	// Phone identities use SMSPhoneProviderType independently of the delivery
+	// channel named by SMSPhoneProviderKey, allowing both values to identify the
+	// same verified number in stored account records.
+	SMSPhoneProviderType = "phone" // authentication identity provider type for phone numbers
+	SMSPhoneProviderKey  = "juhe"  // provider key naming the configured SMS channel
+
+	// SMS code limits bound challenge lifetime, resend cadence, failed
+	// comparisons, and daily provider sends for each normalized phone number.
+	SMSCodeTTL               = 10 * time.Minute
+	SMSCodeCooldown          = 1 * time.Minute
+	SMSCodeMaxAttempts       = 5
+	SMSCodeDailyLimit  int64 = 10
 )
 
-// ErrSMSLoginDisabled reports a send or login attempt while the SMS
-// login feature switch is off.
-var ErrSMSLoginDisabled = infraerrors.NotFound("SMS_LOGIN_DISABLED", "sms login is disabled")
+var (
+	// ErrSMSLoginDisabled reports a send or login attempt while the SMS
+	// login feature switch is off.
+	ErrSMSLoginDisabled = infraerrors.NotFound("SMS_LOGIN_DISABLED", "sms login is disabled")
 
-// ErrSMSNotConfigured reports a send attempt without a usable provider
-// key or template.
-var ErrSMSNotConfigured = infraerrors.ServiceUnavailable("SMS_NOT_CONFIGURED", "sms provider is not configured")
+	// ErrSMSNotConfigured reports a send attempt without a usable provider
+	// key or template.
+	ErrSMSNotConfigured = infraerrors.ServiceUnavailable("SMS_NOT_CONFIGURED", "sms provider is not configured")
 
-// ErrSMSDailyLimit reports a number that already received the daily
-// maximum of codes.
-var ErrSMSDailyLimit = infraerrors.TooManyRequests("SMS_DAILY_LIMIT", "daily sms code limit reached")
+	// ErrSMSDailyLimit reports a number that already received the daily
+	// maximum of codes.
+	ErrSMSDailyLimit = infraerrors.TooManyRequests("SMS_DAILY_LIMIT", "daily sms code limit reached")
 
-// ErrInvalidPhoneNumber reports a value that is not a mainland mobile
-// number the SMS login accepts.
-var ErrInvalidPhoneNumber = infraerrors.BadRequest("INVALID_PHONE_NUMBER", "invalid phone number")
+	// ErrInvalidPhoneNumber reports a value that is not a mainland mobile
+	// number the SMS login accepts.
+	ErrInvalidPhoneNumber = infraerrors.BadRequest("INVALID_PHONE_NUMBER", "invalid phone number")
+)
 
-// SMSLoginSettings carries the effective SMS login configuration.
+// SMSLoginSettings holds the resolved feature switch and provider credentials
+// used by verification-code sends.
 type SMSLoginSettings struct {
 	Enabled    bool   // feature switch for phone code login and binding
 	JuheKey    string // Juhe SMS application credential
 	TemplateID string // approved Juhe verification-code template identifier
+}
+
+// SMSCodeSender delivers one prepared code through the configured
+// provider. The caller has already saved the credential; a send error
+// leaves credential cleanup with the challenge service.
+type SMSCodeSender interface {
+	// SendSMSCode submits the code to the provider for the given number.
+	// Provider rejections and transport failures remain errors.
+	SendSMSCode(context.Context, string, string, string, string) error
+}
+
+// SMSCodeCache persists SMS challenge records and per-number daily send
+// counters.
+type SMSCodeCache interface {
+	// GetSMSCode returns the saved challenge for the number, or an error
+	// when absent or unreadable.
+	GetSMSCode(context.Context, string) (*VerificationCodeData, error)
+	// SetSMSCode saves the challenge under the supplied lifetime.
+	SetSMSCode(context.Context, string, *VerificationCodeData, time.Duration) error
+	// DeleteSMSCode removes the saved challenge; an absent key succeeds.
+	DeleteSMSCode(context.Context, string) error
+	// IncrementSMSDailyCount atomically adds one send to the number's
+	// current-day counter and returns the new total.
+	IncrementSMSDailyCount(context.Context, string) (int64, error)
+}
+
+// SMSChallenges prepares, verifies, and cleans up SMS credentials around
+// provider sends.
+type SMSChallenges struct {
+	cache     SMSCodeCache     // challenge and counter persistence
+	settings  *RuntimeSettings // current SMS login configuration reader
+	transport SMSCodeSender    // provider delivery client
 }
 
 // Configured reports whether sends can run: the feature is enabled and
@@ -109,40 +151,10 @@ func NormalizeSMSPhoneNumber(raw string) (string, bool) {
 	return phone, true
 }
 
-// SMSCodeSender delivers one prepared code through the configured
-// provider. The caller has already saved the credential; a send error
-// leaves credential cleanup with the challenge service.
-type SMSCodeSender interface {
-	// SendSMSCode submits the code to the provider for the given number.
-	// Provider rejections and transport failures remain errors.
-	SendSMSCode(context.Context, string, string, string, string) error
-}
-
-// SMSCodeCache persists SMS challenge records and per-number daily send
-// counters.
-type SMSCodeCache interface {
-	// GetSMSCode returns the saved challenge for the number, or an error
-	// when absent or unreadable.
-	GetSMSCode(context.Context, string) (*VerificationCodeData, error)
-	// SetSMSCode saves the challenge under the supplied lifetime.
-	SetSMSCode(context.Context, string, *VerificationCodeData, time.Duration) error
-	// DeleteSMSCode removes the saved challenge; an absent key succeeds.
-	DeleteSMSCode(context.Context, string) error
-	// IncrementSMSDailyCount atomically adds one send to the number's
-	// current-day counter and returns the new total.
-	IncrementSMSDailyCount(context.Context, string) (int64, error)
-}
-
-// SMSChallenges prepares, verifies, and cleans up SMS credentials around
-// provider sends.
-type SMSChallenges struct {
-	cache     SMSCodeCache     // challenge and counter persistence
-	settings  *RuntimeSettings // current SMS login configuration reader
-	transport SMSCodeSender    // provider delivery client
-}
-
 // NewSMSChallenges retains the cache, settings reader, and provider
-// transport used by code operations. Configure all three before sending.
+// transport used by code operations. Configure all three before sending;
+// the service uses these dependencies for subsequent code sends and
+// verification requests.
 func NewSMSChallenges(cache SMSCodeCache, settings *RuntimeSettings, transport SMSCodeSender) *SMSChallenges {
 	return &SMSChallenges{cache: cache, settings: settings, transport: transport}
 }

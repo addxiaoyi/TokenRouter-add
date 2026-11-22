@@ -27,6 +27,15 @@ type smsCacheDouble struct {
 	count  int64                          // current daily send counter
 }
 
+// smsSenderDouble records the last delivery request instead of sending.
+type smsSenderDouble struct {
+	calls int    // observed delivery count
+	key   string // last provider key argument
+	tpl   string // last template argument
+	phone string // last number argument
+	code  string // last code argument
+}
+
 // GetSMSCode returns the saved record or an absence error.
 func (c *smsCacheDouble) GetSMSCode(context.Context, string) (*identity.VerificationCodeData, error) {
 	c.mu.Lock()
@@ -59,15 +68,6 @@ func (c *smsCacheDouble) IncrementSMSDailyCount(context.Context, string) (int64,
 	defer c.mu.Unlock()
 	c.count++
 	return c.count, nil
-}
-
-// smsSenderDouble records the last delivery request instead of sending.
-type smsSenderDouble struct {
-	calls int    // observed delivery count
-	key   string // last provider key argument
-	tpl   string // last template argument
-	phone string // last number argument
-	code  string // last code argument
 }
 
 // SendSMSCode records the delivery arguments and succeeds.

@@ -8,7 +8,7 @@ import (
 
 // qq_oauth.go builds QQ pending account choices and defines the provider
 // exchange inputs and results.
-// QQ互联 supplies no email address, so a QQ identity always binds through
+// QQ Connect supplies no email address, so a QQ identity always binds through
 // a subject-derived synthetic address, and the provider nickname remains a
 // display suggestion. The stable subject prefers the cross-application
 // unionid when the QQ application has it enabled and falls back to the
@@ -19,17 +19,24 @@ import (
 // email or compatibility account can exist, while local email verification
 // and forced-email signup policies keep their usual precedence.
 
-// QQOAuthProviderKey is the canonical provider key for QQ identities.
-const QQOAuthProviderKey = "qq"
+const (
+	// QQOAuthProviderKey is the canonical provider key used when callbacks
+	// construct QQ identity keys for pending account choices.
+	QQOAuthProviderKey = "qq"
+
+	// OAuthQQMaxSubjectLength bounds subject bytes so the qq- prefix and
+	// accepted subject fit within the synthetic address's 64-byte local part.
+	OAuthQQMaxSubjectLength = 64 - len("qq-")
+)
 
 // QQOAuthOptions supplies provider endpoints and credentials for one
-// authorization ceremony. The endpoint addresses are fixed by QQ互联；
+// authorization ceremony. The endpoint addresses are fixed by QQ Connect;
 // the settings reader fills them from the platform constants so tests and
 // deployments share one resolution path.
 type QQOAuthOptions struct {
 	Enabled      bool   // configured QQ login switch
-	ClientID     string // QQ互联 application identifier (AppID)
-	ClientSecret string // QQ互联 application credential (AppKey)
+	ClientID     string // QQ Connect application identifier (AppID)
+	ClientSecret string // QQ Connect application credential (AppKey)
 	AuthorizeURL string // provider browser authorization endpoint
 	TokenURL     string // provider token exchange endpoint
 	MeURL        string // provider openid lookup endpoint
@@ -61,23 +68,6 @@ type QQTokenExchangeError struct {
 	Body string
 }
 
-// Error renders the token-exchange status and nonblank trimmed provider
-// messages. A nil error receiver yields empty text, and Body is retained
-// separately rather than included in this display result.
-func (e *QQTokenExchangeError) Error() string {
-	if e == nil {
-		return ""
-	}
-	parts := []string{fmt.Sprintf("token exchange status=%d", e.StatusCode)}
-	if strings.TrimSpace(e.ProviderError) != "" {
-		parts = append(parts, "error="+strings.TrimSpace(e.ProviderError))
-	}
-	if strings.TrimSpace(e.ProviderDescription) != "" {
-		parts = append(parts, "error_description="+strings.TrimSpace(e.ProviderDescription))
-	}
-	return strings.Join(parts, " ")
-}
-
 // QQOAuthClient exchanges authorization codes and extracts upstream
 // identity and profile values.
 type QQOAuthClient interface {
@@ -94,9 +84,22 @@ type QQOAuthClient interface {
 	FetchUserInfo(context.Context, QQOAuthOptions, *QQTokenResponse) (string, string, string, string, string, error)
 }
 
-// OAuthQQMaxSubjectLength bounds subject bytes so the qq- prefix and
-// accepted subject fit within the synthetic address's 64-byte local part.
-const OAuthQQMaxSubjectLength = 64 - len("qq-")
+// Error renders the token-exchange status and nonblank trimmed provider
+// messages. A nil error receiver yields empty text, and Body is retained
+// separately rather than included in this display result.
+func (e *QQTokenExchangeError) Error() string {
+	if e == nil {
+		return ""
+	}
+	parts := []string{fmt.Sprintf("token exchange status=%d", e.StatusCode)}
+	if strings.TrimSpace(e.ProviderError) != "" {
+		parts = append(parts, "error="+strings.TrimSpace(e.ProviderError))
+	}
+	if strings.TrimSpace(e.ProviderDescription) != "" {
+		parts = append(parts, "error_description="+strings.TrimSpace(e.ProviderDescription))
+	}
+	return strings.Join(parts, " ")
+}
 
 // OAuthIsSafeQQSubject reports whether a trimmed subject fits a synthetic
 // QQ address. It requires a nonempty value within the byte bound and

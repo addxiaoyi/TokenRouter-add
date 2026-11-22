@@ -31,13 +31,6 @@ type SMSHandler struct {
 	loadSettings    func(context.Context) (identity.SMSLoginSettings, error) // current SMS configuration callback
 }
 
-// NewSMSHandler retains the shared pending handler and the SMS
-// configuration reader. Initialize dependencies before serving phone
-// requests.
-func NewSMSHandler(p *PendingHandler, load func(context.Context) (identity.SMSLoginSettings, error)) *SMSHandler {
-	return &SMSHandler{p, load}
-}
-
 // SendSMSCodeRequest carries the target number and the shared CAPTCHA
 // proof fields for a public code send.
 type SendSMSCodeRequest struct {
@@ -58,6 +51,14 @@ type SMSLoginRequest struct {
 type PhoneBindRequest struct {
 	Phone string `json:"phone" binding:"required"` // mainland mobile number input
 	Code  string `json:"code" binding:"required"`  // received verification code
+}
+
+// NewSMSHandler retains the shared pending handler and the SMS
+// configuration reader. Initialize dependencies before serving phone
+// requests. Both dependencies must remain usable while the handler serves
+// login and account-binding requests.
+func NewSMSHandler(p *PendingHandler, load func(context.Context) (identity.SMSLoginSettings, error)) *SMSHandler {
+	return &SMSHandler{p, load}
 }
 
 // SendSMSCode checks the feature switch and CAPTCHA before asking the

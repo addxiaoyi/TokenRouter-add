@@ -214,8 +214,8 @@ func ParseQQMeResponse(body string) (openID string, unionID string, err error) {
 	// Strip the JSONP callback wrapper when the endpoint ignored fmt=json.
 	// The provider terminates the call with a closing parenthesis and a
 	// semicolon, so both marks come off before decoding.
-	if strings.HasPrefix(body, "callback(") {
-		body = strings.TrimSpace(strings.TrimPrefix(body, "callback("))
+	if payload, wrapped := strings.CutPrefix(body, "callback("); wrapped {
+		body = strings.TrimSpace(payload)
 		body = strings.TrimSpace(strings.TrimSuffix(body, ";"))
 		body = strings.TrimSpace(strings.TrimSuffix(body, ")"))
 	}
