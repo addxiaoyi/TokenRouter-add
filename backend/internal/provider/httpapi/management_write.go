@@ -26,9 +26,10 @@ import (
 // Creation normalizes deprecated settings before computing its fingerprint and
 // applies platform privacy observations after the administrative create.
 // Follow-up callbacks receive the captured result after the executor returns.
-// Ordinary editing instead forwards selected fields to administration, where
-// pointer omission, sensitive credentials and explicit clearing values have
-// different meanings; its response is built from the updated record.
+// Ordinary editing verifies any legacy platform echo before forwarding selected
+// fields to administration, where pointer omission, sensitive credentials and
+// explicit clearing values have different meanings. Platform identity remains
+// immutable, and the response is built from the updated record.
 
 // CreateProviderRequest carries provider configuration and authorization values
 // for strict creation binding.
@@ -86,6 +87,10 @@ type CreateProviderRequest struct {
 // distinguishing supplied zero values from omission.
 type UpdateProviderRequest struct {
 	Name string `json:"name"` // provider display name
+	// Platform accepts identity metadata echoed by older editor bundles. A supplied
+	// value must match the stored platform before configuration updates; omission
+	// skips that compatibility check, and this field is never passed to mutation.
+	Platform *string `json:"platform"` // optional legacy platform echo
 	// Notes preserves the stored description when nil. A supplied empty or
 	// whitespace-only string is normalized by administration when replacing the
 	// description.
@@ -271,7 +276,8 @@ func (h *ManagementHandler) Duplicate(c *gin.Context) {
 // Update strictly binds supplied configuration fields and returns the updated
 // runtime view. Deprecated-only Extra becomes an omitted update; administration
 // interprets pointer omission, sensitive credential retention and explicit
-// clearing values.
+// clearing values. Legacy platform echoes must match the existing record and
+// cannot change its platform or reach the administrative mutation input.
 // PUT /api/v1/admin/providers/:id
 func (h *ManagementHandler) Update(c *gin.Context) {
 	providerID, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -284,6 +290,17 @@ func (h *ManagementHandler) Update(c *gin.Context) {
 	if err := response.BindJSONStrict(c, &req); err != nil {
 		response.BadRequest(c, "Invalid request: "+err.Error())
 		return
+	}
+	if req.Platform != nil {
+		current, err := h.adminService.GetProvider(c.Request.Context(), providerID)
+		if err != nil {
+			response.ErrorFrom(c, err)
+			return
+		}
+		if *req.Platform != current.Platform {
+			response.BadRequest(c, "Provider platform cannot be changed")
+			return
+		}
 	}
 	// A payload containing only retired keys means no Extra update. Keeping
 	// nil here lets administration retain the currently stored configuration.

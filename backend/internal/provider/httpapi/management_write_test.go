@@ -23,11 +23,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/capability"
 )
 
-// Duplicate creation can succeed before response idempotency completion is
-// stored, so HTTP recovery needs the same administrator operation identity.
-// management_write.go is exercised with controlled completion failures and one
-// blocked first request, while separate creation and update assertions check
-// retained configuration and credential redaction.
+// management_write_test.go verifies provider mutation responses, legacy editor
+// compatibility, and duplicate creation recovery under controlled persistence
+// failures. Strict updates can carry an unchanged platform from older editors
+// while rejecting platform changes before administration. Separate creation
+// and update assertions check retained configuration and credential redaction.
+// Duplicate creation can finish before response idempotency completion is stored,
+// so HTTP recovery needs the same administrator operation identity.
 //
 // Serial fixtures retain borrowed provider results and capture actor/key values
 // for recovery. The competing-request fixture signals creation start, blocks on
@@ -118,6 +120,53 @@ func TestProviderUpdateDeprecatedOnlyIsNormalizedToNoExtraUpdate(t *testing.T) {
 	require.Equal(t, http.StatusOK, recorder.Code, recorder.Body.String())
 	require.NotNil(t, stub.updateProviderInput)
 	require.Nil(t, stub.updateProviderInput.Extra)
+}
+
+// TestProviderUpdateLegacyPlatformEcho covers editor payloads that include a
+// platform alongside a connection edit. Matching platforms remain compatible,
+// while changed or empty identities fail before any provider configuration is written.
+func TestProviderUpdateLegacyPlatformEcho(t *testing.T) {
+	tests := []struct {
+		name      string // platform echo scenario
+		platform  string // stored provider platform
+		echo      string // submitted platform identity
+		status    int    // expected HTTP status
+		errorText string // rejected identity explanation
+	}{
+		{name: "anthropic echo", platform: capability.PlatformAnthropic, echo: capability.PlatformAnthropic, status: http.StatusOK},
+		{name: "openai echo", platform: capability.PlatformOpenAI, echo: capability.PlatformOpenAI, status: http.StatusOK},
+		{name: "different platform", platform: capability.PlatformAnthropic, echo: capability.PlatformOpenAI, status: http.StatusBadRequest, errorText: "Provider platform cannot be changed"},
+		{name: "empty platform", platform: capability.PlatformAnthropic, echo: "", status: http.StatusBadRequest, errorText: "Provider platform cannot be changed"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stub := newManagementMutationFixture()
+			stub.providers = []providercore.Record{{ID: 1, Platform: tt.platform, Type: capability.ProviderTypeAPIKey}}
+			handler := newMutationHandler(stub, nil)
+			router := gin.New()
+			router.PUT("/providers/:id", handler.Update)
+			body, err := json.Marshal(map[string]any{
+				"platform":    tt.echo,
+				"credentials": map[string]any{"base_url": "https://relay.example"},
+			})
+			require.NoError(t, err)
+			request := httptest.NewRequest(http.MethodPut, "/providers/1", bytes.NewReader(body))
+			request.Header.Set("Content-Type", "application/json")
+			recorder := httptest.NewRecorder()
+
+			router.ServeHTTP(recorder, request)
+
+			require.Equal(t, tt.status, recorder.Code, recorder.Body.String())
+			if tt.status != http.StatusOK {
+				require.Contains(t, recorder.Body.String(), tt.errorText)
+				require.Nil(t, stub.updateProviderInput)
+				return
+			}
+			require.NotNil(t, stub.updateProviderInput)
+			require.Equal(t, "https://relay.example", stub.updateProviderInput.Credentials["base_url"])
+			require.Equal(t, tt.platform, stub.providers[0].Platform)
+		})
+	}
 }
 
 // TestDuplicateProviderHandlerRedactsCredentials returns a duplicated provider

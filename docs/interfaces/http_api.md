@@ -171,6 +171,7 @@ RequestLogger
 ### 提供商管理、测试与调度诊断
 
 - 分组关联：创建、编辑、批量创建/更新和可选分组导入均使用显式 `group_ids`，可关联任意分组。通用备份不含分组关系，未指定分组不自动绑定默认分组；Spark 影子未指定分组时可继承母提供商已有分组（母提供商无分组则影子同样无分组）。OAuth-only、隐私和实际协议能力继续约束资格。
+- 提供商更新：只提交可编辑配置。可选 `platform` 用于核对旧客户端回传的现有平台，必须与记录一致；平台变更不在更新范围内。
 - 严格 JSON 绑定：提供商写入、备份、Codex 导入及 OAuth/PAT/SSO 创建入口对 `confirm_mixed_channel_risk`、`skip_default_group_bind` 等未知结构字段返回 400 且无确认旁路；`credentials`、`extra` 等动态 map 照常接收并由领域层校验。
 - 批量删除：`POST /api/v1/admin/providers/batch-delete` 接收 `provider_ids`，去除非正数和重复 ID 后最多 5 路并发删除。同批含父提供商及影子时仅删根提供商一次，级联影响映射回各项；响应按固定顺序返回 `success_ids`、`failed_ids` 与错误明细，单项失败不取消其余项。前端"全选筛选结果"按同一筛选快照分页拉取轻量 ID，缺页或重复则保留原选择，完整后才提交。
 - 连接测试（`POST /api/v1/admin/providers/:id/test`，SSE）：

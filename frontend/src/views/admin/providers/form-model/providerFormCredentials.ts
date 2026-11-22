@@ -1,4 +1,4 @@
-import type { Provider, ProviderPlatform } from '@/api/admin/providers.types'
+import type { Provider, ProviderPlatform, UpdateProviderRequest } from '@/api/admin/providers.types'
 import type { ProtocolID } from '@/api/protocols.types'
 import type { TempUnschedRuleForm } from '@/components/provider/TempUnschedRulesEditor.vue'
 import {
@@ -26,6 +26,8 @@ import { normalizeProviderSchedulingThresholdOverride } from './providerFormHydr
 // pool-mode retries, custom error codes, temporary suspension rules, Antigravity
 // policies, and per-provider scheduling thresholds share one implementation so
 // create paths and edit saves serialize identical credential fields.
+// Edit payloads select mutable update fields explicitly; platform selection stays
+// in the local draft because only provider creation accepts a new platform.
 //
 // Edit patches preserve unowned credential fields while encoding clearing values
 // according to administration API contracts: nullable proxy, expiry, and load
@@ -33,8 +35,8 @@ import { normalizeProviderSchedulingThresholdOverride } from './providerFormHydr
 // per-provider scheduling threshold writes null so backend credential merging
 // removes the stored override.
 
-// ProviderEditPatch stores optional JSON objects alongside provider update fields.
-export interface ProviderEditPatch extends Record<string, unknown> {
+// ProviderEditPatch carries mutable provider updates with separately assembled credential objects.
+export interface ProviderEditPatch extends UpdateProviderRequest {
   // Credential fields are attached after authentication-specific validation; the
   // serializers extend this mutable copy before the API request is sent.
   credentials?: Record<string, unknown> // Editable provider credential fields.
@@ -46,9 +48,24 @@ export interface ProviderEditPatch extends Record<string, unknown> {
 // buildProviderBasePatch converts form clearing values into API update sentinels.
 // Null proxy and expiry values become zero to request removal, and invalid or
 // nonpositive load factors use the same clearing representation without mutating
-// the reactive form draft.
+// the reactive form draft. Creation-only platform metadata is excluded from the
+// update request while remaining available to local form controls.
 export function buildProviderBasePatch(draft: ProviderFormDraft): ProviderEditPatch {
-  const patch: ProviderEditPatch = { ...draft.form }
+  const { form } = draft
+  const patch: ProviderEditPatch = {
+    name: form.name,
+    notes: form.notes,
+    type: form.type,
+    credentials: form.credentials,
+    proxy_id: form.proxy_id,
+    concurrency: form.concurrency,
+    load_factor: form.load_factor,
+    priority: form.priority,
+    rate_multiplier: form.rate_multiplier,
+    status: form.status,
+    group_ids: form.group_ids,
+    expires_at: form.expires_at,
+  }
   // The administration API uses zero to clear nullable proxy, expiry, and load-factor
   // settings; preserve those sentinels when building the common update.
   if (patch.proxy_id === null) patch.proxy_id = 0

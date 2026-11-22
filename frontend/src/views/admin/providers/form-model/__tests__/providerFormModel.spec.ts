@@ -47,6 +47,25 @@ function provider(overrides: Partial<Provider> = {}): Provider {
 }
 
 describe('provider form model representations', () => {
+  // Hydrated edit drafts retain their platform for local controls. Serialized updates
+  // exclude creation-only metadata while preserving the administrator's editable values.
+  it.each(['anthropic', 'openai'] as const)('omits platform from %s edit requests', (platform) => {
+    const draft = createProviderEditDraft()
+    const source = provider({ platform })
+    hydrateProviderEditDraft(draft, source, { loadFromExtra: vi.fn(), reset: vi.fn() })
+    draft.form.name = 'Edited provider'
+    draft.form.credentials = { base_url: 'https://relay.example' }
+
+    const patch = buildProviderBasePatch(draft)
+
+    expect(patch).not.toHaveProperty('platform')
+    expect(patch).toMatchObject({
+      name: 'Edited provider',
+      credentials: { base_url: 'https://relay.example' },
+    })
+    expect(draft.form.platform).toBe(platform)
+  })
+
   // Each OpenAI authentication type hydrates a disabled GIF flag and can restore
   // its default. Editing must preserve unrelated metadata while retaining explicit false.
   it.each(['oauth', 'apikey'] as const)('preserves GIF policy for %s providers', (type) => {
