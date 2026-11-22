@@ -3,6 +3,7 @@
 import argparse
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import time
@@ -19,6 +20,8 @@ import time
 # Backend locale changes retain their frontend related-test path, and pure Go
 # changes require no Node or pnpm installation. Architecture scans rerun for
 # backend or policy changes because their inputs include another Go module's files.
+# Command execution resolves the caller's PATH so Windows uses the selected
+# tools when a system executable has the same basename.
 
 # ROOT locates checkout-relative commands; Git's zero object and empty tree identify
 # deleted references and repositories without an existing comparison branch.
@@ -107,7 +110,9 @@ def go_test_packages(directories):
         ['go', 'list', '-e', '-f', '{{if or .GoFiles .TestGoFiles .XTestGoFiles}}{{.Dir}}{{end}}',
          *['./' + d for d in directories]],
         cwd=ROOT / 'backend', text=True)
-    return ['./' + os.path.relpath(d, ROOT / 'backend') for d in output.split()]
+    # Go package arguments use slash separators even when native discovery emits
+    # Windows paths, keeping the command contract consistent across host platforms.
+    return ['./' + Path(os.path.relpath(d, ROOT / 'backend')).as_posix() for d in output.split()]
 
 
 def plan(files, base, go_packages=go_test_packages):
@@ -191,7 +196,10 @@ def plan(files, base, go_packages=go_test_packages):
             # complete suite checks consumers that related-file selection could miss.
             commands.append(('.', [*pnpm, 'run', 'test:run']))
         else:
-            related = [os.path.relpath(ROOT / f, ROOT / 'frontend') for f in frontend + locale]
+            # Vitest matches module paths with slash separators. Normalize native
+            # relative paths before passing them to related-test selection on Windows.
+            related = [Path(os.path.relpath(ROOT / f, ROOT / 'frontend')).as_posix()
+                       for f in frontend + locale]
             if related:
                 commands.append(('.', [*pnpm, 'exec', 'vitest', 'related', '--run', '--passWithNoTests', *related]))
 
@@ -208,11 +216,24 @@ def run(commands):
 
     The first failed command stops the sequence so later output cannot obscure
     its failure. Successful completion reports elapsed wall-clock seconds.
+    A missing executable returns 127 with the requested tool's name.
+
+    Resolve each executable from the caller's PATH before process creation.
+    Native Windows otherwise searches system directories before that path and
+    can substitute the WSL Bash launcher for the Git Bash runtime prepared by
+    the checkout's tool environment. Arguments remain separate so command text
+    and filenames are not reinterpreted through an extra shell.
     """
     started = time.monotonic()
     for directory, args in commands:
         print('==> ' + ('' if directory == '.' else '(' + directory + ') ') + ' '.join(args), flush=True)
-        code = subprocess.call(args, cwd=ROOT / directory)
+        # Preserve the selected tool identity on Windows instead of allowing
+        # process creation to choose a system executable with the same basename.
+        executable = shutil.which(args[0])
+        if executable is None:
+            print('tools/check_changed.py: executable not found: ' + args[0], file=sys.stderr)
+            return 127
+        code = subprocess.call([executable, *args[1:]], cwd=ROOT / directory)
         if code:
             print('快检失败。修复后重新推送；确需跳过时使用 git push --no-verify。', file=sys.stderr)
             return code

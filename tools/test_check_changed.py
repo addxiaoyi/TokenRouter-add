@@ -1,12 +1,16 @@
 """Test quick-check selection from changed paths and existing checkout files."""
+from contextlib import redirect_stderr, redirect_stdout
+from io import StringIO
 import unittest
+from unittest.mock import patch
 
-from check_changed import plan
+from check_changed import ROOT, go_test_packages, plan, run
 
 # test_check_changed.py verifies language-specific checks selected by pre-push.
 # Fixtures use existing source paths where related tests are expected, and missing
-# paths for deletion handling. Commands are inspected before execution so these
-# tests require neither package installation nor application services.
+# paths for deletion handling. Process-launch mocks check argument preservation
+# and failure boundaries without installing packages or connecting to application
+# services, while command plans retain the same contract on Windows and POSIX.
 
 # BASE supplies a recognizable revision for command assertions; the selector passes
 # this value through to Git, formatting, and changed-package lint commands unchanged.
@@ -191,6 +195,65 @@ class PlanTest(unittest.TestCase):
         self.assertIn('make test-tools', flat(['tools/format_go.py']))
         self.assertIn('make test-tools', flat(['tools/declorder/reorder.go']))
         self.assertIn('make test-tools', flat(['.githooks/pre-push']))
+
+
+class PackageTest(unittest.TestCase):
+    """PackageTest checks package paths returned by native Go discovery."""
+
+    def test_native_package_path_uses_slash_separators(self):
+        """Go discovery returns a directory using the host's native separators.
+
+        Package arguments must use forward slashes so the same package selection
+        remains valid on Windows and POSIX hosts.
+        """
+        package_dir = str(ROOT / 'backend' / 'internal' / 'web')
+        with patch('check_changed.subprocess.check_output', return_value=package_dir):
+            self.assertEqual(go_test_packages(['internal/web']), ['./internal/web'])
+
+
+class RunTest(unittest.TestCase):
+    """RunTest verifies tool identity, argument boundaries, and command failures."""
+
+    def test_resolved_executable_preserves_argument_boundaries(self):
+        """A selected runtime can have spaces in its absolute path.
+
+        Launching it must preserve the selected executable and each script or
+        filename argument without interpreting them through another shell.
+        """
+        runtime = str(ROOT / 'selected tools' / 'bash.exe')
+        args = ['bash', 'script with spaces.sh', 'literal $(value)']
+        with patch('check_changed.shutil.which', return_value=runtime), \
+                patch('check_changed.subprocess.call', return_value=0) as launch, \
+                redirect_stdout(StringIO()):
+            self.assertEqual(run([('.', args)]), 0)
+        launch.assert_called_once_with([runtime, *args[1:]], cwd=ROOT)
+
+    def test_missing_tool_reports_name_and_stops(self):
+        """A missing tool must stop the check before creating any process.
+
+        The exit status and diagnostic identify the missing executable so the
+        caller can repair its tool environment.
+        """
+        errors = StringIO()
+        with patch('check_changed.shutil.which', return_value=None), \
+                patch('check_changed.subprocess.call') as launch, \
+                redirect_stdout(StringIO()), redirect_stderr(errors):
+            self.assertEqual(run([('.', ['missing-tool'])]), 127)
+        launch.assert_not_called()
+        self.assertIn('tools/check_changed.py: executable not found: missing-tool', errors.getvalue())
+
+    def test_failed_command_prevents_later_checks(self):
+        """A failed check must keep its original process exit status.
+
+        Later checks remain unstarted so their output cannot hide the first
+        failure or make an incomplete sequence appear successful.
+        """
+        with patch('check_changed.shutil.which', return_value='selected-runtime') as locate, \
+                patch('check_changed.subprocess.call', return_value=23) as launch, \
+                redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+            self.assertEqual(run([('.', ['first']), ('.', ['second'])]), 23)
+        locate.assert_called_once_with('first')
+        launch.assert_called_once_with(['selected-runtime'], cwd=ROOT)
 
 
 if __name__ == '__main__':
