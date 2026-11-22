@@ -1,10 +1,21 @@
 #!/usr/bin/env python3
-"""筛选改动的手写 Go 文件，重排顶层声明后使用项目 golangci-lint 配置格式化。"""
+"""format_go.py selects changed handwritten Go files and applies declaration ordering
+and the repository's pinned formatters. The normal selection includes staged,
+unstaged, and untracked files; an explicit base instead selects committed changes.
+Generated file markers keep generated Go output outside that formatting scope.
+
+The formatter version is checked before files can be rewritten. Declaration
+ordering runs before gofumpt and import formatting, and check mode reports each
+phase's differences without changing source. Bash is resolved to its executable
+path, and the script uses POSIX path spelling so Windows subprocess resolution
+does not substitute a WSL launcher or lose directory separators.
+"""
 
 import argparse
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 
@@ -49,6 +60,16 @@ def changed_go_files(root: Path, base: str | None = None) -> list[Path]:
 
 
 def main() -> int:
+    """main selects source files and runs the pinned formatting phases in order.
+    Command-line check mode preserves source, while an explicit base limits
+    selection to committed changes. A formatter-version failure stops before any
+    file is rewritten, and later phase errors retain their observed exit status.
+
+    Declaration ordering precedes Go formatting because moved declarations still
+    need canonical spacing and imports. Bash receives an explicit executable and
+    POSIX script path so native Windows process lookup cannot reinterpret that
+    boundary through its default WSL launcher.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="仅检查，发现格式差异时返回失败")
     parser.add_argument("--base", help="比较指定 Git 基准与 HEAD，用于 CI 中已提交的改动")
@@ -62,7 +83,13 @@ def main() -> int:
         return 0
 
     # 版本不符时在改写任何文件之前退出。
-    lint = ["bash", str(root / "tools/golangci-lint.sh")]
+    # Resolve Bash explicitly and preserve POSIX separators so Windows does not
+    # select its WSL launcher or reinterpret the native script path.
+    bash_path = shutil.which("bash")
+    if bash_path is None:
+        print("tools/format_go.py: Bash was not found in PATH", file=sys.stderr)
+        return 127
+    lint = [bash_path, (root / "tools/golangci-lint.sh").as_posix()]
     result = subprocess.run([*lint, "version", "--short"], cwd=root, check=False, stdout=subprocess.DEVNULL)
     if result.returncode != 0:
         return result.returncode

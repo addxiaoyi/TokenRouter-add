@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"sync/atomic"
 	"time"
 
@@ -94,7 +95,22 @@ func provideRouterRuntime(requests *requestlog.Service, public *site.PublicServi
 	protocolCatalog := routinghttpapi.NewProtocolCatalogHandler(endpoints)
 	notify := refresh
 	if web.HasEmbeddedFrontend() {
-		frontend, err := web.NewFrontendServer(public)
+		// Resolve public legal copy at the app boundary so frontend delivery can
+		// render it without depending on site storage types or authenticated handlers.
+		frontend, err := web.NewFrontendServer(public, web.WithPublicPages(func(ctx context.Context, id string) (web.PublicDocument, error) {
+			document, err := public.GetLegalDocument(ctx, id)
+			if err != nil {
+				if errors.Is(err, site.ErrPageNotFound) {
+					return web.PublicDocument{}, web.ErrPublicDocumentNotFound
+				}
+				return web.PublicDocument{}, err
+			}
+			resolved := web.PublicDocument{Title: document.Title, Markdown: document.ContentMD}
+			if document.Resolution != nil && document.Resolution.Locale != nil {
+				resolved.Locale = *document.Resolution.Locale
+			}
+			return resolved, nil
+		}))
 		if err != nil {
 			return nil, err
 		}

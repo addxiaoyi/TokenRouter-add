@@ -27,7 +27,8 @@ import (
 )
 
 // embed_on.go serves embedded frontend assets and injects public settings into
-// language-specific HTML pages.
+// language-specific HTML pages. The document title and marked public homepage
+// label use the same escaped site name before the application mounts.
 // The embedded SPA shares HTTP entry paths with gateway APIs, including the
 // browser model marketplace at /models. Request negotiation checks methods,
 // credential hints, and Accept preferences before the frontend serves a page.
@@ -87,6 +88,9 @@ type FrontendServer struct {
 	// settings supplies cache-miss public data in the request context's language.
 	// The provider must remain callable while this server handles injected page requests.
 	settings PublicSettingsProvider
+	// publicDocuments enables initial public page rendering and resolves legal
+	// copy separately from the shared settings envelope at each document request.
+	publicDocuments PublicDocumentLookup
 	// overrideDir selects disk copies for paths already present in the bundle.
 	// Empty disables those checks; local override responses skip immutable asset caching.
 	overrideDir string
@@ -95,8 +99,9 @@ type FrontendServer struct {
 // NewFrontendServer reads the embedded dist entry and prepares file serving
 // plus an empty language cache. Supply a callable settingsProvider before using
 // injection middleware, because construction retains it as supplied and cache
-// misses invoke it. The opened entry is closed with its error discarded.
-func NewFrontendServer(settingsProvider PublicSettingsProvider) (*FrontendServer, error) {
+// misses invoke it. Options configure public content before requests are served.
+// The opened entry is closed with its error discarded.
+func NewFrontendServer(settingsProvider PublicSettingsProvider, options ...FrontendOption) (*FrontendServer, error) {
 	distFS, err := fs.Sub(frontendFS, "dist")
 	if err != nil {
 		return nil, err
@@ -118,14 +123,18 @@ func NewFrontendServer(settingsProvider PublicSettingsProvider) (*FrontendServer
 	cache := NewHTMLCache()
 	cache.SetBaseHTML(baseHTML)
 
-	return &FrontendServer{
+	server := &FrontendServer{
 		distFS:      distFS,
 		fileServer:  http.FileServer(http.FS(distFS)),
 		baseHTML:    baseHTML,
 		cache:       cache,
 		settings:    settingsProvider,
 		overrideDir: filepath.Join("data", "public"),
-	}, nil
+	}
+	for _, option := range options {
+		option(server)
+	}
+	return server, nil
 }
 
 // InvalidateCache clears all cached language pages and advances their
@@ -259,11 +268,21 @@ func (s *FrontendServer) serveIndexHTML(c *gin.Context) {
 	s.writeIndexHTML(c, snapshot, nonce)
 }
 
-// writeIndexHTML completes request-specific metadata before conditional response handling.
+// writeIndexHTML completes public content and metadata before conditional response handling.
 // The validator excludes the CSP nonce, but includes the destination URL and
 // language snapshot. Both successful and not-modified responses carry cache headers.
 func (s *FrontendServer) writeIndexHTML(c *gin.Context, snapshot CachedHTML, nonce string) {
-	content, etag := renderSocialMetadata(c, snapshot)
+	// Complete request-specific public content before hashing. The language cache
+	// retains startup bytes while final validators include the selected legal body.
+	page, status, err := s.publicPageSnapshot(c, snapshot)
+	if err != nil {
+		c.Error(err)
+		c.Header("Cache-Control", "no-store")
+		c.String(status, "Public page is currently unavailable.")
+		c.Abort()
+		return
+	}
+	content, etag := renderSocialMetadata(c, page)
 	c.Header("ETag", etag)
 	c.Header("Cache-Control", "no-cache")
 	if c.GetHeader("If-None-Match") == etag {
@@ -284,22 +303,21 @@ func (s *FrontendServer) writeIndexHTML(c *gin.Context, snapshot CachedHTML, non
 // this helper inserts the supplied bytes directly.
 //
 // The first literal closing head tag selects script placement. If it is absent,
-// the page still passes through title and favicon branding even though the
-// settings script was not inserted. The cached placeholder stays available for
-// replacement at response time, allowing one settings render to serve requests
-// with different nonces.
+// the page still passes through title, homepage, and favicon branding even though
+// the settings script was not inserted. The cached placeholder stays available
+// for replacement at response time, allowing one settings render to serve
+// requests with different nonces.
 func (s *FrontendServer) injectSettings(settingsJSON []byte) []byte {
 	// Keep nonce positions unresolved in the reusable settings render. The serving
 	// path substitutes a trusted request nonce after lookup or publication of this HTML.
-
 	script := []byte(`<script nonce="` + NonceHTMLPlaceholder + `">window.__APP_CONFIG__=` + string(settingsJSON) + `;</script>`)
 
 	headClose := []byte("</head>")
 	result := bytes.Replace(s.baseHTML, headClose, append(script, headClose...), 1)
 
-	// Update title and icon alongside configuration insertion so initial markup
-	// uses the public branding before application JavaScript reads window.__APP_CONFIG__.
-	result = injectSiteTitle(result, settingsJSON)
+	// Update the title, public homepage label, and icon alongside configuration
+	// insertion so initial markup identifies the application before its JavaScript mounts.
+	result = injectSiteBranding(result, settingsJSON)
 	result = injectSiteFavicon(result, settingsJSON)
 
 	return result
@@ -374,41 +392,53 @@ func safeImageURL(value string) string {
 	return trimmed
 }
 
-// injectSiteTitle replaces the first attribute-free title element with the
-// configured site name and fixed gateway suffix. Empty names, invalid settings
-// JSON, or missing or misordered title delimiters return the supplied HTML
-// unchanged.
+// injectSiteBranding applies the configured site name to the document title and
+// marked public homepage label. Invalid settings JSON or an empty name leaves
+// the supplied bundle branding in place. Title replacement recognizes the first
+// attribute-free title element; unmatched or misordered delimiters leave that
+// part of the document unchanged.
 //
-// The configured name is escaped as HTML text before the replacement is
-// assembled. Prefix and suffix bytes surrounding the selected title remain in
-// the output, so other page elements continue to use their supplied markup.
-// Titles with attributes do not match the opening delimiter; the caller uses
-// the bundle's known title spelling.
-func injectSiteTitle(html, settingsJSON []byte) []byte {
+// The same HTML-escaped name fills both locations so a configured label cannot
+// introduce markup or make the pre-mount heading identify a different application.
+// Only the exact bundle marker is replaced in the body; unrelated product
+// references, policy text, and surrounding HTML retain their supplied content.
+func injectSiteBranding(html, settingsJSON []byte) []byte {
 	var cfg struct {
-		SiteName string `json:"site_name"` // configured page title text
+		SiteName string `json:"site_name"` // configured public brand name
 	}
-	// Missing usable name data leaves the bundle title available. Treat a settings
-	// decode failure as unchanged branding before inspecting the known title delimiters.
+	// Missing usable name data leaves the bundle branding available. A settings
+	// decode failure retains the title and public summary instead of removing either.
 	if err := json.Unmarshal(settingsJSON, &cfg); err != nil || cfg.SiteName == "" {
 		return html
 	}
 
-	titleStart := bytes.Index(html, []byte("<title>"))
-	titleEnd := bytes.Index(html, []byte("</title>"))
+	const siteNameMarker = `<span data-site-name>TokenRouter</span>`
+	escapedName := htmlpkg.EscapeString(cfg.SiteName)
+	// Replace only the marked label so model descriptions, legal text, and other
+	// product references keep their original content when the application is branded.
+	brandedHTML := bytes.ReplaceAll(
+		html,
+		[]byte(siteNameMarker),
+		[]byte(`<span data-site-name>`+escapedName+`</span>`),
+	)
+
+	titleStart := bytes.Index(brandedHTML, []byte("<title>"))
+	titleEnd := bytes.Index(brandedHTML, []byte("</title>"))
+	// A missing or malformed title must not discard the already branded public
+	// label, which remains useful before the application finishes startup.
 	if titleStart == -1 || titleEnd == -1 || titleEnd <= titleStart {
-		return html
+		return brandedHTML
 	}
 
 	// The setting is text inside title, so escape it before rebuilding that element.
 	// The prefix and suffix writes retain the remaining markup around the selected title.
-	newTitle := []byte("<title>" + htmlpkg.EscapeString(cfg.SiteName) + " - AI API Gateway</title>")
+	newTitle := []byte("<title>" + escapedName + " - AI API Gateway</title>")
 	// bytes.Buffer.Write returns a nil error for these in-memory copies. Compose
 	// the replacement and retained page segments while discarding those unused write results.
 	var buf bytes.Buffer
-	_, _ = buf.Write(html[:titleStart])
+	_, _ = buf.Write(brandedHTML[:titleStart])
 	_, _ = buf.Write(newTitle)
-	_, _ = buf.Write(html[titleEnd+len("</title>"):])
+	_, _ = buf.Write(brandedHTML[titleEnd+len("</title>"):])
 	return buf.Bytes()
 }
 

@@ -21,6 +21,18 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/server/middleware"
 )
 
+// embed_on_test.go verifies embedded asset serving, public branding, and startup
+// settings injection through byte fixtures and Gin request handlers. Controlled
+// settings providers return payloads or failures, while temporary override files
+// distinguish mutable disk assets from the embedded bundle. HTTP fixtures check
+// response bodies and headers without starting the production application or
+// connecting to its database.
+//
+// Cache tests coordinate a delayed settings read with invalidation to expose
+// publication ordering. Requests can finish with their captured settings while
+// later requests load the replacement; other fixtures cover nonce substitution,
+// language selection, conditional responses, and settings that cannot be encoded.
+
 // mockSettingsProvider supplies configured public-data results and a serial
 // call count for HTML fixtures.
 type mockSettingsProvider struct {
@@ -42,96 +54,151 @@ type blockingPublic struct {
 	calls            atomic.Int64  // concurrent provider invocation count
 }
 
-// TestInjectSiteTitle supplies configured names, HTML delimiters, invalid
-// settings, and characters requiring escaping. Replacement must use the fixed
-// suffix, retain surrounding elements, and leave unmatched title forms
-// unchanged.
-func TestInjectSiteTitle(t *testing.T) {
+// TestInjectSiteBranding supplies names, title delimiters, marked labels, and
+// invalid settings. The title and public label must use the same escaped name,
+// while unrelated content and unmatched title forms retain their input markup.
+func TestInjectSiteBranding(t *testing.T) {
+	// A deployment configures a public name before serving its first page.
+	// The document title must use that name and retain the gateway suffix.
 	t.Run("replaces_title_with_site_name", func(t *testing.T) {
 		html := []byte(`<html><head><title>TokenRouter - AI API Gateway</title></head><body></body></html>`)
 		settingsJSON := []byte(`{"site_name":"MyCustomSite"}`)
 
-		result := injectSiteTitle(html, settingsJSON)
+		result := injectSiteBranding(html, settingsJSON)
 
 		assert.Contains(t, string(result), "<title>MyCustomSite - AI API Gateway</title>")
 		assert.NotContains(t, string(result), "TokenRouter")
 	})
 
+	// Public settings explicitly leave the application name empty during startup.
+	// The embedded document must retain its default title instead of replacing it with an empty label.
 	t.Run("returns_unchanged_when_site_name_empty", func(t *testing.T) {
 		html := []byte(`<html><head><title>TokenRouter - AI API Gateway</title></head><body></body></html>`)
 		settingsJSON := []byte(`{"site_name":""}`)
 
-		result := injectSiteTitle(html, settingsJSON)
+		result := injectSiteBranding(html, settingsJSON)
 
 		assert.Equal(t, string(html), string(result))
 	})
 
+	// An older settings payload omits the public site name entirely.
+	// Branding must leave the supplied document unchanged so deployments retain their embedded defaults.
 	t.Run("returns_unchanged_when_site_name_missing", func(t *testing.T) {
 		html := []byte(`<html><head><title>TokenRouter - AI API Gateway</title></head><body></body></html>`)
 		settingsJSON := []byte(`{"other_field":"value"}`)
 
-		result := injectSiteTitle(html, settingsJSON)
+		result := injectSiteBranding(html, settingsJSON)
 
 		assert.Equal(t, string(html), string(result))
 	})
 
+	// Startup settings cannot be decoded into a configured public application name.
+	// The renderer must keep the supplied HTML available without inserting partially decoded branding.
 	t.Run("returns_unchanged_when_invalid_json", func(t *testing.T) {
 		html := []byte(`<html><head><title>TokenRouter - AI API Gateway</title></head><body></body></html>`)
 		settingsJSON := []byte(`{invalid json}`)
 
-		result := injectSiteTitle(html, settingsJSON)
+		result := injectSiteBranding(html, settingsJSON)
 
 		assert.Equal(t, string(html), string(result))
 	})
 
+	// A caller supplies HTML containing neither the known title nor a marked brand label.
+	// The renderer must preserve that unmatched document without inventing elements.
 	t.Run("returns_unchanged_when_no_title_tag", func(t *testing.T) {
 		html := []byte(`<html><head></head><body></body></html>`)
 		settingsJSON := []byte(`{"site_name":"MyCustomSite"}`)
 
-		result := injectSiteTitle(html, settingsJSON)
+		result := injectSiteBranding(html, settingsJSON)
 
 		assert.Equal(t, string(html), string(result))
 	})
 
+	// A title uses attributes outside the embedded bundle's recognized delimiter spelling.
+	// Branding must preserve that element rather than interpreting arbitrary HTML with its byte-pattern replacement.
 	t.Run("returns_unchanged_when_title_has_attributes", func(t *testing.T) {
-		// Title replacement matches the attribute-free title tag emitted in index.html.
 		html := []byte(`<html><head><title lang="en">TokenRouter</title></head><body></body></html>`)
 		settingsJSON := []byte(`{"site_name":"NewSite"}`)
 
-		result := injectSiteTitle(html, settingsJSON)
+		result := injectSiteBranding(html, settingsJSON)
 
 		assert.Equal(t, string(html), string(result))
 	})
 
+	// A configured name attempts to close the document title and introduce a script.
+	// The inserted name must stay escaped text without creating executable markup.
 	t.Run("escapes_html_in_site_name", func(t *testing.T) {
 		html := []byte(`<html><head><title>TokenRouter - AI API Gateway</title></head><body></body></html>`)
 		settingsJSON := []byte(`{"site_name":"</title><script>alert(1)</script><title>"}`)
 
-		result := injectSiteTitle(html, settingsJSON)
+		result := injectSiteBranding(html, settingsJSON)
 
 		assert.NotContains(t, string(result), "<script>")
 		assert.Contains(t, string(result), "&lt;/title&gt;&lt;script&gt;alert(1)&lt;/script&gt;&lt;title&gt;")
 	})
 
+	// A public application name includes an ampersand that HTML treats as entity syntax.
+	// The title must preserve the displayed character through an escaped entity.
 	t.Run("escapes_ampersand_in_site_name", func(t *testing.T) {
 		html := []byte(`<html><head><title>TokenRouter</title></head><body></body></html>`)
 		settingsJSON := []byte(`{"site_name":"A&B"}`)
 
-		result := injectSiteTitle(html, settingsJSON)
+		result := injectSiteBranding(html, settingsJSON)
 
 		assert.Contains(t, string(result), "<title>A&amp;B - AI API Gateway</title>")
 	})
 
+	// Branding occurs in a document that already contains application scripts and a mount host.
+	// Replacing its title must retain those elements and the original metadata.
 	t.Run("preserves_rest_of_html", func(t *testing.T) {
 		html := []byte(`<html><head><meta charset="UTF-8"><title>TokenRouter</title><script src="app.js"></script></head><body><div id="app"></div></body></html>`)
 		settingsJSON := []byte(`{"site_name":"TestSite"}`)
 
-		result := injectSiteTitle(html, settingsJSON)
+		result := injectSiteBranding(html, settingsJSON)
 
 		assert.Contains(t, string(result), `<meta charset="UTF-8">`)
 		assert.Contains(t, string(result), `<script src="app.js"></script>`)
 		assert.Contains(t, string(result), `<div id="app"></div>`)
 		assert.Contains(t, string(result), "<title>TestSite - AI API Gateway</title>")
+	})
+
+	// A configured name appears in both the title and the pre-mount label.
+	// Branding must escape that name consistently while preserving an unrelated product reference.
+	t.Run("brands_title_and_marked_label", func(t *testing.T) {
+		markup := []byte(
+			`<html><head><title>TokenRouter</title></head><body>` +
+				`<span data-site-name>TokenRouter</span><p>TokenRouter SDK</p></body></html>`,
+		)
+		settings := []byte(`{"site_name":"Demo & Gateway"}`)
+
+		branded := injectSiteBranding(markup, settings)
+
+		assert.Contains(t, string(branded), `<title>Demo &amp; Gateway - AI API Gateway</title>`)
+		assert.Contains(t, string(branded), `<span data-site-name>Demo &amp; Gateway</span>`)
+		assert.Contains(t, string(branded), `<p>TokenRouter SDK</p>`)
+	})
+
+	// A document supplies a marked label without the recognized title element.
+	// Missing title delimiters must preserve the document while allowing its public label to receive branding.
+	t.Run("brands_marked_label_without_title", func(t *testing.T) {
+		markup := []byte(`<main><span data-site-name>TokenRouter</span></main>`)
+		settings := []byte(`{"site_name":"Demo Gateway"}`)
+
+		branded := injectSiteBranding(markup, settings)
+
+		assert.Equal(t, `<main><span data-site-name>Demo Gateway</span></main>`, string(branded))
+	})
+
+	// An operator supplies markup-like text as the configured application name.
+	// The marked label must render it as text without introducing an executable HTML element.
+	t.Run("escapes_markup_in_marked_label", func(t *testing.T) {
+		markup := []byte(`<span data-site-name>TokenRouter</span>`)
+		settings := []byte(`{"site_name":"<img src=x onerror=alert(1)>"}`)
+
+		branded := injectSiteBranding(markup, settings)
+
+		assert.Equal(t, `<span data-site-name>&lt;img src=x onerror=alert(1)&gt;</span>`, string(branded))
+		assert.NotContains(t, string(branded), `<img`)
 	})
 }
 

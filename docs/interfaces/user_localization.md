@@ -64,7 +64,7 @@
 <a id="legal_pages_orders"></a>
 ## 协议、文件页面和订单
 
-- 协议确认版本：仅由原文内容与配置日期计算，改译文或切语言不触发重新确认，改原文才要求重新确认。`GET /api/v1/settings/legal/:id` 按需返回选定语言正文，HTML 注入仅含摘要。
+- 协议确认版本：仅由原文内容与配置日期计算，改译文或切语言不触发重新确认，改原文才要求重新确认。`GET /api/v1/settings/legal/:id` 按需返回选定语言正文，启动配置仅含摘要；公开协议地址的原始 HTML 同步提供当前正文，见[公开页面交付](../architecture/frontend_modules.md#public_page_delivery)。
 - 文件页面路径：原文为 `pages/<slug>.md`，译文为 `pages/<slug>/<locale>.md`（管理员专用页读原文）。图片按正文实际语言优先查 `pages/<slug>/<locale>/<image>`，缺失回退 `pages/<slug>/<image>`；安全校验与 1 MiB 上限见[站点页面](http_api.md#site_pages)。
 - 订单与公告：下单时固化套餐名、商品名、语言及渠道商品描述，后续改译文不影响历史订单；公告多语言共用公告 ID 与已读记录。
 

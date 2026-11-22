@@ -29,12 +29,16 @@ type PublicSettingsProvider interface {
 
 // FrontendServer is the API-only build's placeholder for the embedded frontend
 // server type.
-type FrontendServer struct{}
+type FrontendServer struct {
+	// publicDocuments retains the option contract for application wiring, but
+	// API-only builds never serve initial frontend content or invoke this lookup.
+	publicDocuments PublicDocumentLookup
+}
 
 // NewFrontendServer returns a nil server and the frontend-not-embedded error
-// for this build. The supplied provider is unused, so application callers
+// for this build. The supplied provider and options are unused, so application callers
 // consult HasEmbeddedFrontend before attempting frontend construction.
-func NewFrontendServer(settingsProvider PublicSettingsProvider) (*FrontendServer, error) {
+func NewFrontendServer(settingsProvider PublicSettingsProvider, options ...FrontendOption) (*FrontendServer, error) {
 	return nil, errors.New("frontend not embedded")
 }
 

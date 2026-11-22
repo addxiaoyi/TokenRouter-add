@@ -100,6 +100,13 @@ Vite 与 TypeScript 配置：
 - 开发、构建和预览命令显式指定 `vite.config.ts`，忽略旧检出目录可能残留的 `vite.config.js`。Node 配置编译产物输出至 `node_modules/.cache/tsconfig-node`，避免在源码旁遮蔽配置。
 - Vite 配置中的相对 TS 导入显式写 `.ts` 后缀以兼容原生配置加载；`tsconfig.node.json` 启用 `rewriteRelativeImportExtensions`，编译输出时改写为对应 JS 扩展名。
 
+<a id="public_page_delivery"></a>
+### 公开页面的初始内容
+
+1. 标准嵌入式部署的 `/` 与 `/home` 在原始 HTML 中提供站点名称、网关用途和已发布政策导航，访问不依赖登录会话或 JavaScript 执行。
+2. `/legal/:id` 按请求语言读取当前已发布正文，在应用挂载前提供经过 HTML 转义的 Markdown 文本；Vue 挂载后沿用协议页的正常格式化。不存在的文档返回 404，读取失败返回 503，错误响应不缓存。
+3. 原始页面内容按请求生成，保持语言级启动配置缓存不变。最终 ETag 包含当前正文，政策更新后不会复用旧正文的校验值；其他页面仍使用原有 SPA 启动内容。
+
 应用启动顺序：
 
 1. 设置主题和 viewport。
