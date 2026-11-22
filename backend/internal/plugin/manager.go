@@ -51,6 +51,7 @@ type Manager struct {
 	packages      Packages          // verified local archive storage
 	processes     Supervisors       // child generation lifecycle owner
 	configuration *Configuration    // schema and encrypted settings boundary
+	data          DataStorage       // durable plugin-owned files
 	logger        *slog.Logger      // host diagnostic logging destination
 	tasks         *TaskScheduler    // declared task scheduling and recent outcomes
 	// mu protects locks, loaded, observations, blocked, slots, and lifecycle state. Per-plugin mutation channels serialize changes without blocking unrelated snapshot readers.
@@ -71,7 +72,7 @@ type Manager struct {
 // NewManager constructs a dormant reconciler with no filesystem or process effects.
 // Installation sources and configuration are shared dependencies. Start loads records
 // asynchronously; callers can inspect empty snapshots before initialization completes.
-func NewManager(options ManagerOptions, store InstallationStore, packages Packages, processes Supervisors, configuration *Configuration, logger *slog.Logger) *Manager {
+func NewManager(options ManagerOptions, store InstallationStore, packages Packages, processes Supervisors, configuration *Configuration, data DataStorage, logger *slog.Logger) *Manager {
 	if logger == nil {
 		logger = slog.Default()
 	}
@@ -81,6 +82,7 @@ func NewManager(options ManagerOptions, store InstallationStore, packages Packag
 		packages:      packages,
 		processes:     processes,
 		configuration: configuration,
+		data:          data,
 		logger:        logger,
 		locks:         make(map[string]chan struct{}),
 		loaded:        make(map[string]Loaded),
@@ -303,12 +305,22 @@ func (m *Manager) syncLocked(ctx context.Context, id string, retain ...PackageRe
 	if err != nil {
 		return err
 	}
+	dataDir := ""
+	if m.data != nil {
+		// Prepare the persistent owner before starting executable code, keeping
+		// business files independent of versioned packages and disposable process state.
+		dataDir, err = m.data.Directory(ctx, id)
+		if err != nil {
+			return err
+		}
+	}
 	spec := ProcessSpec{
 		PluginID:     id,
 		Version:      want.Version,
 		Executable:   local.Executable,
 		BinarySHA256: local.BinarySHA256,
 		StateDir:     stateDir,
+		DataDir:      dataDir,
 		ConfigJSON:   data,
 		Permissions:  slices.Clone(want.GrantedPermissions),
 		MemoryMiB:    want.Manifest.Resources.MemoryLimit(),

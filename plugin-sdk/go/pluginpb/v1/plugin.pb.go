@@ -47,8 +47,10 @@ type InitRequest struct {
 	HostBrokerId uint32 `protobuf:"varint,8,opt,name=host_broker_id,json=hostBrokerId,proto3" json:"host_broker_id,omitempty"`
 	// Administrator-confirmed host capability names.
 	GrantedPermissions []string `protobuf:"bytes,9,rep,name=granted_permissions,json=grantedPermissions,proto3" json:"granted_permissions,omitempty"`
-	// Disposable local cache directory; durable business data belongs in host KV.
-	StateDir      string `protobuf:"bytes,10,opt,name=state_dir,json=stateDir,proto3" json:"state_dir,omitempty"`
+	// Disposable local cache directory; business data belongs in data_dir or host KV.
+	StateDir string `protobuf:"bytes,10,opt,name=state_dir,json=stateDir,proto3" json:"state_dir,omitempty"`
+	// Persistent plugin-owned directory, retained until explicit data purge.
+	DataDir       string `protobuf:"bytes,11,opt,name=data_dir,json=dataDir,proto3" json:"data_dir,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -149,6 +151,13 @@ func (x *InitRequest) GetGrantedPermissions() []string {
 func (x *InitRequest) GetStateDir() string {
 	if x != nil {
 		return x.StateDir
+	}
+	return ""
+}
+
+func (x *InitRequest) GetDataDir() string {
+	if x != nil {
+		return x.DataDir
 	}
 	return ""
 }
@@ -2487,7 +2496,10 @@ type UserUsageStats struct {
 	// Aggregated reported token count.
 	Tokens int64 `protobuf:"varint,3,opt,name=tokens,proto3" json:"tokens,omitempty"`
 	// Aggregated decimal usage cost.
-	Cost          string `protobuf:"bytes,4,opt,name=cost,proto3" json:"cost,omitempty"`
+	Cost string `protobuf:"bytes,4,opt,name=cost,proto3" json:"cost,omitempty"`
+	// Wallet-funded decimal cost, truncated to eight fractional digits.
+	// Empty means the host does not report funding splits.
+	BalanceCost   string `protobuf:"bytes,5,opt,name=balance_cost,json=balanceCost,proto3" json:"balance_cost,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2546,6 +2558,13 @@ func (x *UserUsageStats) GetTokens() int64 {
 func (x *UserUsageStats) GetCost() string {
 	if x != nil {
 		return x.Cost
+	}
+	return ""
+}
+
+func (x *UserUsageStats) GetBalanceCost() string {
+	if x != nil {
+		return x.BalanceCost
 	}
 	return ""
 }
@@ -4219,7 +4238,7 @@ var File_tokenrouter_plugin_v1_plugin_proto protoreflect.FileDescriptor
 
 const file_tokenrouter_plugin_v1_plugin_proto_rawDesc = "" +
 	"\n" +
-	"\"tokenrouter/plugin/v1/plugin.proto\x12\x15tokenrouter.plugin.v1\"\xf6\x02\n" +
+	"\"tokenrouter/plugin/v1/plugin.proto\x12\x15tokenrouter.plugin.v1\"\x91\x03\n" +
 	"\vInitRequest\x12!\n" +
 	"\fhost_version\x18\x01 \x01(\tR\vhostVersion\x12\x1f\n" +
 	"\vapi_version\x18\x02 \x01(\rR\n" +
@@ -4234,7 +4253,8 @@ const file_tokenrouter_plugin_v1_plugin_proto_rawDesc = "" +
 	"\x0ehost_broker_id\x18\b \x01(\rR\fhostBrokerId\x12/\n" +
 	"\x13granted_permissions\x18\t \x03(\tR\x12grantedPermissions\x12\x1b\n" +
 	"\tstate_dir\x18\n" +
-	" \x01(\tR\bstateDir\"\x0e\n" +
+	" \x01(\tR\bstateDir\x12\x19\n" +
+	"\bdata_dir\x18\v \x01(\tR\adataDir\"\x0e\n" +
 	"\fInitResponse\"\x0f\n" +
 	"\rHealthRequest\"@\n" +
 	"\x0eHealthResponse\x12\x14\n" +
@@ -4390,12 +4410,13 @@ const file_tokenrouter_plugin_v1_plugin_proto_rawDesc = "" +
 	"\buser_ids\x18\x01 \x03(\x03R\auserIds\x12\x1d\n" +
 	"\n" +
 	"start_unix\x18\x02 \x01(\x03R\tstartUnix\x12\x19\n" +
-	"\bend_unix\x18\x03 \x01(\x03R\aendUnix\"q\n" +
+	"\bend_unix\x18\x03 \x01(\x03R\aendUnix\"\x94\x01\n" +
 	"\x0eUserUsageStats\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x03R\x06userId\x12\x1a\n" +
 	"\brequests\x18\x02 \x01(\x03R\brequests\x12\x16\n" +
 	"\x06tokens\x18\x03 \x01(\x03R\x06tokens\x12\x12\n" +
-	"\x04cost\x18\x04 \x01(\tR\x04cost\"T\n" +
+	"\x04cost\x18\x04 \x01(\tR\x04cost\x12!\n" +
+	"\fbalance_cost\x18\x05 \x01(\tR\vbalanceCost\"T\n" +
 	"\x15GetUsageStatsResponse\x12;\n" +
 	"\x05stats\x18\x01 \x03(\v2%.tokenrouter.plugin.v1.UserUsageStatsR\x05stats\"\x81\x01\n" +
 	"\x16GetUsageRankingRequest\x12\x1d\n" +
