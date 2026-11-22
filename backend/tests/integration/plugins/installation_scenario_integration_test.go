@@ -34,13 +34,17 @@ import (
 	"github.com/TokenFlux/TokenRouter/plugin-sdk/go/pluginpb/v1"
 )
 
-// installation_scenario_integration_test.go covers service.go, manager.go,
-// configuration.go, HTTP administration, PostgreSQL storage, and package/process
-// providers, public contribution proxying, and asset serving together. Synthetic archives and a disposable database exercise real
-// encryption, startup, restart, repair, and purge without deployment credentials.
+// installation_scenario_integration_test.go exercises uploaded plugin
+// administration across PostgreSQL storage, package files, and native processes.
+// Synthetic archives and a disposable database verify encrypted configuration,
+// enabled intent after restart, package repair, and host KV purge without
+// deployment credentials. Optional plugin-owned file storage stays unset because
+// the persistence assertions cover configuration and host KV.
 
-// TestInstalledPluginHTTPPersistenceAndRecovery runs the complete uploaded native-plugin administration path against PostgreSQL and a real child.
-// Secrets persist encrypted, startup receives plaintext, reconstruction restores enabled intent, and repair retains configuration and KV before purging uninstall.
+// TestInstalledPluginHTTPPersistenceAndRecovery exercises uploaded plugin
+// administration with PostgreSQL storage and a native child process. Secrets
+// persist encrypted, startup receives plaintext, reconstruction restores enabled
+// intent, and repair retains configuration and KV before purging uninstall.
 func TestInstalledPluginHTTPPersistenceAndRecovery(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	db := databaseSuite.New(t)
@@ -55,7 +59,20 @@ func TestInstalledPluginHTTPPersistenceAndRecovery(t *testing.T) {
 	packages, err := provider.NewPackageFiles(directory, provider.DownloadOptions{})
 	require.NoError(t, err)
 	processes := provider.NewProcesses(plugin.RuntimeOptions{HostVersion: "0.5.4", InstanceID: "installation-test", Timezone: "UTC"}, logger, nil)
-	manager := plugin.NewManager(plugin.ManagerOptions{Enabled: true, MaxRunning: 20, HostVersion: "0.5.4", StateRoot: filepath.Join(directory, "state")}, store, packages, processes, configuration, logger)
+	manager := plugin.NewManager(
+		plugin.ManagerOptions{
+			Enabled:     true,
+			MaxRunning:  20,
+			HostVersion: "0.5.4",
+			StateRoot:   filepath.Join(directory, "state"),
+		},
+		store,
+		packages,
+		processes,
+		configuration,
+		nil,
+		logger,
+	)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -148,7 +165,20 @@ func TestInstalledPluginHTTPPersistenceAndRecovery(t *testing.T) {
 	// Stop the first owner before reconstructing the same durable installation; the second manager must restore enabled intent without an HTTP enable request.
 	require.NoError(t, manager.Stop(t.Context()))
 	restartedProcesses := provider.NewProcesses(plugin.RuntimeOptions{HostVersion: "0.5.4", InstanceID: "restarted-test", Timezone: "UTC"}, logger, nil)
-	restarted := plugin.NewManager(plugin.ManagerOptions{Enabled: true, MaxRunning: 20, HostVersion: "0.5.4", StateRoot: filepath.Join(directory, "state")}, store, packages, restartedProcesses, configuration, logger)
+	restarted := plugin.NewManager(
+		plugin.ManagerOptions{
+			Enabled:     true,
+			MaxRunning:  20,
+			HostVersion: "0.5.4",
+			StateRoot:   filepath.Join(directory, "state"),
+		},
+		store,
+		packages,
+		restartedProcesses,
+		configuration,
+		nil,
+		logger,
+	)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()

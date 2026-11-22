@@ -9,6 +9,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// release_query_test.go verifies release metadata queries and cached changelog
+// responses against deterministic GitHub and cache doubles. Fixtures retain
+// bilingual Markdown, publication fields, and asset records through
+// serialization, and distinguish cached results, lookup errors, and rollback
+// candidate selection.
+
 const (
 	// bilingualReleaseBody exercises the complete Markdown structure retained for
 	// administrator changelog rendering, including leading and trailing newlines.
@@ -152,7 +158,7 @@ func TestReleaseQueryFetchLatestReleasePreservesChangelog(t *testing.T) {
 				BuildType: "source",
 			}, info)
 			require.Equal(t, 1, client.latestCalls)
-			require.Equal(t, "TokenFlux/TokenRouter", client.latestRepo)
+			require.Equal(t, "addxiaoyi/TokenRouter-add", client.latestRepo)
 		})
 	}
 }

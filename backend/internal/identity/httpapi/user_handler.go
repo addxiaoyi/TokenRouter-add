@@ -589,8 +589,8 @@ func UserProfileResponseFromService(user *identity.User, identities identity.Use
 	}
 }
 
-// UserProfileBindingMap allocates the email, LinuxDo, OIDC, WeChat, and
-// DingTalk summary map. The summary structs are copied by value, while any
+// UserProfileBindingMap allocates the email, LinuxDo, OIDC, WeChat, DingTalk, QQ,
+// and phone summary map. The summary structs are copied by value, while any
 // referenced data within those values retains its original sharing.
 func UserProfileBindingMap(identities identity.UserIdentitySummarySet) map[string]identity.UserIdentitySummary {
 	return map[string]identity.UserIdentitySummary{

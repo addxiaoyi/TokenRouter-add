@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"testing"
@@ -14,13 +15,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// upgrade_test.go verifies configuration migration across ordinary files,
+// managed links, and mount fallbacks. Fixtures check original backup bytes,
+// observed source modes, and later reads through the same configured path.
+// Injected failures verify that recovery inputs survive interrupted writes,
+// while POSIX permission assertions run where mode bits represent filesystem
+// access.
+
 // TestUpgradeConfigFilePreservesBackup exercises durable migration and a second load.
-// It protects exact original backup bytes, private backup permissions, source mode,
+// It protects exact original backup bytes, POSIX backup permissions, source mode,
 // comment retention, and the absence of writes for current configuration files.
 func TestUpgradeConfigFilePreservesBackup(t *testing.T) {
 	file := filepath.Join(t.TempDir(), "config.yaml")
 	original := []byte("# deployment\ngateway:\n  # request limit\n  max_body_size: 2048 # bytes\ndatabase:\n  password: old\n")
 	require.NoError(t, os.WriteFile(file, original, 0o640))
+	sourceInfo, err := os.Stat(file)
+	require.NoError(t, err)
 	env := upgradeEnvironment{LookupEnv: func(name string) (string, bool) {
 		if name == "DATABASE_PASSWORD" {
 			return "private-secret", true
@@ -41,10 +51,14 @@ func TestUpgradeConfigFilePreservesBackup(t *testing.T) {
 	require.Equal(t, original, backup)
 	info, err := os.Stat(file)
 	require.NoError(t, err)
-	require.Equal(t, os.FileMode(0o640), info.Mode().Perm())
+	require.Equal(t, sourceInfo.Mode().Perm(), info.Mode().Perm())
 	backupInfo, err := os.Stat(file + ".v1.bak")
 	require.NoError(t, err)
-	require.Equal(t, os.FileMode(0o600), backupInfo.Mode().Perm())
+	// Windows exposes read-only attributes instead of POSIX owner/group modes,
+	// so exact private permission bits are asserted only on POSIX filesystems.
+	if runtime.GOOS != "windows" {
+		require.Equal(t, os.FileMode(0o600), backupInfo.Mode().Perm())
+	}
 	_, err = upgradeConfigFile(file, true, env)
 	require.NoError(t, err)
 	after, err := os.Stat(file)
@@ -153,6 +167,11 @@ func TestConfigWriteErrorClassifiesPermissions(t *testing.T) {
 // Startup must retain the original bytes and return the actionable migration
 // sentinel, allowing an operator to produce an offline copy before replacement.
 func TestUpgradeReadOnlyDirectoryFailsBeforeReplacement(t *testing.T) {
+	// Windows directory mode bits cannot remove write access. The real POSIX
+	// restriction remains covered on platforms where chmod controls directory access.
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows directory modes do not represent POSIX write permissions")
+	}
 	if os.Getuid() == 0 {
 		t.Skip("root can bypass filesystem mode restrictions; read-only mounts are covered by deployment verification")
 	}
@@ -278,6 +297,10 @@ func TestUpgradePreservesConfigSymlink(t *testing.T) {
 			raw := []byte("server:\n  port: 9090\n")
 			require.NoError(t, os.WriteFile(target, raw, 0o640))
 			require.NoError(t, os.Symlink("managed/runtime.yaml", file))
+			originalLink, err := os.Readlink(file)
+			require.NoError(t, err)
+			originalInfo, err := os.Stat(target)
+			require.NoError(t, err)
 			env := upgradeEnvironment{}
 			if fallback {
 				resolved, err := filepath.EvalSymlinks(target)
@@ -288,14 +311,14 @@ func TestUpgradePreservesConfigSymlink(t *testing.T) {
 					return syscall.EBUSY
 				}
 			}
-			_, err := upgradeConfigFile(file, true, env)
+			_, err = upgradeConfigFile(file, true, env)
 			require.NoError(t, err)
 			link, err := os.Readlink(file)
 			require.NoError(t, err)
-			require.Equal(t, "managed/runtime.yaml", link)
+			require.Equal(t, originalLink, link)
 			info, err := os.Stat(target)
 			require.NoError(t, err)
-			require.Equal(t, os.FileMode(0o640), info.Mode().Perm())
+			require.Equal(t, originalInfo.Mode().Perm(), info.Mode().Perm())
 			backup, err := os.ReadFile(file + ".v1.bak")
 			require.NoError(t, err)
 			require.Equal(t, raw, backup)

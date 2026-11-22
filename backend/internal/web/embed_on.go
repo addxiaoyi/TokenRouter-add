@@ -276,7 +276,10 @@ func (s *FrontendServer) writeIndexHTML(c *gin.Context, snapshot CachedHTML, non
 	// retains startup bytes while final validators include the selected legal body.
 	page, status, err := s.publicPageSnapshot(c, snapshot)
 	if err != nil {
-		c.Error(err)
+		// Gin records the diagnostic for request logging and returns its entry for
+		// optional annotation. Discard that handle while keeping the recorded error
+		// available to middleware after the plain failure response is written.
+		_ = c.Error(err)
 		c.Header("Cache-Control", "no-store")
 		c.String(status, "Public page is currently unavailable.")
 		c.Abort()

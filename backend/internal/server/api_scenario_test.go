@@ -268,7 +268,7 @@ func TestAPIContracts(t *testing.T) {
 					"email": "alice@example.com",
 					"email_bound": true,
 					"username": "alice",
- "preferred_locale": null,
+					"preferred_locale": null,
 						"role": "user",
 						"balance": 12.5,
 						"frozen_balance": 0,
@@ -289,6 +289,8 @@ func TestAPIContracts(t *testing.T) {
 					"oidc_bound": false,
 					"wechat_bound": false,
 					"dingtalk_bound": false,
+					"qq_bound": false,
+					"phone_bound": false,
 					"identities": {
 						"email": {
 							"provider": "email",
@@ -333,6 +335,21 @@ func TestAPIContracts(t *testing.T) {
 							"can_bind": true,
 							"can_unbind": false,
 							"bind_start_path": "/api/v1/auth/oauth/dingtalk/bind/start?intent=bind_current_user&redirect=%2Fsettings%2Fprofile"
+						},
+						"qq": {
+							"provider": "qq",
+							"bound": false,
+							"bound_count": 0,
+							"can_bind": true,
+							"can_unbind": false,
+							"bind_start_path": "/api/v1/auth/oauth/qq/bind/start?intent=bind_current_user&redirect=%2Fsettings%2Fprofile"
+						},
+						"phone": {
+							"provider": "phone",
+							"bound": false,
+							"bound_count": 0,
+							"can_bind": true,
+							"can_unbind": false
 						}
 					},
 					"identity_bindings": {
@@ -379,6 +396,21 @@ func TestAPIContracts(t *testing.T) {
 							"can_bind": true,
 							"can_unbind": false,
 							"bind_start_path": "/api/v1/auth/oauth/dingtalk/bind/start?intent=bind_current_user&redirect=%2Fsettings%2Fprofile"
+						},
+						"qq": {
+							"provider": "qq",
+							"bound": false,
+							"bound_count": 0,
+							"can_bind": true,
+							"can_unbind": false,
+							"bind_start_path": "/api/v1/auth/oauth/qq/bind/start?intent=bind_current_user&redirect=%2Fsettings%2Fprofile"
+						},
+						"phone": {
+							"provider": "phone",
+							"bound": false,
+							"bound_count": 0,
+							"can_bind": true,
+							"can_unbind": false
 						}
 					},
 					"auth_bindings": {
@@ -425,6 +457,21 @@ func TestAPIContracts(t *testing.T) {
 							"can_bind": true,
 							"can_unbind": false,
 							"bind_start_path": "/api/v1/auth/oauth/dingtalk/bind/start?intent=bind_current_user&redirect=%2Fsettings%2Fprofile"
+						},
+						"qq": {
+							"provider": "qq",
+							"bound": false,
+							"bound_count": 0,
+							"can_bind": true,
+							"can_unbind": false,
+							"bind_start_path": "/api/v1/auth/oauth/qq/bind/start?intent=bind_current_user&redirect=%2Fsettings%2Fprofile"
+						},
+						"phone": {
+							"provider": "phone",
+							"bound": false,
+							"bound_count": 0,
+							"can_bind": true,
+							"can_unbind": false
 						}
 					}
 				}
@@ -1309,6 +1356,18 @@ func TestAPIContracts(t *testing.T) {
 					"auth_source_default_dingtalk_subscriptions": [],
 					"auth_source_default_dingtalk_grant_on_signup": false,
 					"auth_source_default_dingtalk_grant_on_first_bind": false,
+					"auth_source_default_qq_balance": 0,
+					"auth_source_default_qq_concurrency": 5,
+					"auth_source_default_qq_subscriptions": [],
+					"auth_source_default_qq_grant_on_signup": false,
+					"auth_source_default_qq_grant_on_first_bind": false,
+					"qq_connect_enabled": false,
+					"qq_connect_client_id": "",
+					"qq_connect_client_secret_configured": false,
+					"qq_connect_redirect_url": "",
+					"sms_login_enabled": false,
+					"sms_juhe_key_configured": false,
+					"sms_juhe_tpl_id": "",
 					"force_email_on_third_party_signup": false,
 					"default_concurrency": 5,
 					"default_balance": 1.25,
@@ -1927,6 +1986,18 @@ func TestAPIContracts(t *testing.T) {
 					"auth_source_default_dingtalk_subscriptions": [],
 					"auth_source_default_dingtalk_grant_on_signup": false,
 					"auth_source_default_dingtalk_grant_on_first_bind": false,
+					"auth_source_default_qq_balance": 0,
+					"auth_source_default_qq_concurrency": 5,
+					"auth_source_default_qq_subscriptions": [],
+					"auth_source_default_qq_grant_on_signup": false,
+					"auth_source_default_qq_grant_on_first_bind": false,
+					"qq_connect_enabled": false,
+					"qq_connect_client_id": "",
+					"qq_connect_client_secret_configured": false,
+					"qq_connect_redirect_url": "",
+					"sms_login_enabled": false,
+					"sms_juhe_key_configured": false,
+					"sms_juhe_tpl_id": "",
 					"force_email_on_third_party_signup": false,
 					"allow_user_view_error_requests": false
 				}

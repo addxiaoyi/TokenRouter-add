@@ -313,6 +313,9 @@ importers:
       prettier:
         specifier: 3.9.10
         version: 3.9.10
+      rolldown:
+        specifier: 1.2.12
+        version: 1.2.12
       tailwindcss:
         specifier: ^3.4.0
         version: 3.4.19

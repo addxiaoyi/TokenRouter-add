@@ -812,6 +812,7 @@ func transformV1WeChat(root *yaml.Node, lookup func(string) (string, bool)) erro
 // transformV1Catalog recognizes historical public catalog URLs and packaged paths.
 // Custom hosts, userinfo, and existing files retain their supplied spelling.
 // Host admission expands only when a recognized legacy URL actually migrates.
+// Missing packaged files receive a slash-separated replacement path on every host.
 func transformV1Catalog(root *yaml.Node, env upgradeEnvironment) error {
 	node := configPath(root, "pricing.remote_url")
 	if node != nil {
@@ -845,14 +846,17 @@ func transformV1Catalog(root *yaml.Node, env upgradeEnvironment) error {
 	if fallback == nil {
 		return nil
 	}
-	cleaned := filepath.Clean(fallback.Value)
+	// Normalize host separators before matching the packaged YAML spellings.
+	// Keep converted paths slash-separated so Windows and POSIX loaders share
+	// the same configured value after the filename changes.
+	cleaned := filepath.ToSlash(filepath.Clean(fallback.Value))
 	if cleaned != "resources/model-pricing/model_prices_and_context_window.json" && cleaned != "/app/resources/model-pricing/model_prices_and_context_window.json" {
 		return nil
 	}
 	// Only confirmed absence permits changing a packaged filename. Permission and
 	// other stat failures preserve the configured path for normal loading diagnostics.
 	if _, err := env.Stat(cleaned); os.IsNotExist(err) {
-		fallback.Value = filepath.Join(filepath.Dir(cleaned), "model_pricing_supplements.json")
+		fallback.Value = path.Join(path.Dir(cleaned), "model_pricing_supplements.json")
 	}
 	return nil
 }

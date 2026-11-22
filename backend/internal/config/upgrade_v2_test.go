@@ -12,6 +12,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// upgrade_v2_test.go verifies version-one configuration conversion and the
+// sources of version-two keys. Fixtures exercise environment precedence, scalar
+// semantics, provider normalization, and known catalog paths while keeping the
+// historical schema independent of current configuration declarations.
+
 // TestUpgradeV2SchemaCoverage checks every frozen key against current destinations.
 // Historical fields must either move to a decoded key, remain recognized, or
 // have an explicit removal rule; all move destinations must exist in the schema.
@@ -502,6 +507,15 @@ func TestUpgradeV2WeChatLegacyModes(t *testing.T) {
 func TestUpgradeV2CurrentKeysHaveSources(t *testing.T) {
 	sources := map[string]bool{
 		"config_version":                             true,
+		"auth.oauth.qq.enabled":                      true,
+		"auth.oauth.qq.client_id":                    true,
+		"auth.oauth.qq.client_secret":                true,
+		"auth.oauth.qq.authorize_url":                true,
+		"auth.oauth.qq.token_url":                    true,
+		"auth.oauth.qq.me_url":                       true,
+		"auth.oauth.qq.userinfo_url":                 true,
+		"auth.oauth.qq.redirect_url":                 true,
+		"auth.oauth.qq.frontend_redirect_url":        true,
 		"usage.export_tasks.enabled":                 true,
 		"usage.export_tasks.dir":                     true,
 		"usage.export_tasks.retention_hours":         true,

@@ -14,6 +14,10 @@ import { frontendRoot } from './source-analysis.mjs'
 // artifact exists, rather than relying on Vite's default filename precedence.
 // A production-config fixture also checks emitted static imports and executes lazy
 // chunks, protecting feature download boundaries and dependency initialization order.
+//
+// Rolldown is declared as a development dependency because the splitting fixture
+// imports the compiler directly. This keeps clean package installations able to
+// execute the same compiler contract used by Vite.
 
 // Development, build, and preview scripts run in a directory containing both
 // config formats. Their configured paths must select TypeScript and ignore obsolete JavaScript.
