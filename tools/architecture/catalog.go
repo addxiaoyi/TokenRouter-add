@@ -43,7 +43,7 @@ github.com/stretchr/testify/assert github.com/stripe/stripe-go/v85`},
 		"http": {Production: `github.com/modelcontextprotocol/go-sdk/mcp github.com/google/jsonschema-go/jsonschema github.com/coder/websocket github.com/gin-gonic/gin github.com/gin-gonic/gin/binding
 github.com/google/uuid github.com/google/wire
 github.com/klauspost/compress/zstd github.com/tidwall/gjson github.com/tidwall/sjson go.uber.org/zap
-golang.org/x/net/http/httpguts golang.org/x/net/http2 golang.org/x/sync/singleflight`, Tests: `entgo.io/ent/dialect entgo.io/ent/dialect/sql github.com/modelcontextprotocol/go-sdk/auth github.com/modelcontextprotocol/go-sdk/oauthex golang.org/x/oauth2 github.com/alicebob/miniredis/v2 github.com/redis/go-redis/v9 github.com/cespare/xxhash/v2 github.com/stretchr/testify/assert
+golang.org/x/net/html golang.org/x/net/http/httpguts golang.org/x/net/http2 golang.org/x/sync/singleflight`, Tests: `entgo.io/ent/dialect entgo.io/ent/dialect/sql github.com/modelcontextprotocol/go-sdk/auth github.com/modelcontextprotocol/go-sdk/oauthex golang.org/x/oauth2 github.com/alicebob/miniredis/v2 github.com/redis/go-redis/v9 github.com/cespare/xxhash/v2 github.com/stretchr/testify/assert
 github.com/stretchr/testify/require go.uber.org/zap/zaptest/observer`},
 		"infra": {Production: `github.com/tidwall/gjson github.com/andybalholm/brotli github.com/imroc/req/v3 github.com/klauspost/compress/zstd
 github.com/lib/pq github.com/redis/go-redis/v9 github.com/refraction-networking/utls
@@ -421,6 +421,9 @@ internal/upstream/zhipu/...`, Tests: ""},
 	// File permissions bind imports to reviewed source files; neighboring files
 	// and target subpackages do not inherit these permissions.
 	filePermissions = []filePermission{
+		// Initial public HTML replaces a parsed mount host while preserving the
+		// surrounding application document, limiting HTML tree parsing to this renderer.
+		{Scope: "internal/web", Imports: "golang.org/x/net/html", Files: "public_pages_embed.go"},
 		// Personal marketplace requests read the JWT subject through the shared identity context.
 		{Scope: "internal/routing/httpapi", Imports: "internal/identity/httpapi/authctx", Files: "marketplace.go marketplace_test.go group_handler_test.go"},
 		// The composite-key scenario reads the actual SystemOne envelope after
