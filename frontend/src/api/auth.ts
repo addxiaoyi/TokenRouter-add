@@ -40,7 +40,8 @@ export type LoginResponse = AuthResponse | TotpLoginResponse
  * OAuthLoginProvider enumerates providers accepted by the browser OAuth
  * login-start endpoints.
  */
-export type OAuthLoginProvider = 'github' | 'google' | 'linuxdo' | 'dingtalk' | 'wechat' | 'oidc'
+export type OAuthLoginProvider =
+  'github' | 'google' | 'linuxdo' | 'dingtalk' | 'wechat' | 'oidc' | 'qq'
 
 /**
  * OAuthLoginStart pairs the selected provider with query parameters retained
@@ -240,6 +241,94 @@ export async function login2FA(request: TotpLogin2FARequest): Promise<AuthRespon
   }
   localStorage.setItem('auth_user', JSON.stringify(data.user))
 
+  return data
+}
+
+/**
+ * SMSCodeSendRequest carries the target number and the shared CAPTCHA proof
+ * fields for a public SMS code send.
+ */
+export interface SMSCodeSendRequest extends ActionCaptchaRequestProof {
+  phone: string // Mainland mobile number receiving the code.
+}
+
+/**
+ * SMSLoginRequest carries the number and the code delivered to it.
+ */
+export interface SMSLoginRequest {
+  phone: string // Mainland mobile number used as the login identity.
+  code: string // Received verification code.
+}
+
+/**
+ * SMSRegistrationRequiredResponse reports that the verified number has no
+ * bound account yet. The server has opened a pending registration, and the
+ * browser continues through the pending create-account flow.
+ */
+export interface SMSRegistrationRequiredResponse {
+  requires_registration: boolean // Pending registration continuation flag.
+  step?: string // Pending continuation step name.
+  phone?: string // Verified number carried by the pending registration.
+}
+
+/**
+ * SMSLoginResponse covers the three login outcomes: a completed session, a
+ * TOTP challenge, or a pending registration for an unbound number.
+ */
+export type SMSLoginResponse = LoginResponse | SMSRegistrationRequiredResponse
+
+/**
+ * isSMSRegistrationRequired reports whether an SMS login response asks the
+ * browser to continue through account creation.
+ */
+export function isSMSRegistrationRequired(
+  response: SMSLoginResponse,
+): response is SMSRegistrationRequiredResponse {
+  return 'requires_registration' in response && response.requires_registration === true
+}
+
+/**
+ * sendSMSCode requests one verification code for the number. The server
+ * enforces the feature switch, cooldown, and daily cap; the response only
+ * confirms acceptance.
+ */
+export async function sendSMSCode(request: SMSCodeSendRequest): Promise<{ sent: boolean }> {
+  const { data } = await apiClient.post<{ sent: boolean }>('/auth/sms/send-code', request)
+  return data
+}
+
+/**
+ * smsLogin submits the number and its code. Unlike password login it does
+ * not publish a session here, because a response can also be a TOTP
+ * challenge or a pending registration; the auth store adopts credentials
+ * only for the completed-session outcome.
+ */
+export async function smsLogin(request: SMSLoginRequest): Promise<SMSLoginResponse> {
+  const { data } = await apiClient.post<SMSLoginResponse>('/auth/sms/login', request)
+  return data
+}
+
+/**
+ * sendPhoneBindCode requests one verification code for attaching the
+ * number to the authenticated account.
+ */
+export async function sendPhoneBindCode(phone: string): Promise<{ sent: boolean }> {
+  const { data } = await apiClient.post<{ sent: boolean }>('/auth/phone/bind/send-code', { phone })
+  return data
+}
+
+/**
+ * bindPhone verifies the code and attaches the number identity to the
+ * authenticated account.
+ */
+export async function bindPhone(
+  phone: string,
+  code: string,
+): Promise<{ bound: boolean; phone: string }> {
+  const { data } = await apiClient.post<{ bound: boolean; phone: string }>('/auth/phone/bind', {
+    phone,
+    code,
+  })
   return data
 }
 
@@ -884,7 +973,7 @@ export async function completeWeChatOAuthRegistration(
  * including an affiliate code only when trimming leaves a nonempty value.
  */
 async function createPendingOAuthAccount(
-  provider: 'linuxdo' | 'oidc' | 'wechat' | 'dingtalk',
+  provider: 'linuxdo' | 'oidc' | 'wechat' | 'dingtalk' | 'qq',
   invitationCode: string,
   decision?: OAuthAdoptionDecision,
   affiliateCode?: string,
@@ -934,6 +1023,30 @@ export async function createPendingWeChatOAuthAccount(
   affiliateCode?: string,
 ): Promise<PendingOAuthCreateAccountResponse> {
   return createPendingOAuthAccount('wechat', invitationCode, decision, affiliateCode)
+}
+
+/**
+ * createPendingQQOAuthAccount delegates pending QQ account creation to
+ * createPendingOAuthAccount and returns its result.
+ */
+export async function createPendingQQOAuthAccount(
+  invitationCode: string,
+  decision?: OAuthAdoptionDecision,
+  affiliateCode?: string,
+): Promise<PendingOAuthCreateAccountResponse> {
+  return createPendingOAuthAccount('qq', invitationCode, decision, affiliateCode)
+}
+
+/**
+ * completeQQOAuthRegistration completes a QQ choice-session registration
+ * through the shared pending account creation.
+ */
+export async function completeQQOAuthRegistration(
+  invitationCode: string,
+  decision?: OAuthAdoptionDecision,
+  affiliateCode?: string,
+): Promise<OAuthTokenResponse> {
+  return createPendingQQOAuthAccount(invitationCode, decision, affiliateCode)
 }
 
 /**
@@ -992,10 +1105,16 @@ export const authAPI = {
   createPendingLinuxDoOAuthAccount,
   createPendingOIDCOAuthAccount,
   createPendingWeChatOAuthAccount,
+  createPendingQQOAuthAccount,
   exchangePendingOAuthCompletion,
   completeLinuxDoOAuthRegistration,
   completeOIDCOAuthRegistration,
   completeWeChatOAuthRegistration,
+  completeQQOAuthRegistration,
+  sendSMSCode,
+  smsLogin,
+  sendPhoneBindCode,
+  bindPhone,
 }
 
 export default authAPI

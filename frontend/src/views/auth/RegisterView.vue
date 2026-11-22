@@ -301,6 +301,7 @@
       <div
         v-if="
           linuxdoOAuthEnabled ||
+          qqOAuthEnabled ||
           wechatOAuthEnabled ||
           oidcOAuthEnabled ||
           githubOAuthEnabled ||
@@ -327,6 +328,14 @@
         />
         <LinuxDoOAuthSection
           v-if="linuxdoOAuthEnabled"
+          :disabled="registrationActionDisabled"
+          :aff-code="formData.aff_code"
+          :promo-code="formData.promo_code"
+          :show-divider="false"
+          @start="handleOAuthStart"
+        />
+        <QQOAuthSection
+          v-if="qqOAuthEnabled"
           :disabled="registrationActionDisabled"
           :aff-code="formData.aff_code"
           :promo-code="formData.promo_code"
@@ -370,6 +379,7 @@ import { useI18n } from 'vue-i18n'
 import { AuthLayout } from '@/components/layout'
 import EmailOAuthButtons from '@/components/auth/EmailOAuthButtons.vue'
 import LinuxDoOAuthSection from '@/components/auth/LinuxDoOAuthSection.vue'
+import QQOAuthSection from '@/components/auth/QQOAuthSection.vue'
 import OidcOAuthSection from '@/components/auth/OidcOAuthSection.vue'
 import WechatOAuthSection from '@/components/auth/WechatOAuthSection.vue'
 import LoginAgreementPrompt from '@/components/auth/LoginAgreementPrompt.vue'
@@ -471,6 +481,7 @@ const siteName = computed(() => resolveLocalizedSiteName(publicSettings.value)) 
 // Backend-only mode on the login page can hide the provider section even when
 // individual methods are configured.
 const linuxdoOAuthEnabled = ref<boolean>(false) // public LinuxDo login enable flag
+const qqOAuthEnabled = ref<boolean>(false) // public QQ login enable flag
 const wechatOAuthEnabled = ref<boolean>(false) // public WeChat web-login availability
 const oidcOAuthEnabled = ref<boolean>(false) // public OIDC login enable flag
 // oidcOAuthProviderName supplies the configured display label for the OIDC entry.
@@ -658,6 +669,7 @@ onMounted(async () => {
     aliyunCaptchaRegion.value = settings.aliyun_captcha_region || 'cn'
     publicSettings.value = settings
     linuxdoOAuthEnabled.value = settings.linuxdo_oauth_enabled
+    qqOAuthEnabled.value = settings.qq_oauth_enabled === true
     wechatOAuthEnabled.value = isWeChatWebOAuthEnabled(settings)
     oidcOAuthEnabled.value = settings.oidc_oauth_enabled
     oidcOAuthProviderName.value = settings.oidc_oauth_provider_name || 'OIDC'

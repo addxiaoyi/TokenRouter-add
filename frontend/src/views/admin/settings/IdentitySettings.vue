@@ -82,6 +82,145 @@
     </SettingsSection>
   </SettingsCard>
 
+  <SettingsCard
+    :title="t('admin.settings.qq.title')"
+    :description="t('admin.settings.qq.description')"
+  >
+    <SettingsSection>
+      <SettingToggleRow
+        id="qq-connect-enabled"
+        v-model="form.qq_connect_enabled"
+        :label="t('admin.settings.qq.enable')"
+        :hint="t('admin.settings.qq.enableHint')"
+      />
+      <Collapse :open="form.qq_connect_enabled" unmount-on-hide>
+        <SettingsSubpanel>
+          <div class="grid gap-4 md:grid-cols-2">
+            <div>
+              <label for="qq-client-id" class="input-label">
+                {{ t('admin.settings.qq.clientId') }}
+              </label>
+              <input
+                id="qq-client-id"
+                v-model="form.qq_connect_client_id"
+                type="text"
+                class="input font-mono text-sm"
+                :placeholder="t('admin.settings.qq.clientIdPlaceholder')"
+              />
+              <p class="input-hint">{{ t('admin.settings.qq.clientIdHint') }}</p>
+            </div>
+            <div>
+              <label for="qq-client-secret" class="input-label">
+                {{ t('admin.settings.qq.clientSecret') }}
+              </label>
+              <input
+                id="qq-client-secret"
+                v-model="form.qq_connect_client_secret"
+                type="password"
+                class="input font-mono text-sm"
+                :placeholder="
+                  form.qq_connect_client_secret_configured
+                    ? t('admin.settings.qq.clientSecretConfiguredPlaceholder')
+                    : t('admin.settings.qq.clientSecretPlaceholder')
+                "
+              />
+              <p class="input-hint">
+                {{
+                  form.qq_connect_client_secret_configured
+                    ? t('admin.settings.qq.clientSecretConfiguredHint')
+                    : t('admin.settings.qq.clientSecretHint')
+                }}
+              </p>
+            </div>
+          </div>
+          <div>
+            <label for="qq-redirect-url" class="input-label">
+              {{ t('admin.settings.qq.redirectUrl') }}
+            </label>
+            <div class="flex gap-2">
+              <input
+                id="qq-redirect-url"
+                v-model="form.qq_connect_redirect_url"
+                type="url"
+                class="input font-mono text-sm"
+                :placeholder="t('admin.settings.qq.redirectUrlPlaceholder')"
+              />
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm h-9 shrink-0"
+                @click="setAndCopyQQRedirectUrl"
+              >
+                {{ t('admin.settings.qq.quickSetCopy') }}
+              </button>
+            </div>
+            <p class="input-hint">
+              {{ t('admin.settings.qq.redirectUrlHint') }}
+              <code v-if="qqRedirectUrlSuggestion" class="select-all break-all font-mono">{{
+                qqRedirectUrlSuggestion
+              }}</code>
+            </p>
+          </div>
+        </SettingsSubpanel>
+      </Collapse>
+    </SettingsSection>
+  </SettingsCard>
+
+  <SettingsCard
+    :title="t('admin.settings.sms.title')"
+    :description="t('admin.settings.sms.description')"
+  >
+    <SettingsSection>
+      <SettingToggleRow
+        id="sms-login-enabled"
+        v-model="form.sms_login_enabled"
+        :label="t('admin.settings.sms.enable')"
+        :hint="t('admin.settings.sms.enableHint')"
+      />
+      <Collapse :open="form.sms_login_enabled" unmount-on-hide>
+        <SettingsSubpanel>
+          <div class="grid gap-4 md:grid-cols-2">
+            <div>
+              <label for="sms-juhe-key" class="input-label">
+                {{ t('admin.settings.sms.juheKey') }}
+              </label>
+              <input
+                id="sms-juhe-key"
+                v-model="form.sms_juhe_key"
+                type="password"
+                class="input font-mono text-sm"
+                :placeholder="
+                  form.sms_juhe_key_configured
+                    ? t('admin.settings.sms.juheKeyConfiguredPlaceholder')
+                    : t('admin.settings.sms.juheKeyPlaceholder')
+                "
+              />
+              <p class="input-hint">
+                {{
+                  form.sms_juhe_key_configured
+                    ? t('admin.settings.sms.juheKeyConfiguredHint')
+                    : t('admin.settings.sms.juheKeyHint')
+                }}
+              </p>
+            </div>
+            <div>
+              <label for="sms-juhe-tpl-id" class="input-label">
+                {{ t('admin.settings.sms.templateId') }}
+              </label>
+              <input
+                id="sms-juhe-tpl-id"
+                v-model="form.sms_juhe_tpl_id"
+                type="text"
+                class="input font-mono text-sm"
+                :placeholder="t('admin.settings.sms.templateIdPlaceholder')"
+              />
+              <p class="input-hint">{{ t('admin.settings.sms.templateIdHint') }}</p>
+            </div>
+          </div>
+        </SettingsSubpanel>
+      </Collapse>
+    </SettingsSection>
+  </SettingsCard>
+
   <!-- GitHub and Google email sign-in settings. -->
   <SettingsCard
     :title="t('admin.settings.emailOAuth.title')"
@@ -1044,6 +1183,8 @@ const {
   dingtalkCorpPolicyOptions,
   linuxdoRedirectUrlSuggestion,
   setAndCopyLinuxdoRedirectUrl,
+  qqRedirectUrlSuggestion,
+  setAndCopyQQRedirectUrl,
   githubOAuthRedirectUrlSuggestion,
   googleOAuthRedirectUrlSuggestion,
   googleOneTapOriginSuggestion,

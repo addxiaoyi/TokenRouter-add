@@ -258,6 +258,27 @@ func DiffSettings(before *composite.Snapshot, after *composite.Snapshot, beforeA
 	if before.LinuxDoConnectRedirectURL != after.LinuxDoConnectRedirectURL {
 		changed = append(changed, "linuxdo_connect_redirect_url")
 	}
+	if before.QQConnectEnabled != after.QQConnectEnabled {
+		changed = append(changed, "qq_connect_enabled")
+	}
+	if before.QQConnectClientID != after.QQConnectClientID {
+		changed = append(changed, "qq_connect_client_id")
+	}
+	if req.QQConnectClientSecret != "" {
+		changed = append(changed, "qq_connect_client_secret")
+	}
+	if before.QQConnectRedirectURL != after.QQConnectRedirectURL {
+		changed = append(changed, "qq_connect_redirect_url")
+	}
+	if before.SMSLoginEnabled != after.SMSLoginEnabled {
+		changed = append(changed, "sms_login_enabled")
+	}
+	if req.SMSLoginJuheKey != "" {
+		changed = append(changed, "sms_juhe_key")
+	}
+	if before.SMSLoginJuheTemplateID != after.SMSLoginJuheTemplateID {
+		changed = append(changed, "sms_juhe_tpl_id")
+	}
 	if before.DingTalkConnectEnabled != after.DingTalkConnectEnabled {
 		changed = append(changed, "dingtalk_connect_enabled")
 	}
@@ -757,6 +778,7 @@ func AppendAuthSourceDefaultChanges(changed []string, before *identity.AuthSourc
 		{name: "github", before: before.GitHub, after: after.GitHub},
 		{name: "google", before: before.Google, after: after.Google},
 		{name: "dingtalk", before: before.DingTalk, after: after.DingTalk},
+		{name: "qq", before: before.QQ, after: after.QQ},
 	}
 	for _, field := range fields {
 		if field.before.Balance != field.after.Balance {

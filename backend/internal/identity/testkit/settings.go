@@ -44,7 +44,7 @@ func Settings(repo settings.Repository, cfg *config.Config) *SettingsReaders {
 	var defaults *identity.OAuthSettingsDefaults
 	grants := identity.GrantSettingsOptions{}
 	if cfg != nil {
-		defaults = &identity.OAuthSettingsDefaults{LinuxDo: cfg.Auth.OAuth.LinuxDo, DingTalk: cfg.Auth.OAuth.DingTalk.IdentityDefaults(), OIDC: cfg.Auth.OAuth.OIDC, WeChat: cfg.Auth.OAuth.WeChat.IdentityDefaults(), GitHubOAuth: cfg.Auth.OAuth.GitHub, GoogleOAuth: cfg.Auth.OAuth.Google}
+		defaults = &identity.OAuthSettingsDefaults{LinuxDo: cfg.Auth.OAuth.LinuxDo, DingTalk: cfg.Auth.OAuth.DingTalk.IdentityDefaults(), OIDC: cfg.Auth.OAuth.OIDC, QQ: cfg.Auth.OAuth.QQ, WeChat: cfg.Auth.OAuth.WeChat.IdentityDefaults(), GitHubOAuth: cfg.Auth.OAuth.GitHub, GoogleOAuth: cfg.Auth.OAuth.Google}
 		grants.DefaultBalance = cfg.UserDefaults.Balance
 		grants.DefaultConcurrency = cfg.UserDefaults.Concurrency
 	}

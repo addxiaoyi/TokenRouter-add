@@ -68,7 +68,7 @@ export function useUsersSettings(form: UsersSettingsForm) {
   const authSourceDefaults = reactive<AuthSourceDefaultsState>(buildAuthSourceDefaultsState({}))
 
   /**
-   * authSourceDefaultsMeta defines the display and validation order for seven
+   * authSourceDefaultsMeta defines the display and validation order for eight
    * sources, with labels resolved from the current locale.
    */
   const authSourceDefaultsMeta = computed(() => [
@@ -106,6 +106,11 @@ export function useUsersSettings(form: UsersSettingsForm) {
       source: 'dingtalk' as AuthSourceType,
       title: t('admin.settings.authSourceDefaults.sources.dingtalk.title'),
       description: t('admin.settings.authSourceDefaults.sources.dingtalk.description'),
+    },
+    {
+      source: 'qq' as AuthSourceType,
+      title: t('admin.settings.authSourceDefaults.sources.qq.title'),
+      description: t('admin.settings.authSourceDefaults.sources.qq.description'),
     },
   ])
 

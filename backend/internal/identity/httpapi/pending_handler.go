@@ -516,6 +516,12 @@ func (h *PendingHandler) BindLinuxDoOAuthLogin(c *gin.Context) {
 	h.BindPendingLoginForProvider(c, "linuxdo")
 }
 
+// BindQQOAuthLogin delegates browser-pending existing-account binding for
+// QQ identity state.
+func (h *PendingHandler) BindQQOAuthLogin(c *gin.Context) {
+	h.BindPendingLoginForProvider(c, "qq")
+}
+
 // BindOIDCOAuthLogin delegates browser-pending existing-account binding for
 // OIDC identity state.
 func (h *PendingHandler) BindOIDCOAuthLogin(c *gin.Context) { h.BindPendingLoginForProvider(c, "oidc") }
@@ -534,6 +540,12 @@ func (h *PendingHandler) BindPendingOAuthLogin(c *gin.Context) { h.BindPendingLo
 // registration for LinuxDo identity state.
 func (h *PendingHandler) CreateLinuxDoOAuthAccount(c *gin.Context) {
 	h.CreatePendingAccountForProvider(c, "linuxdo")
+}
+
+// CreateQQOAuthAccount delegates browser-pending local-account
+// registration for QQ identity state.
+func (h *PendingHandler) CreateQQOAuthAccount(c *gin.Context) {
+	h.CreatePendingAccountForProvider(c, "qq")
 }
 
 // CreateOIDCOAuthAccount delegates browser-pending local-account registration

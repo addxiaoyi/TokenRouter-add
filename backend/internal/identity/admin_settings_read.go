@@ -37,17 +37,22 @@ type AdminReadSettings struct {
 	// test raw nonempty stored text. DingTalkConnectClientSecretConfigured,
 	// GitHubOAuthClientSecretConfigured, GoogleOAuthClientSecretConfigured,
 	// LinuxDoConnectClientSecretConfigured, OIDCConnectClientSecretConfigured,
+	// QQConnectClientSecretConfigured,
 	// WeChatConnectAppSecretConfigured, WeChatConnectMPAppSecretConfigured,
 	// WeChatConnectMobileAppSecretConfigured and
 	// WeChatConnectOpenAppSecretConfigured test their effective secrets after
-	// trimmed/startup fallback. These presence observations do not establish
-	// complete provider configuration readiness.
+	// trimmed/startup fallback. SMSLoginJuheKeyConfigured tests the trimmed
+	// stored Juhe key because SMS login has no startup fallback. These
+	// presence observations do not establish complete provider configuration
+	// readiness.
 	AliyunCaptchaAccessKeySecretConfigured bool // raw Aliyun secret presence
 	DingTalkConnectClientSecretConfigured  bool // effective DingTalk secret presence
 	GitHubOAuthClientSecretConfigured      bool // effective GitHub secret presence
 	GoogleOAuthClientSecretConfigured      bool // effective Google secret presence
 	LinuxDoConnectClientSecretConfigured   bool // effective LinuxDo secret presence
 	OIDCConnectClientSecretConfigured      bool // effective OIDC secret presence
+	QQConnectClientSecretConfigured        bool // effective QQ secret presence
+	SMSLoginJuheKeyConfigured              bool // stored Juhe SMS key presence
 	TencentCaptchaAppSecretKeyConfigured   bool // raw Tencent application-secret presence
 	TencentCaptchaCloudSecretIDConfigured  bool // raw Tencent cloud-identifier presence
 	TencentCaptchaCloudSecretKeyConfigured bool // raw Tencent cloud-secret presence
@@ -153,6 +158,38 @@ func (s *OAuthSettings) ReadAdminSettings(settings map[string]string, defaultCon
 		result.LinuxDoConnectClientSecret = strings.TrimSpace(linuxDoBase.ClientSecret)
 	}
 	result.LinuxDoConnectClientSecretConfigured = result.LinuxDoConnectClientSecret != ""
+	qqBase := authconfig.QQConnectConfig{}
+	if s.defaults != nil {
+		qqBase = s.defaults.QQ
+	}
+	if raw, ok := settings[SettingKeyQQConnectEnabled]; ok {
+		result.QQConnectEnabled = raw == "true"
+	} else {
+		result.QQConnectEnabled = qqBase.Enabled
+	}
+	if v, ok := settings[SettingKeyQQConnectClientID]; ok && strings.TrimSpace(v) != "" {
+		result.QQConnectClientID = strings.TrimSpace(v)
+	} else {
+		result.QQConnectClientID = qqBase.ClientID
+	}
+	if v, ok := settings[SettingKeyQQConnectRedirectURL]; ok && strings.TrimSpace(v) != "" {
+		result.QQConnectRedirectURL = strings.TrimSpace(v)
+	} else {
+		result.QQConnectRedirectURL = qqBase.RedirectURL
+	}
+	result.QQConnectClientSecret = strings.TrimSpace(settings[SettingKeyQQConnectClientSecret])
+	// Blank stored QQ secret uses trimmed startup text for privileged
+	// readback and its presence flag, mirroring the LinuxDo rule.
+	if result.QQConnectClientSecret == "" {
+		result.QQConnectClientSecret = strings.TrimSpace(qqBase.ClientSecret)
+	}
+	result.QQConnectClientSecretConfigured = result.QQConnectClientSecret != ""
+	// SMS login has no startup-default source; stored values are the whole
+	// configuration, and the key presence flag reads the raw stored text.
+	result.SMSLoginEnabled = settings[SettingKeySMSLoginEnabled] == "true"
+	result.SMSLoginJuheKey = strings.TrimSpace(settings[SettingKeySMSJuheKey])
+	result.SMSLoginJuheKeyConfigured = result.SMSLoginJuheKey != ""
+	result.SMSLoginJuheTemplateID = strings.TrimSpace(settings[SettingKeySMSJuheTemplateID])
 	dingTalkBase := authconfig.DingTalkConnectConfig{}
 	if s.defaults != nil {
 		dingTalkBase = s.defaults.DingTalk

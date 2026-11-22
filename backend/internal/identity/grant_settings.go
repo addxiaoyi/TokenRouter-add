@@ -59,6 +59,11 @@ const (
 	SettingKeyAuthSourceDefaultOIDCGrantOnFirstBind     = "auth_source_default_oidc_grant_on_first_bind"
 	SettingKeyAuthSourceDefaultOIDCGrantOnSignup        = "auth_source_default_oidc_grant_on_signup"
 	SettingKeyAuthSourceDefaultOIDCSubscriptions        = "auth_source_default_oidc_subscriptions"
+	SettingKeyAuthSourceDefaultQQBalance                = "auth_source_default_qq_balance"
+	SettingKeyAuthSourceDefaultQQConcurrency            = "auth_source_default_qq_concurrency"
+	SettingKeyAuthSourceDefaultQQGrantOnFirstBind       = "auth_source_default_qq_grant_on_first_bind"
+	SettingKeyAuthSourceDefaultQQGrantOnSignup          = "auth_source_default_qq_grant_on_signup"
+	SettingKeyAuthSourceDefaultQQSubscriptions          = "auth_source_default_qq_subscriptions"
 	SettingKeyAuthSourceDefaultWeChatBalance            = "auth_source_default_wechat_balance"
 	SettingKeyAuthSourceDefaultWeChatConcurrency        = "auth_source_default_wechat_concurrency"
 	SettingKeyAuthSourceDefaultWeChatGrantOnFirstBind   = "auth_source_default_wechat_grant_on_first_bind"
@@ -95,6 +100,14 @@ var (
 		subscriptions:    SettingKeyAuthSourceDefaultOIDCSubscriptions,
 		grantOnSignup:    SettingKeyAuthSourceDefaultOIDCGrantOnSignup,
 		grantOnFirstBind: SettingKeyAuthSourceDefaultOIDCGrantOnFirstBind,
+	}
+	qqAuthSourceDefaultKeys = authSourceDefaultKeySet{
+		source:           "qq",
+		balance:          SettingKeyAuthSourceDefaultQQBalance,
+		concurrency:      SettingKeyAuthSourceDefaultQQConcurrency,
+		subscriptions:    SettingKeyAuthSourceDefaultQQSubscriptions,
+		grantOnSignup:    SettingKeyAuthSourceDefaultQQGrantOnSignup,
+		grantOnFirstBind: SettingKeyAuthSourceDefaultQQGrantOnFirstBind,
 	}
 	weChatAuthSourceDefaultKeys = authSourceDefaultKeySet{
 		source:           "wechat",
@@ -491,6 +504,11 @@ func AuthSourceSettingKeys() []string {
 		SettingKeyAuthSourceDefaultOIDCSubscriptions,
 		SettingKeyAuthSourceDefaultOIDCGrantOnSignup,
 		SettingKeyAuthSourceDefaultOIDCGrantOnFirstBind,
+		SettingKeyAuthSourceDefaultQQBalance,
+		SettingKeyAuthSourceDefaultQQConcurrency,
+		SettingKeyAuthSourceDefaultQQSubscriptions,
+		SettingKeyAuthSourceDefaultQQGrantOnSignup,
+		SettingKeyAuthSourceDefaultQQGrantOnFirstBind,
 		SettingKeyAuthSourceDefaultWeChatBalance,
 		SettingKeyAuthSourceDefaultWeChatConcurrency,
 		SettingKeyAuthSourceDefaultWeChatSubscriptions,
@@ -524,6 +542,7 @@ func parseAuthSourceSettings(settings map[string]string) *AuthSourceDefaultSetti
 		Email:                        parseProviderDefaultGrantSettings(settings, emailAuthSourceDefaultKeys),
 		LinuxDo:                      parseProviderDefaultGrantSettings(settings, linuxDoAuthSourceDefaultKeys),
 		OIDC:                         parseProviderDefaultGrantSettings(settings, oidcAuthSourceDefaultKeys),
+		QQ:                           parseProviderDefaultGrantSettings(settings, qqAuthSourceDefaultKeys),
 		WeChat:                       parseProviderDefaultGrantSettings(settings, weChatAuthSourceDefaultKeys),
 		GitHub:                       parseProviderDefaultGrantSettings(settings, gitHubAuthSourceDefaultKeys),
 		Google:                       parseProviderDefaultGrantSettings(settings, googleAuthSourceDefaultKeys),
@@ -537,10 +556,11 @@ func parseAuthSourceSettings(settings map[string]string) *AuthSourceDefaultSetti
 // value encoding without validation, and writes nil subscription lists as
 // empty arrays rather than null.
 func encodeAuthSourceSettings(settings *AuthSourceDefaultSettings) map[string]string {
-	updates := make(map[string]string, 36)
+	updates := make(map[string]string, 41)
 	writeProviderDefaultGrantUpdates(updates, emailAuthSourceDefaultKeys, settings.Email)
 	writeProviderDefaultGrantUpdates(updates, linuxDoAuthSourceDefaultKeys, settings.LinuxDo)
 	writeProviderDefaultGrantUpdates(updates, oidcAuthSourceDefaultKeys, settings.OIDC)
+	writeProviderDefaultGrantUpdates(updates, qqAuthSourceDefaultKeys, settings.QQ)
 	writeProviderDefaultGrantUpdates(updates, weChatAuthSourceDefaultKeys, settings.WeChat)
 	writeProviderDefaultGrantUpdates(updates, gitHubAuthSourceDefaultKeys, settings.GitHub)
 	writeProviderDefaultGrantUpdates(updates, googleAuthSourceDefaultKeys, settings.Google)

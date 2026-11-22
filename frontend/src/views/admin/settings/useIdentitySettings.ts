@@ -66,6 +66,15 @@ export type IdentitySettingsForm = Pick<
   | 'linuxdo_connect_client_secret_configured'
   | 'linuxdo_connect_enabled'
   | 'linuxdo_connect_redirect_url'
+  | 'qq_connect_client_id'
+  | 'qq_connect_client_secret'
+  | 'qq_connect_client_secret_configured'
+  | 'qq_connect_enabled'
+  | 'qq_connect_redirect_url'
+  | 'sms_login_enabled'
+  | 'sms_juhe_key'
+  | 'sms_juhe_key_configured'
+  | 'sms_juhe_tpl_id'
   | 'localized_settings'
   | 'oidc_connect_allowed_signing_algs'
   | 'oidc_connect_authorize_url'
@@ -175,6 +184,29 @@ export function useIdentitySettings(form: IdentitySettingsForm) {
     // the administrator can copy it manually.
     form.linuxdo_connect_redirect_url = url
     await copyToClipboard(url, t('admin.settings.linuxdo.redirectUrlSetAndCopied'))
+  }
+
+  /**
+   * qqRedirectUrlSuggestion supplies the QQ backend callback using the
+   * browser API entry used for OAuth start.
+   */
+  const qqRedirectUrlSuggestion = computed(() => {
+    return buildApiCallbackUrl('/auth/oauth/qq/callback')
+  })
+
+  /**
+   * setAndCopyQQRedirectUrl writes the suggested QQ callback into the
+   * shared draft before copying it. An empty suggestion does nothing; clipboard
+   * feedback comes from useClipboard after the field is already updated.
+   */
+  async function setAndCopyQQRedirectUrl() {
+    const url = qqRedirectUrlSuggestion.value
+    if (!url) return
+
+    // Keep the generated callback in the editable draft even when copying fails, so
+    // the administrator can copy it manually.
+    form.qq_connect_redirect_url = url
+    await copyToClipboard(url, t('admin.settings.qq.redirectUrlSetAndCopied'))
   }
 
   /**
@@ -384,6 +416,8 @@ export function useIdentitySettings(form: IdentitySettingsForm) {
     buildApiCallbackUrl,
     linuxdoRedirectUrlSuggestion,
     setAndCopyLinuxdoRedirectUrl,
+    qqRedirectUrlSuggestion,
+    setAndCopyQQRedirectUrl,
     githubOAuthRedirectUrlSuggestion,
     googleOAuthRedirectUrlSuggestion,
     googleOneTapOriginSuggestion,

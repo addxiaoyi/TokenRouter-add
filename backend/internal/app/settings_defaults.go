@@ -36,7 +36,7 @@ func provideOAuthSettings(store *settings.Store, cfg *config.Config) *identity.O
 	validateResolvedIP := false
 	allowPrivateHosts := true
 	if cfg != nil {
-		defaults = &identity.OAuthSettingsDefaults{LinuxDo: cfg.Auth.OAuth.LinuxDo, DingTalk: cfg.Auth.OAuth.DingTalk.IdentityDefaults(), OIDC: cfg.Auth.OAuth.OIDC, WeChat: cfg.Auth.OAuth.WeChat.IdentityDefaults(), GitHubOAuth: cfg.Auth.OAuth.GitHub, GoogleOAuth: cfg.Auth.OAuth.Google}
+		defaults = &identity.OAuthSettingsDefaults{LinuxDo: cfg.Auth.OAuth.LinuxDo, DingTalk: cfg.Auth.OAuth.DingTalk.IdentityDefaults(), OIDC: cfg.Auth.OAuth.OIDC, QQ: cfg.Auth.OAuth.QQ, WeChat: cfg.Auth.OAuth.WeChat.IdentityDefaults(), GitHubOAuth: cfg.Auth.OAuth.GitHub, GoogleOAuth: cfg.Auth.OAuth.Google}
 		validateResolvedIP = cfg.Security.URLAllowlist.Enabled
 		allowPrivateHosts = cfg.Security.URLAllowlist.AllowPrivateHosts
 	}

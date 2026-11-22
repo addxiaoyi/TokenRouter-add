@@ -89,6 +89,7 @@ func provideIdentityAuthGraph(
 	cfg *config.Config,
 	settingService *identityAuthSettings,
 	emailService *identity.EmailChallenges,
+	smsService *identity.SMSChallenges,
 	turnstileService *identity.TurnstileService,
 	tencentCaptchaService *identity.TencentCaptchaService,
 	aliyunCaptchaService *identity.AliyunCaptchaService,
@@ -113,6 +114,9 @@ func provideIdentityAuthGraph(
 	}
 	if emailService != nil {
 		deps.Email = emailService
+	}
+	if smsService != nil {
+		deps.SMS = smsService
 	}
 	if emailQueueService != nil {
 		deps.EmailQueue = emailQueueService

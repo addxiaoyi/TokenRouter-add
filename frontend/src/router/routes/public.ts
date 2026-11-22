@@ -96,6 +96,26 @@ export const publicRoutes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/auth/qq/callback',
+    name: 'QQOAuthCallback',
+    component: () => import('@/views/auth/QQCallbackView.vue'),
+    meta: {
+      requiresAuth: false,
+      title: 'QQ OAuth Callback',
+      titleKey: 'auth.qqCallbackPageTitle',
+    },
+  },
+  {
+    path: '/auth/phone/callback',
+    name: 'PhoneAuthCallback',
+    component: () => import('@/views/auth/PhoneCallbackView.vue'),
+    meta: {
+      requiresAuth: false,
+      title: 'Phone Auth Callback',
+      titleKey: 'auth.phoneCallbackPageTitle',
+    },
+  },
+  {
     path: '/auth/wechat/callback',
     name: 'WeChatOAuthCallback',
     component: () => import('@/views/auth/WechatCallbackView.vue'),

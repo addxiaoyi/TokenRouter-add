@@ -276,6 +276,8 @@ func (s *UserService) GetProfileIdentitySummaries(ctx context.Context, userID in
 		OIDC:     s.ProfileBuildProviderIdentitySummary("oidc", user, records),
 		WeChat:   s.ProfileBuildProviderIdentitySummary("wechat", user, records),
 		DingTalk: s.ProfileBuildProviderIdentitySummary("dingtalk", user, records),
+		QQ:       s.ProfileBuildProviderIdentitySummary("qq", user, records),
+		Phone:    s.ProfileBuildProviderIdentitySummary("phone", user, records),
 	}
 
 	s.ProfileApplyExplicitProviderAvailability(ctx, &summaries)
@@ -306,6 +308,8 @@ func (s *UserService) ProfileApplyExplicitProviderAvailability(ctx context.Conte
 		SettingKeyWeChatConnectMobileEnabled,
 		SettingKeyWeChatConnectMode,
 		SettingKeyDingTalkConnectEnabled,
+		SettingKeyQQConnectEnabled,
+		SettingKeySMSLoginEnabled,
 	})
 	if err != nil {
 		// Failed availability reads leave existing relationship views intact;
@@ -318,6 +322,12 @@ func (s *UserService) ProfileApplyExplicitProviderAvailability(ctx context.Conte
 	}
 	if raw, ok := settings[SettingKeyDingTalkConnectEnabled]; ok && strings.TrimSpace(raw) != "" && raw != "true" {
 		ProfileDisableIdentityBindAction(&summaries.DingTalk)
+	}
+	if raw, ok := settings[SettingKeyQQConnectEnabled]; ok && strings.TrimSpace(raw) != "" && raw != "true" {
+		ProfileDisableIdentityBindAction(&summaries.QQ)
+	}
+	if raw, ok := settings[SettingKeySMSLoginEnabled]; ok && strings.TrimSpace(raw) != "" && raw != "true" {
+		ProfileDisableIdentityBindAction(&summaries.Phone)
 	}
 	if raw, ok := settings[SettingKeyOIDCConnectEnabled]; ok && strings.TrimSpace(raw) != "" && raw != "true" {
 		ProfileDisableIdentityBindAction(&summaries.OIDC)
@@ -849,9 +859,9 @@ func (s *UserService) ProfileBuildProviderIdentitySummary(provider string, user 
 
 // ProfileCanUnbindProvider reports whether removing a bound non-email provider
 // leaves another recognized login method. A usable stored email can satisfy the
-// check; otherwise a distinct LinuxDo, OIDC, WeChat or DingTalk identity is
-// required. Callers supply a normalized provider label because candidate exclusion
-// compares that text exactly.
+// check; otherwise a distinct LinuxDo, OIDC, WeChat, DingTalk, QQ, or phone
+// identity is required. Callers supply a normalized provider label because
+// candidate exclusion compares that text exactly.
 //
 // Email usability depends on signup source or accepted email-identity metadata.
 // GitHub and Google are not enumerated as alternatives here. The supplied user and
@@ -866,7 +876,7 @@ func (s *UserService) ProfileCanUnbindProvider(provider string, user *User, reco
 		return true
 	}
 
-	for _, candidate := range []string{"linuxdo", "oidc", "wechat", "dingtalk"} {
+	for _, candidate := range []string{"linuxdo", "oidc", "wechat", "dingtalk", "qq", "phone"} {
 		if candidate == provider {
 			continue
 		}
@@ -964,6 +974,8 @@ func ProfileBuildUserIdentityBindAuthorizeURL(provider, redirectTo string) (stri
 		path = "/api/v1/auth/oauth/wechat/bind/start"
 	case "dingtalk":
 		path = "/api/v1/auth/oauth/dingtalk/bind/start"
+	case "qq":
+		path = "/api/v1/auth/oauth/qq/bind/start"
 	default:
 		return "", ErrIdentityProviderInvalid
 	}
@@ -975,9 +987,9 @@ func ProfileBuildUserIdentityBindAuthorizeURL(provider, redirectTo string) (stri
 }
 
 // ProfileNormalizeUserIdentityProvider returns a recognized profile provider
-// label after trimming and lowercasing. Email, LinuxDo, OIDC, WeChat and
-// DingTalk are accepted; other labels become empty so operation-specific
-// callers can reject unsupported choices.
+// label after trimming and lowercasing. Email, LinuxDo, OIDC, WeChat,
+// DingTalk, QQ, and phone are accepted; other labels become empty so
+// operation-specific callers can reject unsupported choices.
 func ProfileNormalizeUserIdentityProvider(provider string) string {
 	switch strings.ToLower(strings.TrimSpace(provider)) {
 	case "linuxdo":
@@ -988,6 +1000,10 @@ func ProfileNormalizeUserIdentityProvider(provider string) string {
 		return "wechat"
 	case "dingtalk":
 		return "dingtalk"
+	case "qq":
+		return "qq"
+	case "phone":
+		return "phone"
 	case "email":
 		return "email"
 	default:

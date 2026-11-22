@@ -81,6 +81,11 @@ const (
 	SettingKeyOIDCConnectUserInfoURL                = "oidc_connect_userinfo_url"
 	SettingKeyOIDCConnectUserInfoUsernamePath       = "oidc_connect_userinfo_username_path"
 	SettingKeyOIDCConnectValidateIDToken            = "oidc_connect_validate_id_token"
+	SettingKeyQQConnectClientID                     = "qq_connect_client_id"
+	SettingKeyQQConnectClientSecret                 = "qq_connect_client_secret"
+	SettingKeyQQConnectEnabled                      = "qq_connect_enabled"
+	SettingKeyQQConnectFrontendRedirectURL          = "qq_connect_frontend_redirect_url"
+	SettingKeyQQConnectRedirectURL                  = "qq_connect_redirect_url"
 	SettingKeyWeChatConnectAppID                    = "wechat_connect_app_id"
 	SettingKeyWeChatConnectAppSecret                = "wechat_connect_app_secret"
 	SettingKeyWeChatConnectFrontendRedirectURL      = "wechat_connect_frontend_redirect_url"
@@ -105,6 +110,11 @@ const (
 	OAuthDefaultGoogleOAuthUserInfo                 = "https://openidconnect.googleapis.com/v1/userinfo"
 	OAuthDefaultWeChatConnectFrontend               = "/auth/wechat/callback"
 	OAuthDefaultWeChatConnectScopes                 = authconfig.DefaultWeChatConnectScopes
+	OAuthDefaultQQConnectAuthorize                  = "https://graph.qq.com/oauth2.0/authorize"
+	OAuthDefaultQQConnectToken                      = "https://graph.qq.com/oauth2.0/token"
+	OAuthDefaultQQConnectMe                         = "https://graph.qq.com/oauth2.0/me"
+	OAuthDefaultQQConnectUserInfo                   = "https://graph.qq.com/user/get_user_info"
+	OAuthDefaultQQConnectFrontend                   = "/auth/qq/callback"
 )
 
 // OAuthSettingsDefaults carries the startup provider values snapshotted for
@@ -116,6 +126,7 @@ type OAuthSettingsDefaults struct {
 	// change the retained snapshot.
 	DingTalk    authconfig.DingTalkConnectConfig
 	OIDC        authconfig.OIDCConnectConfig        // startup OIDC security/endpoint defaults
+	QQ          authconfig.QQConnectConfig          // startup QQ authorization defaults
 	WeChat      authconfig.WeChatConnectConfig      // startup WeChat channel defaults
 	GitHubOAuth authconfig.EmailOAuthProviderConfig // startup GitHub email-provider defaults
 	GoogleOAuth authconfig.EmailOAuthProviderConfig // startup Google email-provider defaults
@@ -833,6 +844,105 @@ func (s *OAuthSettings) GetLinuxDoConnectOAuthConfig(ctx context.Context) (authc
 	case "none":
 	default:
 		return authconfig.LinuxDoConnectConfig{}, apperror.InternalServer("OAUTH_CONFIG_INVALID", "oauth token_auth_method invalid")
+	}
+
+	return effective, nil
+}
+
+// GetQQConnectOAuthConfig loads five runtime overrides over the startup
+// QQ base. A present enabled key uses exact true, while nonblank trimmed
+// identifier, secret, backend callback and frontend destination replace
+// their startup text; endpoint addresses keep their startup selections
+// and fall back to the fixed QQ互联 platform addresses when blank.
+//
+// Disabled providers return OAuth-disabled. Credentials, callbacks and
+// the frontend destination are required and validated before the flow
+// starts; the returned value describes locally validated options only.
+func (s *OAuthSettings) GetQQConnectOAuthConfig(ctx context.Context) (authconfig.QQConnectConfig, error) {
+	if s == nil || s.defaults == nil {
+		return authconfig.QQConnectConfig{}, apperror.ServiceUnavailable("CONFIG_NOT_READY", "config not loaded")
+	}
+
+	effective := s.defaults.QQ
+
+	keys := []string{
+		SettingKeyQQConnectEnabled,
+		SettingKeyQQConnectClientID,
+		SettingKeyQQConnectClientSecret,
+		SettingKeyQQConnectRedirectURL,
+		SettingKeyQQConnectFrontendRedirectURL,
+	}
+	settings, err := s.settingRepo.GetMultiple(ctx, keys)
+	if err != nil {
+		return authconfig.QQConnectConfig{}, fmt.Errorf("get qq connect settings: %w", err)
+	}
+
+	// Saved credential and callback text must be usable to replace startup
+	// values; the global switch instead follows key presence, including an
+	// empty stored value.
+	if raw, ok := settings[SettingKeyQQConnectEnabled]; ok {
+		effective.Enabled = raw == "true"
+	}
+	if v, ok := settings[SettingKeyQQConnectClientID]; ok && strings.TrimSpace(v) != "" {
+		effective.ClientID = strings.TrimSpace(v)
+	}
+	if v, ok := settings[SettingKeyQQConnectClientSecret]; ok && strings.TrimSpace(v) != "" {
+		effective.ClientSecret = strings.TrimSpace(v)
+	}
+	if v, ok := settings[SettingKeyQQConnectRedirectURL]; ok && strings.TrimSpace(v) != "" {
+		effective.RedirectURL = strings.TrimSpace(v)
+	}
+	if v, ok := settings[SettingKeyQQConnectFrontendRedirectURL]; ok && strings.TrimSpace(v) != "" {
+		effective.FrontendRedirectURL = strings.TrimSpace(v)
+	}
+	if !effective.Enabled {
+		return authconfig.QQConnectConfig{}, apperror.NotFound("OAUTH_DISABLED", "oauth login is disabled")
+	}
+
+	// QQ互联 endpoint addresses are fixed by the platform; blank startup
+	// values select the platform defaults before validation.
+	if strings.TrimSpace(effective.AuthorizeURL) == "" {
+		effective.AuthorizeURL = OAuthDefaultQQConnectAuthorize
+	}
+	if strings.TrimSpace(effective.TokenURL) == "" {
+		effective.TokenURL = OAuthDefaultQQConnectToken
+	}
+	if strings.TrimSpace(effective.MeURL) == "" {
+		effective.MeURL = OAuthDefaultQQConnectMe
+	}
+	if strings.TrimSpace(effective.UserInfoURL) == "" {
+		effective.UserInfoURL = OAuthDefaultQQConnectUserInfo
+	}
+	if strings.TrimSpace(effective.FrontendRedirectURL) == "" {
+		effective.FrontendRedirectURL = OAuthDefaultQQConnectFrontend
+	}
+
+	if strings.TrimSpace(effective.ClientID) == "" {
+		return authconfig.QQConnectConfig{}, apperror.InternalServer("OAUTH_CONFIG_INVALID", "oauth client id not configured")
+	}
+	if strings.TrimSpace(effective.ClientSecret) == "" {
+		return authconfig.QQConnectConfig{}, apperror.InternalServer("OAUTH_CONFIG_INVALID", "oauth client secret not configured")
+	}
+	if strings.TrimSpace(effective.RedirectURL) == "" {
+		return authconfig.QQConnectConfig{}, apperror.InternalServer("OAUTH_CONFIG_INVALID", "oauth redirect url not configured")
+	}
+	if err := authconfig.ValidateAbsoluteHTTPURL(effective.AuthorizeURL); err != nil {
+		return authconfig.QQConnectConfig{}, apperror.InternalServer("OAUTH_CONFIG_INVALID", "oauth authorize url invalid")
+	}
+	if err := authconfig.ValidateAbsoluteHTTPURL(effective.TokenURL); err != nil {
+		return authconfig.QQConnectConfig{}, apperror.InternalServer("OAUTH_CONFIG_INVALID", "oauth token url invalid")
+	}
+	if err := authconfig.ValidateAbsoluteHTTPURL(effective.MeURL); err != nil {
+		return authconfig.QQConnectConfig{}, apperror.InternalServer("OAUTH_CONFIG_INVALID", "oauth me url invalid")
+	}
+	if err := authconfig.ValidateAbsoluteHTTPURL(effective.UserInfoURL); err != nil {
+		return authconfig.QQConnectConfig{}, apperror.InternalServer("OAUTH_CONFIG_INVALID", "oauth userinfo url invalid")
+	}
+	if err := authconfig.ValidateAbsoluteHTTPURL(effective.RedirectURL); err != nil {
+		return authconfig.QQConnectConfig{}, apperror.InternalServer("OAUTH_CONFIG_INVALID", "oauth redirect url invalid")
+	}
+	if err := authconfig.ValidateFrontendRedirectURL(effective.FrontendRedirectURL); err != nil {
+		return authconfig.QQConnectConfig{}, apperror.InternalServer("OAUTH_CONFIG_INVALID", "oauth frontend redirect url invalid")
 	}
 
 	return effective, nil

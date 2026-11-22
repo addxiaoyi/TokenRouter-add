@@ -89,7 +89,7 @@ export type ProviderSchedulingThresholdsMap = Record<SchedulingThresholdPlatform
  * account-default settings.
  */
 export type AuthSourceType =
-  'email' | 'linuxdo' | 'oidc' | 'wechat' | 'github' | 'google' | 'dingtalk'
+  'email' | 'linuxdo' | 'oidc' | 'wechat' | 'github' | 'google' | 'dingtalk' | 'qq'
 
 /**
  * AuthSourceDefaultsValue groups starting balance, concurrency and subscriptions
@@ -377,6 +377,13 @@ export interface SystemSettings extends AuthSourceDefaultFields {
   linuxdo_connect_client_id: string // Linuxdo connect client ID.
   linuxdo_connect_client_secret_configured: boolean // Linuxdo connect client secret configured.
   linuxdo_connect_redirect_url: string // Linuxdo connect redirect URL.
+  qq_connect_enabled: boolean // QQ connect enabled.
+  qq_connect_client_id: string // QQ connect client ID.
+  qq_connect_client_secret_configured: boolean // QQ connect client secret configured.
+  qq_connect_redirect_url: string // QQ connect redirect URL.
+  sms_login_enabled: boolean // SMS login enabled.
+  sms_juhe_key_configured: boolean // Juhe SMS key configured.
+  sms_juhe_tpl_id: string // Juhe SMS template ID.
   dingtalk_connect_enabled: boolean // Dingtalk connect enabled.
   dingtalk_connect_client_id: string // Dingtalk connect client ID.
   dingtalk_connect_client_secret_configured: boolean // Dingtalk connect client secret configured.
@@ -674,6 +681,13 @@ export interface UpdateSettingsRequest extends AuthSourceDefaultFields {
   linuxdo_connect_client_id?: string // Linuxdo connect client ID.
   linuxdo_connect_client_secret?: string // Linuxdo connect client secret.
   linuxdo_connect_redirect_url?: string // Linuxdo connect redirect URL.
+  qq_connect_enabled?: boolean // QQ connect enabled.
+  qq_connect_client_id?: string // QQ connect client ID.
+  qq_connect_client_secret?: string // QQ connect client secret.
+  qq_connect_redirect_url?: string // QQ connect redirect URL.
+  sms_login_enabled?: boolean // SMS login enabled.
+  sms_juhe_key?: string // Juhe SMS key.
+  sms_juhe_tpl_id?: string // Juhe SMS template ID.
   dingtalk_connect_enabled?: boolean // Dingtalk connect enabled.
   dingtalk_connect_client_id?: string // Dingtalk connect client ID.
   dingtalk_connect_client_secret?: string // Dingtalk connect client secret.

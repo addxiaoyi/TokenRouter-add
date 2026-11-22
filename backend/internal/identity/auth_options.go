@@ -64,6 +64,7 @@ type AuthSourceDefaultSettings struct {
 	Email                        ProviderDefaultGrantSettings // email authentication grant settings
 	LinuxDo                      ProviderDefaultGrantSettings // LinuxDo authentication grant settings
 	OIDC                         ProviderDefaultGrantSettings // OIDC authentication grant settings
+	QQ                           ProviderDefaultGrantSettings // QQ authentication grant settings
 	WeChat                       ProviderDefaultGrantSettings // WeChat authentication grant settings
 	GitHub                       ProviderDefaultGrantSettings // GitHub authentication grant settings
 	Google                       ProviderDefaultGrantSettings // Google authentication grant settings
@@ -315,6 +316,10 @@ type AuthDependencies struct {
 	// Required-proof/reset paths reject missing service, while password-only
 	// login uses its separate credential check.
 	Email AuthEmail
+	// SMS issues and verifies phone challenges for code login and binding.
+	// A missing service makes phone operations report SMS not configured,
+	// while other login paths remain unaffected.
+	SMS *SMSChallenges
 	// Turnstile verifies the selected Cloudflare proof when configured. An
 	// enabled provider without its verifier is unavailable to the corresponding
 	// CAPTCHA admission path.

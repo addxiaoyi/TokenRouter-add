@@ -99,6 +99,8 @@ export function createSettingsHydration(
     form.tencent_captcha_cloud_secret_key = ''
     form.aliyun_captcha_access_key_secret = ''
     form.linuxdo_connect_client_secret = ''
+    form.qq_connect_client_secret = ''
+    form.sms_juhe_key = ''
     form.dingtalk_connect_client_secret = ''
     form.wechat_connect_app_secret = ''
     form.wechat_connect_open_app_secret = ''

@@ -81,12 +81,17 @@ type OAuthProvidersConfig struct {
 	Google   EmailOAuthProviderConfig `yaml:"google"`   // auth oauth google settings
 	LinuxDo  LinuxDoConnectConfig     `yaml:"linuxdo"`  // auth oauth linuxdo settings
 	OIDC     OIDCConnectConfig        `yaml:"oidc"`     // auth oauth oidc settings
+	QQ       QQConnectConfig          `yaml:"qq"`       // auth oauth qq settings
 	WeChat   WeChatOAuthConfig        `yaml:"wechat"`   // auth oauth wechat settings
 }
 
 // LinuxDoConnectConfig aliases the identity module's LinuxDo OAuth deployment
 // settings.
 type LinuxDoConnectConfig = authconfig.LinuxDoConnectConfig
+
+// QQConnectConfig aliases the identity module's QQ互联 OAuth deployment
+// settings.
+type QQConnectConfig = authconfig.QQConnectConfig
 
 // OIDCConnectConfig aliases identity settings for issuer discovery and OIDC
 // login validation.

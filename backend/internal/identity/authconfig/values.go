@@ -36,6 +36,23 @@ type LinuxDoConnectConfig struct {
 	UserInfoUsernamePath string `yaml:"userinfo_username_path"` // preferred userinfo username path
 }
 
+// QQConnectConfig holds startup and effective settings for QQ互联
+// authorization. OAuthSettings resolves runtime overrides before the
+// HTTP flow uses these values. The endpoint fields carry the platform's
+// fixed addresses as startup defaults so the resolved options share the
+// LinuxDo conversion shape.
+type QQConnectConfig struct {
+	Enabled             bool   `yaml:"enabled"`               // provider login enablement flag
+	ClientID            string `yaml:"client_id"`             // QQ互联 application identifier (AppID)
+	ClientSecret        string `yaml:"client_secret"`         // QQ互联 application credential (AppKey)
+	AuthorizeURL        string `yaml:"authorize_url"`         // browser authorization request endpoint
+	TokenURL            string `yaml:"token_url"`             // authorization code exchange endpoint
+	MeURL               string `yaml:"me_url"`                // provider openid lookup endpoint
+	UserInfoURL         string `yaml:"userinfo_url"`          // authenticated profile request endpoint
+	RedirectURL         string `yaml:"redirect_url"`          // registered backend callback URL
+	FrontendRedirectURL string `yaml:"frontend_redirect_url"` // frontend flow completion destination
+}
+
 // WeChatConnectConfig holds credentials and enablement for the three WeChat login
 // channels. OAuthSettings selects the effective channel and its backend callback.
 type WeChatConnectConfig struct {

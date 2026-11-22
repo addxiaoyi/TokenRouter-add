@@ -623,13 +623,17 @@ function shouldBypassRegistrationEmailPolicy(): boolean {
   )
 }
 
-// resolvePendingOAuthCallbackRoute maps normalized LinuxDo, OIDC, and WeChat names
-// to their callbacks. All other names use the generic callback route, including
-// empty provider values and unlisted provider types.
+// resolvePendingOAuthCallbackRoute maps normalized LinuxDo, QQ, phone, OIDC,
+// and WeChat names to their callbacks. All other names use the generic callback
+// route, including empty provider values and unlisted provider types.
 function resolvePendingOAuthCallbackRoute(provider: string): string {
   switch (provider.trim().toLowerCase()) {
     case 'linuxdo':
       return '/auth/linuxdo/callback'
+    case 'qq':
+      return '/auth/qq/callback'
+    case 'phone':
+      return '/auth/phone/callback'
     case 'oidc':
       return '/auth/oidc/callback'
     case 'wechat':

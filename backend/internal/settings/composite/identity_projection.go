@@ -80,11 +80,18 @@ func (s *Snapshot) IdentityAdminSettings() identity.AdminSettings {
 		OIDCConnectUserInfoUsernamePath:        s.OIDCConnectUserInfoUsernamePath,
 		OIDCConnectValidateIDToken:             s.OIDCConnectValidateIDToken,
 		PasswordResetEnabled:                   s.PasswordResetEnabled,
+		QQConnectClientID:                      s.QQConnectClientID,
+		QQConnectClientSecret:                  s.QQConnectClientSecret,
+		QQConnectEnabled:                       s.QQConnectEnabled,
+		QQConnectRedirectURL:                   s.QQConnectRedirectURL,
 		RegistrationEmailDomainQuotaEnabled:    s.RegistrationEmailDomainQuotaEnabled,
 		RegistrationEmailNormalization:         s.RegistrationEmailNormalization,
 		RegistrationEmailSuffixWhitelist:       s.RegistrationEmailSuffixWhitelist,
 		RegistrationEnabled:                    s.RegistrationEnabled,
 		SessionBindingEnabled:                  s.SessionBindingEnabled,
+		SMSLoginEnabled:                        s.SMSLoginEnabled,
+		SMSLoginJuheKey:                        s.SMSLoginJuheKey,
+		SMSLoginJuheTemplateID:                 s.SMSLoginJuheTemplateID,
 		StepUpEnabled:                          s.StepUpEnabled,
 		TencentCaptchaAppID:                    s.TencentCaptchaAppID,
 		TencentCaptchaAppSecretKey:             s.TencentCaptchaAppSecretKey,
@@ -185,11 +192,18 @@ func (s *Snapshot) ApplyIdentityAdminSettings(value identity.AdminSettings) {
 	s.OIDCConnectUserInfoUsernamePath = value.OIDCConnectUserInfoUsernamePath
 	s.OIDCConnectValidateIDToken = value.OIDCConnectValidateIDToken
 	s.PasswordResetEnabled = value.PasswordResetEnabled
+	s.QQConnectClientID = value.QQConnectClientID
+	s.QQConnectClientSecret = value.QQConnectClientSecret
+	s.QQConnectEnabled = value.QQConnectEnabled
+	s.QQConnectRedirectURL = value.QQConnectRedirectURL
 	s.RegistrationEmailDomainQuotaEnabled = value.RegistrationEmailDomainQuotaEnabled
 	s.RegistrationEmailNormalization = value.RegistrationEmailNormalization
 	s.RegistrationEmailSuffixWhitelist = value.RegistrationEmailSuffixWhitelist
 	s.RegistrationEnabled = value.RegistrationEnabled
 	s.SessionBindingEnabled = value.SessionBindingEnabled
+	s.SMSLoginEnabled = value.SMSLoginEnabled
+	s.SMSLoginJuheKey = value.SMSLoginJuheKey
+	s.SMSLoginJuheTemplateID = value.SMSLoginJuheTemplateID
 	s.StepUpEnabled = value.StepUpEnabled
 	s.TencentCaptchaAppID = value.TencentCaptchaAppID
 	s.TencentCaptchaAppSecretKey = value.TencentCaptchaAppSecretKey
@@ -295,11 +309,20 @@ func (s *Snapshot) ApplyIdentityAdminReadSettings(value *identity.AdminReadSetti
 	s.OIDCConnectUserInfoUsernamePath = value.OIDCConnectUserInfoUsernamePath
 	s.OIDCConnectValidateIDToken = value.OIDCConnectValidateIDToken
 	s.PasswordResetEnabled = value.PasswordResetEnabled
+	s.QQConnectClientID = value.QQConnectClientID
+	s.QQConnectClientSecret = value.QQConnectClientSecret
+	s.QQConnectClientSecretConfigured = value.QQConnectClientSecretConfigured
+	s.QQConnectEnabled = value.QQConnectEnabled
+	s.QQConnectRedirectURL = value.QQConnectRedirectURL
 	s.RegistrationEmailDomainQuotaEnabled = value.RegistrationEmailDomainQuotaEnabled
 	s.RegistrationEmailNormalization = value.RegistrationEmailNormalization
 	s.RegistrationEmailSuffixWhitelist = value.RegistrationEmailSuffixWhitelist
 	s.RegistrationEnabled = value.RegistrationEnabled
 	s.SessionBindingEnabled = value.SessionBindingEnabled
+	s.SMSLoginEnabled = value.SMSLoginEnabled
+	s.SMSLoginJuheKey = value.SMSLoginJuheKey
+	s.SMSLoginJuheKeyConfigured = value.SMSLoginJuheKeyConfigured
+	s.SMSLoginJuheTemplateID = value.SMSLoginJuheTemplateID
 	s.StepUpEnabled = value.StepUpEnabled
 	s.TencentCaptchaAppID = value.TencentCaptchaAppID
 	s.TencentCaptchaAppSecretKey = value.TencentCaptchaAppSecretKey

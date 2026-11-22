@@ -207,6 +207,11 @@ func systemSettingsResponseData(settings settingsdto.SystemSettings, authSourceD
 	data["auth_source_default_linuxdo_subscriptions"] = authSourceDefaults.LinuxDo.Subscriptions
 	data["auth_source_default_linuxdo_grant_on_signup"] = authSourceDefaults.LinuxDo.GrantOnSignup
 	data["auth_source_default_linuxdo_grant_on_first_bind"] = authSourceDefaults.LinuxDo.GrantOnFirstBind
+	data["auth_source_default_qq_balance"] = authSourceDefaults.QQ.Balance
+	data["auth_source_default_qq_concurrency"] = authSourceDefaults.QQ.Concurrency
+	data["auth_source_default_qq_subscriptions"] = authSourceDefaults.QQ.Subscriptions
+	data["auth_source_default_qq_grant_on_signup"] = authSourceDefaults.QQ.GrantOnSignup
+	data["auth_source_default_qq_grant_on_first_bind"] = authSourceDefaults.QQ.GrantOnFirstBind
 	data["auth_source_default_dingtalk_balance"] = authSourceDefaults.DingTalk.Balance
 	data["auth_source_default_dingtalk_concurrency"] = authSourceDefaults.DingTalk.Concurrency
 	data["auth_source_default_dingtalk_subscriptions"] = authSourceDefaults.DingTalk.Subscriptions

@@ -331,6 +331,7 @@ func assertSettingsResponseFields(t *testing.T, data map[string]json.RawMessage,
 		{"github", authDefaults.GitHub},
 		{"google", authDefaults.Google},
 		{"dingtalk", authDefaults.DingTalk},
+		{"qq", authDefaults.QQ},
 	} {
 		for key, value := range map[string]any{
 			"balance": provider.value.Balance, "concurrency": provider.value.Concurrency, "subscriptions": provider.value.Subscriptions,
@@ -477,7 +478,7 @@ func TestSettingsFieldOwnership(t *testing.T) {
 		delete(owners, name)
 		count++
 	}
-	require.Equal(t, 288, count, "HTTP 字段变化需要同步字段登记")
+	require.Equal(t, 300, count, "HTTP 字段变化需要同步字段登记")
 	require.Empty(t, owners, "参与者不应声明不存在的输入字段")
 }
 

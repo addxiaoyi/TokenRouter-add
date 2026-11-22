@@ -33,6 +33,11 @@ type AuthEndpoints interface {
 	// browser pending state. It honors a stored target and required adoption
 	// choice before returning a TOTP challenge or completing binding.
 	BindPendingOAuthLogin(*gin.Context)
+	// BindQQOAuthLogin proves an existing account for the pending QQ
+	// identity and checks any stored target. Direct completion binds before
+	// credential issuance and separate consumption; enabled account TOTP
+	// returns a challenge.
+	BindQQOAuthLogin(*gin.Context)
 	// BindWeChatOAuthLogin checks existing-account proof against the pending
 	// WeChat provider and any targeted account. TOTP can defer binding; the
 	// direct path returns credentials after binding and a separate pending claim.
@@ -62,6 +67,11 @@ type AuthEndpoints interface {
 	// state, while accepted registration authenticates before the combined
 	// profile-adoption and browser-consumption database operation.
 	CompleteOIDCOAuthRegistration(*gin.Context)
+	// CompleteQQOAuthRegistration reevaluates legacy QQ invitation state
+	// and may return account-choice progression. Accepted authentication
+	// can issue credentials before adoption and consumption are committed
+	// together, with top-level token JSON returned afterward.
+	CompleteQQOAuthRegistration(*gin.Context)
 	// CompleteWeChatOAuthRegistration checks legacy WeChat invitation state and
 	// remaining local account requirements. Authentication precedes adoption,
 	// login recording, and separate browser consumption, so failure in those
@@ -86,6 +96,10 @@ type AuthEndpoints interface {
 	// registration email conflict can return account choice before new-account
 	// finalization completes.
 	CreatePendingOAuthAccount(*gin.Context)
+	// CreateQQOAuthAccount uses browser pending QQ state to register a
+	// local email account. CAPTCHA and backend policy apply to new accounts,
+	// while an existing email moves the request into account choice.
+	CreateQQOAuthAccount(*gin.Context)
 	// CreateWeChatOAuthAccount requires browser registration state for WeChat
 	// before processing local credentials. Finalization binds and consumes the
 	// pending identity for a new account, while existing-email observations lead
@@ -175,6 +189,15 @@ type AuthEndpoints interface {
 	// nonce cookies, and current-user binding requires a signed target before
 	// returning the authorize URL.
 	OIDCOAuthStart(*gin.Context)
+	// QQOAuthCallback verifies state and browser proof before resolving
+	// the QQ subject. Signed targets and existing owners become pending
+	// state; local email policy can require account choice because QQ
+	// supplies no email.
+	QQOAuthCallback(*gin.Context)
+	// QQOAuthStart checks applicable CAPTCHA and records state, local
+	// return path, and account intent. Current-user binding signs a
+	// target, and POST returns its authorize URL instead of navigating.
+	QQOAuthStart(*gin.Context)
 	// PrepareOAuthBindAccessTokenCookie stores the authenticated Bearer
 	// credential for a navigation-based provider bind start.
 	// RegisterSessionRoutes supplies JWT guards; malformed header shape is
@@ -200,6 +223,21 @@ type AuthEndpoints interface {
 	// successful completion leaves access-token validity governed by expiry,
 	// account state, and credential checks.
 	RevokeAllSessions(*gin.Context)
+	// BindPhone verifies an SMS code and attaches the number identity to
+	// the authenticated account. A number owned by another account is
+	// rejected by the shared binding operation.
+	BindPhone(*gin.Context)
+	// SMSLogin verifies an SMS code and completes login for the bound
+	// account, including its TOTP challenge. An unbound number opens a
+	// pending registration for the shared create-account flow.
+	SMSLogin(*gin.Context)
+	// SendPhoneBindCode delivers a binding code to the submitted number
+	// for the authenticated account; challenge budgets still apply.
+	SendPhoneBindCode(*gin.Context)
+	// SendSMSCode checks the feature switch and CAPTCHA before delivering
+	// a login code. Provider configuration, cooldown, and the daily cap
+	// are enforced by the challenge service.
+	SendSMSCode(*gin.Context)
 	// SendPendingOAuthVerifyCode requires CAPTCHA and browser pending
 	// registration proof before requesting signup mail. A matching existing email
 	// instead saves account-choice progression and returns its status so that

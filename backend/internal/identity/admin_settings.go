@@ -157,6 +157,24 @@ type AdminSettings struct {
 	LinuxDoConnectEnabled bool `json:"linuxdo_connect_enabled"`
 	// LinuxDo backend callback address
 	LinuxDoConnectRedirectURL string `json:"linuxdo_connect_redirect_url"`
+	// QQ authorization application identifier
+	QQConnectClientID string `json:"qq_connect_client_id"`
+	// QQConnectClientSecret skips its write only for exact empty input.
+	// Preparation retains other raw text; effective/admin readers fall back to
+	// startup secret after trimmed blank storage.
+	QQConnectClientSecret string `json:"qq_connect_client_secret"`
+	// QQ login selection switch
+	QQConnectEnabled bool `json:"qq_connect_enabled"`
+	// QQ backend callback address
+	QQConnectRedirectURL string `json:"qq_connect_redirect_url"`
+	// SMS code login selection switch
+	SMSLoginEnabled bool `json:"sms_login_enabled"`
+	// SMSLoginJuheKey skips its write only for exact empty input, so an
+	// administrator can rotate the Juhe SMS key without clearing it by
+	// saving an unrelated change.
+	SMSLoginJuheKey string `json:"sms_juhe_key"`
+	// Juhe SMS verification template identifier
+	SMSLoginJuheTemplateID string `json:"sms_juhe_tpl_id"`
 	// accepted ID-token signature algorithms
 	OIDCConnectAllowedSigningAlgs string `json:"oidc_connect_allowed_signing_algs"`
 	// OIDC browser authorization endpoint
@@ -441,6 +459,17 @@ func PrepareAdminSettings(settings *AdminSettings) (map[string]string, error) {
 	updates[SettingKeyLinuxDoConnectRedirectURL] = settings.LinuxDoConnectRedirectURL
 	if settings.LinuxDoConnectClientSecret != "" {
 		updates[SettingKeyLinuxDoConnectClientSecret] = settings.LinuxDoConnectClientSecret
+	}
+	updates[SettingKeyQQConnectEnabled] = strconv.FormatBool(settings.QQConnectEnabled)
+	updates[SettingKeyQQConnectClientID] = settings.QQConnectClientID
+	updates[SettingKeyQQConnectRedirectURL] = settings.QQConnectRedirectURL
+	if settings.QQConnectClientSecret != "" {
+		updates[SettingKeyQQConnectClientSecret] = settings.QQConnectClientSecret
+	}
+	updates[SettingKeySMSLoginEnabled] = strconv.FormatBool(settings.SMSLoginEnabled)
+	updates[SettingKeySMSJuheTemplateID] = settings.SMSLoginJuheTemplateID
+	if settings.SMSLoginJuheKey != "" {
+		updates[SettingKeySMSJuheKey] = settings.SMSLoginJuheKey
 	}
 	updates[SettingKeyDingTalkConnectEnabled] = strconv.FormatBool(settings.DingTalkConnectEnabled)
 	updates[SettingKeyDingTalkConnectClientID] = settings.DingTalkConnectClientID

@@ -36,6 +36,13 @@ export function buildIdentitySettingsPayload(
     | 'linuxdo_connect_client_id'
     | 'linuxdo_connect_client_secret'
     | 'linuxdo_connect_redirect_url'
+    | 'qq_connect_enabled'
+    | 'qq_connect_client_id'
+    | 'qq_connect_client_secret'
+    | 'qq_connect_redirect_url'
+    | 'sms_login_enabled'
+    | 'sms_juhe_key'
+    | 'sms_juhe_tpl_id'
     | 'dingtalk_connect_enabled'
     | 'dingtalk_connect_client_id'
     | 'dingtalk_connect_client_secret'
@@ -106,6 +113,13 @@ export function buildIdentitySettingsPayload(
   | 'linuxdo_connect_client_id'
   | 'linuxdo_connect_client_secret'
   | 'linuxdo_connect_redirect_url'
+  | 'qq_connect_enabled'
+  | 'qq_connect_client_id'
+  | 'qq_connect_client_secret'
+  | 'qq_connect_redirect_url'
+  | 'sms_login_enabled'
+  | 'sms_juhe_key'
+  | 'sms_juhe_tpl_id'
   | 'dingtalk_connect_enabled'
   | 'dingtalk_connect_client_id'
   | 'dingtalk_connect_client_secret'
@@ -182,6 +196,20 @@ export function buildIdentitySettingsPayload(
     linuxdo_connect_client_secret: form.linuxdo_connect_client_secret || undefined,
 
     linuxdo_connect_redirect_url: form.linuxdo_connect_redirect_url,
+
+    qq_connect_enabled: form.qq_connect_enabled,
+
+    qq_connect_client_id: form.qq_connect_client_id,
+
+    qq_connect_client_secret: form.qq_connect_client_secret || undefined,
+
+    qq_connect_redirect_url: form.qq_connect_redirect_url,
+
+    sms_login_enabled: form.sms_login_enabled,
+
+    sms_juhe_key: form.sms_juhe_key || undefined,
+
+    sms_juhe_tpl_id: form.sms_juhe_tpl_id,
 
     dingtalk_connect_enabled: form.dingtalk_connect_enabled,
 

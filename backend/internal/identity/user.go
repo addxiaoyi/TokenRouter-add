@@ -44,6 +44,7 @@ const (
 	OIDCConnectSyntheticEmailDomain     = "@oidc-connect.invalid"
 	WeChatConnectSyntheticEmailDomain   = "@wechat-connect.invalid"
 	DingTalkConnectSyntheticEmailDomain = "@dingtalk-connect.invalid"
+	QQConnectSyntheticEmailDomain       = "@qq-connect.invalid"
 )
 
 // ErrUserNotFound identifies a missing current account for identity and billing

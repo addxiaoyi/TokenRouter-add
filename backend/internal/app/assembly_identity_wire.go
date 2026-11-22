@@ -29,6 +29,8 @@ var identityAssemblyProviders = wire.NewSet(
 	provideRiskStatus,
 	provideEmailCache,
 	provideEmailChallenges,
+	provideSMSCache,
+	provideSMSChallenges,
 	provideIdentityAdmin,
 	provideTotp,
 	providePasskey,

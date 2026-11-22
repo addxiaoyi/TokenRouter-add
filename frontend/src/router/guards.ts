@@ -54,6 +54,8 @@ export function installRouteGuards(router: Router): void {
     '/auth/oidc/callback',
     '/auth/wechat/callback',
     '/auth/wechat/payment/callback',
+    '/auth/qq/callback',
+    '/auth/phone/callback',
   ]
   const BACKEND_MODE_PENDING_AUTH_PATHS = ['/register', '/email-verify']
 

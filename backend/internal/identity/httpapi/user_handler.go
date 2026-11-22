@@ -89,6 +89,8 @@ type UserProfileResponse struct {
 	OIDCBound        bool                                    `json:"oidc_bound"`        // OIDC identity presence flag
 	WeChatBound      bool                                    `json:"wechat_bound"`      // WeChat identity presence flag
 	DingTalkBound    bool                                    `json:"dingtalk_bound"`    // DingTalk identity presence flag
+	QQBound          bool                                    `json:"qq_bound"`          // QQ identity presence flag
+	PhoneBound       bool                                    `json:"phone_bound"`       // phone identity presence flag
 }
 
 // UserProfileSourceContext labels the provider whose current hint matches a
@@ -582,6 +584,8 @@ func UserProfileResponseFromService(user *identity.User, identities identity.Use
 		OIDCBound:         identities.OIDC.Bound,
 		WeChatBound:       identities.WeChat.Bound,
 		DingTalkBound:     identities.DingTalk.Bound,
+		QQBound:           identities.QQ.Bound,
+		PhoneBound:        identities.Phone.Bound,
 	}
 }
 
@@ -595,6 +599,8 @@ func UserProfileBindingMap(identities identity.UserIdentitySummarySet) map[strin
 		"oidc":     identities.OIDC,
 		"wechat":   identities.WeChat,
 		"dingtalk": identities.DingTalk,
+		"qq":       identities.QQ,
+		"phone":    identities.Phone,
 	}
 }
 
@@ -602,8 +608,8 @@ func UserProfileBindingMap(identities identity.UserIdentitySummarySet) map[strin
 // plus their field map. Nil account input returns nil results, and blank
 // current values do not select a source.
 //
-// The first exact trimmed hint match among bound LinuxDo, OIDC, WeChat, and
-// DingTalk summaries wins separately for avatar and username. Username
+// The first exact trimmed hint match among bound LinuxDo, OIDC, WeChat,
+// DingTalk, and QQ summaries wins separately for avatar and username. Username
 // matching reads provider DisplayName, and its pointer is reused for
 // display_name and nickname labels. These matches describe current value
 // equality; callers cannot use them as persisted editing provenance.
@@ -662,7 +668,7 @@ func InferUserProfileSources(user *identity.User, identities identity.UserIdenti
 // returned entry.
 func ThirdPartyIdentityProviders(identities identity.UserIdentitySummarySet) []identity.UserIdentitySummary {
 	out := make([]identity.UserIdentitySummary, 0, 3)
-	for _, summary := range []identity.UserIdentitySummary{identities.LinuxDo, identities.OIDC, identities.WeChat, identities.DingTalk} {
+	for _, summary := range []identity.UserIdentitySummary{identities.LinuxDo, identities.OIDC, identities.WeChat, identities.DingTalk, identities.QQ} {
 		if summary.Bound {
 			out = append(out, summary)
 		}

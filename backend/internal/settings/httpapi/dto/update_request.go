@@ -103,6 +103,15 @@ type UpdateSettingsRequest struct {
 	LinuxDoConnectClientSecret string `json:"linuxdo_connect_client_secret"` // LinuxDo internal token exchange secret
 	LinuxDoConnectRedirectURL  string `json:"linuxdo_connect_redirect_url"`  // LinuxDo registered backend callback URL
 
+	QQConnectEnabled      bool   `json:"qq_connect_enabled"`       // QQ login availability switch
+	QQConnectClientID     string `json:"qq_connect_client_id"`     // QQ registered OAuth application identifier
+	QQConnectClientSecret string `json:"qq_connect_client_secret"` // QQ internal token exchange secret
+	QQConnectRedirectURL  string `json:"qq_connect_redirect_url"`  // QQ registered backend callback URL
+
+	SMSLoginEnabled        bool   `json:"sms_login_enabled"` // SMS code login availability switch
+	SMSLoginJuheKey        string `json:"sms_juhe_key"`      // Juhe SMS service key
+	SMSLoginJuheTemplateID string `json:"sms_juhe_tpl_id"`   // Juhe SMS verification template identifier
+
 	DingTalkConnectEnabled                 bool   `json:"dingtalk_connect_enabled"`                     // DingTalk login availability switch
 	DingTalkConnectClientID                string `json:"dingtalk_connect_client_id"`                   // DingTalk registered OAuth client identifier
 	DingTalkConnectClientSecret            string `json:"dingtalk_connect_client_secret"`               // DingTalk internal token exchange secret
@@ -243,7 +252,7 @@ type UpdateSettingsRequest struct {
 	MarketplaceAvailabilityWindowDays    *int                                     `json:"marketplace_availability_window_days"`    // days
 	MarketplaceAvailabilityBucketMinutes *int                                     `json:"marketplace_availability_bucket_minutes"` // minutes
 	// The AuthSourceDefault fields for Email, LinuxDo, OIDC, WeChat, GitHub,
-	// Google, and DingTalk share the same merge rule across their Balance,
+	// Google, DingTalk, and QQ share the same merge rule across their Balance,
 	// Concurrency, Subscriptions, GrantOnSignup, and GrantOnFirstBind values.
 	// Nil retains the respective prior grant; supplied false, zero, or empty
 	// lists remain selected for identity preparation.
@@ -282,6 +291,11 @@ type UpdateSettingsRequest struct {
 	AuthSourceDefaultDingTalkSubscriptions    *[]billinghttp.DefaultSubscriptionSetting `json:"auth_source_default_dingtalk_subscriptions"`       // DingTalk default granted subscription plan selections
 	AuthSourceDefaultDingTalkGrantOnSignup    *bool                                     `json:"auth_source_default_dingtalk_grant_on_signup"`     // DingTalk signup grant application switch
 	AuthSourceDefaultDingTalkGrantOnFirstBind *bool                                     `json:"auth_source_default_dingtalk_grant_on_first_bind"` // DingTalk first-identity-bind grant application switch
+	AuthSourceDefaultQQBalance                *float64                                  `json:"auth_source_default_qq_balance"`                   // QQ balance grant amount
+	AuthSourceDefaultQQConcurrency            *int                                      `json:"auth_source_default_qq_concurrency"`               // QQ concurrency grant allowance
+	AuthSourceDefaultQQSubscriptions          *[]billinghttp.DefaultSubscriptionSetting `json:"auth_source_default_qq_subscriptions"`             // QQ default granted subscription plan selections
+	AuthSourceDefaultQQGrantOnSignup          *bool                                     `json:"auth_source_default_qq_grant_on_signup"`           // QQ signup grant application switch
+	AuthSourceDefaultQQGrantOnFirstBind       *bool                                     `json:"auth_source_default_qq_grant_on_first_bind"`       // QQ first-identity-bind grant application switch
 	ForceEmailOnThirdPartySignup              *bool                                     `json:"force_email_on_third_party_signup"`                // third-party signup email completion switch
 
 	EnableModelFallback      bool   `json:"enable_model_fallback"`      // global fallback model selection switch

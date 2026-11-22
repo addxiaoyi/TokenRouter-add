@@ -107,7 +107,7 @@ func NewComposite(repo settings.Repository, cfg *config.Config) *Composite {
 	// milliseconds before normalization, keeping cadence and error-rate settings in their named units.
 	defaults.Process.StickyEscape = policy.NormalizeStickyEscape(policy.StickyEscapeConfig{Enabled: source.StickyEscapeEnabled, TtftMs: float64(source.StickyEscapeTTFTMs), ErrorRate: source.StickyEscapeErrorRate})
 	result := &Composite{Store: store, Gateway: readers.Gateway, Provider: readers.Provider, Quota: readers.Quota, Identity: identity.NewRuntimeSettings(store, settings.ErrSettingNotFound), Promotion: promotion.NewRuntimeSettings(store), Backend: admission.NewBackendMode(store, slog.Warn), Defaults: defaults, Scheduler: scheduler.NewSettingsRuntime(scheduler.Diagnostics{})}
-	oauth := identity.NewOAuthSettings(store, &identity.OAuthSettingsDefaults{LinuxDo: cfg.Auth.OAuth.LinuxDo, DingTalk: cfg.Auth.OAuth.DingTalk.IdentityDefaults(), OIDC: cfg.Auth.OAuth.OIDC, WeChat: cfg.Auth.OAuth.WeChat.IdentityDefaults(), GitHubOAuth: cfg.Auth.OAuth.GitHub, GoogleOAuth: cfg.Auth.OAuth.Google}, identityprovider.ResolveSettingsOIDCMetadata)
+	oauth := identity.NewOAuthSettings(store, &identity.OAuthSettingsDefaults{LinuxDo: cfg.Auth.OAuth.LinuxDo, DingTalk: cfg.Auth.OAuth.DingTalk.IdentityDefaults(), OIDC: cfg.Auth.OAuth.OIDC, QQ: cfg.Auth.OAuth.QQ, WeChat: cfg.Auth.OAuth.WeChat.IdentityDefaults(), GitHubOAuth: cfg.Auth.OAuth.GitHub, GoogleOAuth: cfg.Auth.OAuth.Google}, identityprovider.ResolveSettingsOIDCMetadata)
 	validate := func(ctx context.Context, items []billing.DefaultSubscriptionSetting) error {
 		if result.Plans == nil {
 			return billing.ValidateDefaultSubscriptionPlans(ctx, items, nil)

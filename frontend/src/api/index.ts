@@ -8,7 +8,13 @@
 export { apiClient, buildApiUrl, buildGatewayUrl } from './client'
 
 // Auth API
-export { authAPI, isTotp2FARequired, type LoginResponse } from './auth'
+export {
+  authAPI,
+  isSMSRegistrationRequired,
+  isTotp2FARequired,
+  type LoginResponse,
+  type SMSLoginResponse,
+} from './auth'
 
 // User APIs
 export { keysAPI } from './keys'

@@ -128,6 +128,9 @@ type PublicAuth struct {
 	// Tap availability; Team reports team feature availability; TeamSelfService
 	// reports team self-service availability; Passkey reports WebAuthn login availability.
 	LinuxDo, DingTalk, OIDC, WeChat, WeChatOpen, WeChatMP, WeChatMobile, GitHub, Google, GoogleOneTap, Team, TeamSelfService, Passkey bool
+	// QQ reports QQ login availability; SMSLogin reports phone code login
+	// availability.
+	QQ, SMSLogin bool
 	// OIDCName supplies the provider's displayed label; GoogleClientID supplies
 	// the browser Google identifier; TencentRegion supplies the Tencent SDK region;
 	// AliyunRegion supplies the Aliyun SDK region. The same auth converter owns
@@ -322,6 +325,8 @@ func (s *PublicService) GetPublicSettings(ctx context.Context) (*PublicSettings,
 		FooterText:                  settings[SettingKeyFooterText],
 		HomeFeaturedModels:          settings[SettingKeyHomeFeaturedModels],
 		LinuxDoOAuthEnabled:         input.Auth.LinuxDo,
+		QQOAuthEnabled:              input.Auth.QQ,
+		SMSLoginEnabled:             input.Auth.SMSLogin,
 		DingTalkOAuthEnabled:        input.Auth.DingTalk,
 		WeChatOAuthEnabled:          input.Auth.WeChat,
 		WeChatOAuthOpenEnabled:      input.Auth.WeChatOpen,
@@ -648,6 +653,8 @@ func (s *PublicService) GetPublicSettingsForInjection(ctx context.Context) (any,
 		FooterText                          string                       `json:"footer_text,omitempty"`                   // resolved footer text
 		HomeFeaturedModels                  json.RawMessage              `json:"home_featured_models"`                    // featured model JSON
 		LinuxDoOAuthEnabled                 bool                         `json:"linuxdo_oauth_enabled"`                   // LinuxDo login availability
+		QQOAuthEnabled                      bool                         `json:"qq_oauth_enabled"`                        // QQ login availability
+		SMSLoginEnabled                     bool                         `json:"sms_login_enabled"`                       // SMS code login availability
 		DingTalkOAuthEnabled                bool                         `json:"dingtalk_oauth_enabled"`                  // DingTalk login availability
 		WeChatOAuthEnabled                  bool                         `json:"wechat_oauth_enabled"`                    // WeChat login availability
 		WeChatOAuthOpenEnabled              bool                         `json:"wechat_oauth_open_enabled"`               // WeChat open-platform availability
@@ -742,6 +749,8 @@ func (s *PublicService) GetPublicSettingsForInjection(ctx context.Context) (any,
 		FooterText:                          settings.FooterText,
 		HomeFeaturedModels:                  SafeRawJSONArray(settings.HomeFeaturedModels),
 		LinuxDoOAuthEnabled:                 settings.LinuxDoOAuthEnabled,
+		QQOAuthEnabled:                      settings.QQOAuthEnabled,
+		SMSLoginEnabled:                     settings.SMSLoginEnabled,
 		DingTalkOAuthEnabled:                settings.DingTalkOAuthEnabled,
 		WeChatOAuthEnabled:                  settings.WeChatOAuthEnabled,
 		WeChatOAuthOpenEnabled:              settings.WeChatOAuthOpenEnabled,

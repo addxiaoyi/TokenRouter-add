@@ -69,6 +69,7 @@ const AUTH_SOURCE_TYPES: AuthSourceType[] = [
   'github',
   'google',
   'dingtalk',
+  'qq',
 ]
 
 /**

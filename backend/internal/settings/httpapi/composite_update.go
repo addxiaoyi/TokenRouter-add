@@ -385,6 +385,7 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 	req.AuthSourceDefaultGitHubSubscriptions = normalizeOptionalDefaultSubscriptions(req.AuthSourceDefaultGitHubSubscriptions)
 	req.AuthSourceDefaultGoogleSubscriptions = normalizeOptionalDefaultSubscriptions(req.AuthSourceDefaultGoogleSubscriptions)
 	req.AuthSourceDefaultDingTalkSubscriptions = normalizeOptionalDefaultSubscriptions(req.AuthSourceDefaultDingTalkSubscriptions)
+	req.AuthSourceDefaultQQSubscriptions = normalizeOptionalDefaultSubscriptions(req.AuthSourceDefaultQQSubscriptions)
 
 	turnstileEnabled := req.TurnstileEnabled
 	if _, sent := sentFields["turnstile_enabled"]; !sent {
@@ -619,6 +620,56 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 				return
 			}
 			req.LinuxDoConnectClientSecret = previousSettings.LinuxDoConnectClientSecret
+		}
+	}
+
+	// Validate enabled QQ Connect configuration.
+	if req.QQConnectEnabled {
+		req.QQConnectClientID = strings.TrimSpace(req.QQConnectClientID)
+		req.QQConnectClientSecret = strings.TrimSpace(req.QQConnectClientSecret)
+		req.QQConnectRedirectURL = strings.TrimSpace(req.QQConnectRedirectURL)
+
+		if req.QQConnectClientID == "" {
+			httpx.BadRequest(c, "QQ App ID is required when enabled")
+			return
+		}
+		if req.QQConnectRedirectURL == "" {
+			httpx.BadRequest(c, "QQ Redirect URL is required when enabled")
+			return
+		}
+		if err := authconfig.ValidateAbsoluteHTTPURL(req.QQConnectRedirectURL); err != nil {
+			httpx.BadRequest(c, "QQ Redirect URL must be an absolute http(s) URL")
+			return
+		}
+
+		// Empty secret text retains the saved credential for this enabled provider
+		// before the normalized request is handed to identity's settings participant.
+		if req.QQConnectClientSecret == "" {
+			if previousSettings.QQConnectClientSecret == "" {
+				httpx.BadRequest(c, "QQ App Key is required when enabled")
+				return
+			}
+			req.QQConnectClientSecret = previousSettings.QQConnectClientSecret
+		}
+	}
+
+	// Validate enabled SMS login configuration. The Juhe key follows the
+	// same retain-on-empty rule as provider secrets; the template ID is a
+	// plain value the administrator can replace directly.
+	if req.SMSLoginEnabled {
+		req.SMSLoginJuheKey = strings.TrimSpace(req.SMSLoginJuheKey)
+		req.SMSLoginJuheTemplateID = strings.TrimSpace(req.SMSLoginJuheTemplateID)
+
+		if req.SMSLoginJuheTemplateID == "" {
+			httpx.BadRequest(c, "SMS template ID is required when SMS login is enabled")
+			return
+		}
+		if req.SMSLoginJuheKey == "" {
+			if previousSettings.SMSLoginJuheKey == "" {
+				httpx.BadRequest(c, "SMS Juhe key is required when SMS login is enabled")
+				return
+			}
+			req.SMSLoginJuheKey = previousSettings.SMSLoginJuheKey
 		}
 	}
 
@@ -1319,6 +1370,13 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 		LinuxDoConnectClientID:                 req.LinuxDoConnectClientID,
 		LinuxDoConnectClientSecret:             req.LinuxDoConnectClientSecret,
 		LinuxDoConnectRedirectURL:              req.LinuxDoConnectRedirectURL,
+		QQConnectEnabled:                       req.QQConnectEnabled,
+		QQConnectClientID:                      req.QQConnectClientID,
+		QQConnectClientSecret:                  req.QQConnectClientSecret,
+		QQConnectRedirectURL:                   req.QQConnectRedirectURL,
+		SMSLoginEnabled:                        req.SMSLoginEnabled,
+		SMSLoginJuheKey:                        req.SMSLoginJuheKey,
+		SMSLoginJuheTemplateID:                 req.SMSLoginJuheTemplateID,
 		DingTalkConnectEnabled:                 req.DingTalkConnectEnabled,
 		DingTalkConnectClientID:                req.DingTalkConnectClientID,
 		DingTalkConnectClientSecret:            req.DingTalkConnectClientSecret,
@@ -1781,6 +1839,13 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 			Subscriptions:    defaultSubscriptionsValueOrDefault(req.AuthSourceDefaultDingTalkSubscriptions, previousAuthSourceDefaults.DingTalk.Subscriptions),
 			GrantOnSignup:    boolValueOrDefault(req.AuthSourceDefaultDingTalkGrantOnSignup, previousAuthSourceDefaults.DingTalk.GrantOnSignup),
 			GrantOnFirstBind: boolValueOrDefault(req.AuthSourceDefaultDingTalkGrantOnFirstBind, previousAuthSourceDefaults.DingTalk.GrantOnFirstBind),
+		},
+		QQ: identity.ProviderDefaultGrantSettings{
+			Balance:          float64ValueOrDefault(req.AuthSourceDefaultQQBalance, previousAuthSourceDefaults.QQ.Balance),
+			Concurrency:      intValueOrDefault(req.AuthSourceDefaultQQConcurrency, previousAuthSourceDefaults.QQ.Concurrency),
+			Subscriptions:    defaultSubscriptionsValueOrDefault(req.AuthSourceDefaultQQSubscriptions, previousAuthSourceDefaults.QQ.Subscriptions),
+			GrantOnSignup:    boolValueOrDefault(req.AuthSourceDefaultQQGrantOnSignup, previousAuthSourceDefaults.QQ.GrantOnSignup),
+			GrantOnFirstBind: boolValueOrDefault(req.AuthSourceDefaultQQGrantOnFirstBind, previousAuthSourceDefaults.QQ.GrantOnFirstBind),
 		},
 		ForceEmailOnThirdPartySignup: boolValueOrDefault(req.ForceEmailOnThirdPartySignup, previousAuthSourceDefaults.ForceEmailOnThirdPartySignup),
 	}

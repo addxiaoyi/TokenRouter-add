@@ -135,6 +135,8 @@ func PublicInputKeys() []string {
 		"footer_text",
 		"home_featured_models",
 		"linuxdo_connect_enabled",
+		"qq_connect_enabled",
+		"sms_login_enabled",
 		"dingtalk_connect_enabled",
 		"wechat_connect_enabled",
 		"wechat_connect_app_id",

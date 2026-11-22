@@ -98,6 +98,8 @@ type (
 		HomeFeaturedModels          string // JSON array of model IDs featured on the home page
 
 		LinuxDoOAuthEnabled      bool // LinuxDo login availability
+		QQOAuthEnabled           bool // QQ login availability
+		SMSLoginEnabled          bool // SMS code login availability
 		DingTalkOAuthEnabled     bool // DingTalk login availability
 		WeChatOAuthEnabled       bool // WeChat login availability
 		WeChatOAuthOpenEnabled   bool // WeChat open-platform availability

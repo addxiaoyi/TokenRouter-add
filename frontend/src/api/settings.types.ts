@@ -140,6 +140,8 @@ export interface PublicSettings {
   footer_text?: string // Additional footer text.
   home_featured_models?: string[] // Featured homepage model identifiers.
   linuxdo_oauth_enabled: boolean // Linux.do authentication availability.
+  qq_oauth_enabled?: boolean // QQ authentication availability.
+  sms_login_enabled?: boolean // SMS code login availability.
   dingtalk_oauth_enabled?: boolean // DingTalk authentication availability.
   wechat_oauth_enabled: boolean // WeChat authentication availability.
   wechat_oauth_open_enabled?: boolean // WeChat Open Platform authentication.

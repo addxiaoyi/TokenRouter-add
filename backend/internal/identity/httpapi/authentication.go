@@ -22,10 +22,12 @@ type AuthenticationHandler struct {
 	Bind     *OAuthBindHandler    // temporary current-user binding cookies
 	LinuxDo  *LinuxDoHandler      // LinuxDo OAuth HTTP operations
 	OIDC     *OIDCHandler         // OIDC OAuth HTTP operations
+	QQ       *QQHandler           // QQ OAuth HTTP operations
 	Email    *EmailOAuthHandler   // GitHub and Google email OAuth
 	Google   *GoogleOneTapHandler // Google One Tap HTTP operations
 	WeChat   *WeChatHandler       // WeChat OAuth HTTP operations
 	DingTalk *DingTalkHandler     // DingTalk OAuth HTTP operations
+	SMS      *SMSHandler          // SMS code login and phone binding operations
 }
 
 // BindDingTalkOAuthLogin delegates to the child handler that binds a browser
@@ -48,6 +50,12 @@ func (h *AuthenticationHandler) BindOIDCOAuthLogin(c *gin.Context) { h.Pending.B
 // pending provider identity after existing-account credential proof.
 func (h *AuthenticationHandler) BindPendingOAuthLogin(c *gin.Context) {
 	h.Pending.BindPendingOAuthLogin(c)
+}
+
+// BindQQOAuthLogin delegates to the child handler that binds a browser
+// pending QQ identity after existing-account credential proof.
+func (h *AuthenticationHandler) BindQQOAuthLogin(c *gin.Context) {
+	h.Pending.BindQQOAuthLogin(c)
 }
 
 // BindWeChatOAuthLogin delegates to the child handler that binds a browser
@@ -88,6 +96,12 @@ func (h *AuthenticationHandler) CompleteOIDCOAuthRegistration(c *gin.Context) {
 	h.OIDC.CompleteOIDCOAuthRegistration(c)
 }
 
+// CompleteQQOAuthRegistration delegates to the child handler that
+// completes invitation-based signup using a browser pending QQ session.
+func (h *AuthenticationHandler) CompleteQQOAuthRegistration(c *gin.Context) {
+	h.QQ.CompleteQQOAuthRegistration(c)
+}
+
 // CompleteWeChatOAuthRegistration delegates to the child handler that
 // completes invitation-based signup using a browser pending WeChat session.
 func (h *AuthenticationHandler) CompleteWeChatOAuthRegistration(c *gin.Context) {
@@ -116,6 +130,12 @@ func (h *AuthenticationHandler) CreateOIDCOAuthAccount(c *gin.Context) {
 // email account from the browser pending provider registration context.
 func (h *AuthenticationHandler) CreatePendingOAuthAccount(c *gin.Context) {
 	h.Pending.CreatePendingOAuthAccount(c)
+}
+
+// CreateQQOAuthAccount delegates to the child handler that creates an
+// email account from the browser pending QQ registration context.
+func (h *AuthenticationHandler) CreateQQOAuthAccount(c *gin.Context) {
+	h.Pending.CreateQQOAuthAccount(c)
 }
 
 // CreateWeChatOAuthAccount delegates to the child handler that creates an
@@ -201,6 +221,14 @@ func (h *AuthenticationHandler) OIDCOAuthCallback(c *gin.Context) { h.OIDC.OIDCO
 // with browser state and configured nonce and PKCE values.
 func (h *AuthenticationHandler) OIDCOAuthStart(c *gin.Context) { h.OIDC.OIDCOAuthStart(c) }
 
+// QQOAuthCallback delegates to the child handler that resolves the QQ
+// subject into browser pending login or binding state.
+func (h *AuthenticationHandler) QQOAuthCallback(c *gin.Context) { h.QQ.QQOAuthCallback(c) }
+
+// QQOAuthStart delegates to the child handler that starts QQ authorization
+// with browser state and the selected account intent.
+func (h *AuthenticationHandler) QQOAuthStart(c *gin.Context) { h.QQ.QQOAuthStart(c) }
+
 // PrepareOAuthBindAccessTokenCookie delegates to the child handler that stores
 // an authenticated Bearer credential for a subsequent navigation-based
 // identity bind start.
@@ -252,3 +280,19 @@ func (h *AuthenticationHandler) WeChatOAuthCallback(c *gin.Context) { h.WeChat.W
 // WeChatOAuthStart delegates to the child handler that starts WeChat
 // authorization with browser state and the selected open or mp mode.
 func (h *AuthenticationHandler) WeChatOAuthStart(c *gin.Context) { h.WeChat.WeChatOAuthStart(c) }
+
+// BindPhone delegates to the child handler that verifies an SMS code and
+// attaches the number identity to the authenticated account.
+func (h *AuthenticationHandler) BindPhone(c *gin.Context) { h.SMS.BindPhone(c) }
+
+// SMSLogin delegates to the child handler that verifies an SMS code and
+// completes phone login or opens a pending registration.
+func (h *AuthenticationHandler) SMSLogin(c *gin.Context) { h.SMS.SMSLogin(c) }
+
+// SendPhoneBindCode delegates to the child handler that delivers a phone
+// binding code for the authenticated account.
+func (h *AuthenticationHandler) SendPhoneBindCode(c *gin.Context) { h.SMS.SendPhoneBindCode(c) }
+
+// SendSMSCode delegates to the child handler that delivers an SMS login
+// code after the feature and CAPTCHA checks.
+func (h *AuthenticationHandler) SendSMSCode(c *gin.Context) { h.SMS.SendSMSCode(c) }

@@ -12,6 +12,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/identity"
 	identitypostgres "github.com/TokenFlux/TokenRouter/internal/identity/postgres"
+	identityadapter "github.com/TokenFlux/TokenRouter/internal/identity/provider"
 	identityredis "github.com/TokenFlux/TokenRouter/internal/identity/rediscache"
 	"github.com/TokenFlux/TokenRouter/internal/notification"
 	notificationhttp "github.com/TokenFlux/TokenRouter/internal/notification/httpapi"
@@ -57,6 +58,16 @@ func provideMailer(store *settings.Store) *notification.Mailer {
 // delivery.
 func provideEmailChallenges(cache identity.EmailCache, mail *notification.Mailer) *identity.EmailChallenges {
 	return identity.NewEmailChallenges(cache, mail)
+}
+
+// provideSMSCache binds identity SMS challenge storage to the shared Redis
+// client.
+func provideSMSCache(r *redis.Client) identity.SMSCodeCache { return identityredis.NewSMSCache(r) }
+
+// provideSMSChallenges combines SMS challenge storage, the runtime settings
+// reader, and the Juhe transport for phone code login and binding.
+func provideSMSChallenges(cache identity.SMSCodeCache, settings *identity.RuntimeSettings) *identity.SMSChallenges {
+	return identity.NewSMSChallenges(cache, settings, identityadapter.JuheSMSClient{})
 }
 
 // provideNotification constructs templated delivery and installs recipient

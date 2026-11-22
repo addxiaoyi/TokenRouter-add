@@ -1,7 +1,14 @@
 import { getLocale, setLocale } from '@/i18n'
 import { defineStore } from 'pinia'
 import { ref, computed, readonly } from 'vue'
-import { authAPI, isTotp2FARequired, passkeyAPI, type LoginResponse } from '@/api'
+import {
+  authAPI,
+  isSMSRegistrationRequired,
+  isTotp2FARequired,
+  passkeyAPI,
+  type LoginResponse,
+  type SMSLoginResponse,
+} from '@/api'
 import type { User } from '@/api/identity.types'
 import type {
   LoginRequest,
@@ -342,6 +349,24 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // loginWithSMSCode verifies a phone code through the SMS login API. Only the
+  // completed-session outcome publishes authentication; a TOTP challenge and a
+  // pending registration return to the caller unchanged, and failures clear
+  // authentication while retaining pending external-session state when present.
+  async function loginWithSMSCode(phone: string, code: string): Promise<SMSLoginResponse> {
+    try {
+      const response = await authAPI.smsLogin({ phone, code })
+      if (isSMSRegistrationRequired(response) || isTotp2FARequired(response)) {
+        return response
+      }
+      setAuthFromResponse(response)
+      return response
+    } catch (error) {
+      clearAuth({ preservePendingAuthSession: pendingAuthSession.value !== null })
+      throw error
+    }
+  }
+
   // setAuthFromResponse publishes credentials and the authenticated user from a
   // successful login response. The access token becomes reactive first, followed by an
   // optional persisted refresh token and the user. Locale synchronization starts before
@@ -544,6 +569,7 @@ export const useAuthStore = defineStore('auth', () => {
     hasPendingAuthSession,
     login,
     loginWithPasskey,
+    loginWithSMSCode,
     login2FA,
     register,
     setToken,

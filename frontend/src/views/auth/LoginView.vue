@@ -182,6 +182,27 @@
           :show-divider="false"
           @start="handleOAuthStart"
         />
+        <QQOAuthSection
+          v-if="qqOAuthEnabled"
+          :disabled="authActionDisabled"
+          :show-divider="false"
+          @start="handleOAuthStart"
+        />
+      </div>
+
+      <div v-if="smsLoginEnabled && !backendModeEnabled" class="space-y-4">
+        <div class="flex items-center gap-3">
+          <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
+          <span class="text-xs text-gray-500 dark:text-dark-400">
+            {{ t('auth.sms.divider') }}
+          </span>
+          <div class="h-px flex-1 bg-gray-200 dark:bg-dark-700"></div>
+        </div>
+        <SMSLoginSection
+          :disabled="authActionDisabled"
+          @send-code="handleSMSSendCode"
+          @login="handleSMSLogin"
+        />
       </div>
     </div>
 
@@ -216,6 +237,8 @@ import { AuthLayout } from '@/components/layout'
 import EmailOAuthButtons from '@/components/auth/EmailOAuthButtons.vue'
 import GoogleOneTap from '@/components/auth/GoogleOneTap.vue'
 import LinuxDoOAuthSection from '@/components/auth/LinuxDoOAuthSection.vue'
+import QQOAuthSection from '@/components/auth/QQOAuthSection.vue'
+import SMSLoginSection from '@/components/auth/SMSLoginSection.vue'
 import DingTalkOAuthSection from '@/components/auth/DingTalkOAuthSection.vue'
 import OidcOAuthSection from '@/components/auth/OidcOAuthSection.vue'
 import WechatOAuthSection from '@/components/auth/WechatOAuthSection.vue'
@@ -227,8 +250,10 @@ import { useAuthStore, useAppStore } from '@/stores'
 import {
   buildOAuthLoginStartURL,
   getPublicSettings,
+  isSMSRegistrationRequired,
   isTotp2FARequired,
   isWeChatWebOAuthEnabled,
+  sendSMSCode,
   startOAuthLogin,
   type OAuthLoginStart,
 } from '@/api/auth'
@@ -294,6 +319,8 @@ const aliyunCaptchaRegion = ref<string>('cn') // Aliyun SDK region selector
 // Backend-only mode on the login page can hide the provider section even when
 // individual methods are configured.
 const linuxdoOAuthEnabled = ref<boolean>(false) // public LinuxDo login enable flag
+const qqOAuthEnabled = ref<boolean>(false) // public QQ login enable flag
+const smsLoginEnabled = ref<boolean>(false) // public SMS code login enable flag
 const dingtalkOAuthEnabled = ref<boolean>(false) // public DingTalk login enable flag
 const wechatOAuthEnabled = ref<boolean>(false) // public WeChat web-login availability
 const backendModeEnabled = ref<boolean>(false) // backend-only provider visibility policy
@@ -416,6 +443,7 @@ const showOAuthLogin = computed(
   () =>
     !backendModeEnabled.value &&
     (linuxdoOAuthEnabled.value ||
+      qqOAuthEnabled.value ||
       dingtalkOAuthEnabled.value ||
       wechatOAuthEnabled.value ||
       oidcOAuthEnabled.value ||
@@ -483,6 +511,8 @@ onMounted(async () => {
     aliyunCaptchaPrefix.value = settings.aliyun_captcha_prefix || ''
     aliyunCaptchaRegion.value = settings.aliyun_captcha_region || 'cn'
     linuxdoOAuthEnabled.value = settings.linuxdo_oauth_enabled
+    qqOAuthEnabled.value = settings.qq_oauth_enabled === true
+    smsLoginEnabled.value = settings.sms_login_enabled === true
     dingtalkOAuthEnabled.value = settings.dingtalk_oauth_enabled ?? false
     wechatOAuthEnabled.value = isWeChatWebOAuthEnabled(settings)
     backendModeEnabled.value = settings.backend_mode_enabled
@@ -819,6 +849,80 @@ async function handleOAuthStart(request: OAuthLoginStart): Promise<void> {
     appStore.showError(errorMessage.value)
   } finally {
     resetCaptchaProof()
+    isLoading.value = false
+  }
+}
+
+// handleSMSSendCode requests one SMS login code after the consent gate and
+// the same captcha proof handling as password login. The server enforces the
+// cooldown and daily cap; settled requests consume their proof.
+async function handleSMSSendCode(phone: string): Promise<void> {
+  googleOneTapRef.value?.cancelPrompt()
+  if (authActionDisabled.value || !ensureAgreementAccepted()) return
+
+  if (turnstileEnabled.value && !turnstileToken.value) {
+    errors.turnstile = t('auth.completeVerification')
+    return
+  }
+  if (!(await acquireActionProof())) {
+    return
+  }
+
+  isLoading.value = true
+  try {
+    await sendSMSCode({
+      phone,
+      turnstile_token:
+        turnstileEnabled.value || aliyunCaptchaEnabled.value ? turnstileToken.value : undefined,
+      tencent_captcha_ticket: tencentCaptchaEnabled.value ? turnstileToken.value : undefined,
+      tencent_captcha_randstr: tencentCaptchaEnabled.value
+        ? tencentCaptchaRandstr.value
+        : undefined,
+    })
+    appStore.showSuccess(t('auth.sms.codeSent'))
+  } catch (error: unknown) {
+    errorMessage.value = extractI18nErrorMessage(error, t, 'auth.errors', t('auth.sms.sendFailed'))
+    appStore.showError(errorMessage.value)
+  } finally {
+    if (captchaEnabled.value) {
+      resetCaptchaProof()
+    }
+    isLoading.value = false
+  }
+}
+
+// handleSMSLogin verifies the code through the auth store. A pending
+// registration continues on the phone callback page, a TOTP challenge opens
+// the shared modal, and a completed session navigates like password login.
+async function handleSMSLogin(payload: { phone: string; code: string }): Promise<void> {
+  googleOneTapRef.value?.cancelPrompt()
+  if (authActionDisabled.value || !ensureAgreementAccepted()) return
+
+  errorMessage.value = ''
+  isLoading.value = true
+  try {
+    const response = await authStore.loginWithSMSCode(payload.phone, payload.code)
+
+    if (isSMSRegistrationRequired(response)) {
+      await router.push('/auth/phone/callback')
+      return
+    }
+
+    if (isTotp2FARequired(response)) {
+      const totpResponse = response as TotpLoginResponse
+      totpTempToken.value = totpResponse.temp_token || ''
+      totpUserEmailMasked.value = totpResponse.user_email_masked || ''
+      show2FAModal.value = true
+      return
+    }
+
+    appStore.showSuccess(t('auth.loginSuccess'))
+    const redirectTo = (router.currentRoute.value.query.redirect as string) || '/dashboard'
+    await router.push(redirectTo)
+  } catch (error: unknown) {
+    errorMessage.value = extractI18nErrorMessage(error, t, 'auth.errors', t('auth.loginFailed'))
+    appStore.showError(errorMessage.value)
+  } finally {
     isLoading.value = false
   }
 }

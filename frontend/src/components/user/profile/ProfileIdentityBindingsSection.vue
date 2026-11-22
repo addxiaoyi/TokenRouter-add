@@ -123,6 +123,57 @@
                   {{ isBindingEmail ? t('common.loading') : emailSubmitActionLabel }}
                 </button>
               </div>
+
+              <div
+                v-if="item.provider === 'phone' && showPhoneForm"
+                data-testid="profile-binding-phone-form"
+                class="grid gap-2 sm:grid-cols-[minmax(0,1.4fr)_auto]"
+              >
+                <input
+                  v-model.trim="phoneBindingForm.phone"
+                  data-testid="profile-binding-phone-input"
+                  type="tel"
+                  class="input"
+                  :placeholder="t('profile.authBindings.phonePlaceholder')"
+                  :disabled="isSendingPhoneCode || isBindingPhone"
+                />
+                <button
+                  data-testid="profile-binding-phone-send-code"
+                  type="button"
+                  class="btn btn-secondary btn-sm"
+                  :disabled="isSendingPhoneCode || isBindingPhone"
+                  @click="sendPhoneCode"
+                >
+                  {{
+                    isSendingPhoneCode
+                      ? t('common.loading')
+                      : t('profile.authBindings.sendCodeAction')
+                  }}
+                </button>
+                <input
+                  v-model.trim="phoneBindingForm.code"
+                  data-testid="profile-binding-phone-code-input"
+                  type="text"
+                  inputmode="numeric"
+                  maxlength="6"
+                  class="input"
+                  :placeholder="t('profile.authBindings.codePlaceholder')"
+                  :disabled="isBindingPhone"
+                />
+                <button
+                  data-testid="profile-binding-phone-submit"
+                  type="button"
+                  class="btn btn-primary btn-sm"
+                  :disabled="isBindingPhone"
+                  @click="bindPhone"
+                >
+                  {{
+                    isBindingPhone
+                      ? t('common.loading')
+                      : t('profile.authBindings.confirmPhoneBindAction')
+                  }}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -185,6 +236,10 @@ import {
   startOAuthBinding,
   unbindAuthIdentity,
 } from '@/api/user'
+import {
+  bindPhone as bindPhoneRequest,
+  sendPhoneBindCode as sendPhoneBindCodeRequest,
+} from '@/api/auth'
 import Icon from '@/components/icons/Icon.vue'
 import { useAppStore, useAuthStore } from '@/stores'
 import type { User, UserAuthBindingStatus, UserAuthProvider } from '@/api/identity.types'
@@ -207,7 +262,7 @@ import type { User, UserAuthBindingStatus, UserAuthProvider } from '@/api/identi
 type BindableProvider = Exclude<UserAuthProvider, 'email'>
 // ConfigurableBindingProvider identifies providers whose binding availability comes from
 // public settings.
-type ConfigurableBindingProvider = 'linuxdo' | 'dingtalk' | 'oidc' | 'wechat'
+type ConfigurableBindingProvider = 'linuxdo' | 'dingtalk' | 'oidc' | 'wechat' | 'qq'
 
 // Profile and provider-availability props determine the displayed account details and
 // binding actions; explicit WeChat capabilities retain their distinction from legacy
@@ -216,6 +271,8 @@ const props = withDefaults(
   defineProps<{
     user: User | null // Current account profile.
     linuxdoEnabled?: boolean // Linux DO binding availability.
+    qqEnabled?: boolean // QQ binding availability.
+    smsLoginEnabled?: boolean // SMS code login availability for phone binding.
     dingtalkEnabled?: boolean // DingTalk binding availability.
     oidcEnabled?: boolean // OIDC binding availability.
     oidcProviderName?: string // Configured OIDC display name.
@@ -227,6 +284,8 @@ const props = withDefaults(
   }>(),
   {
     linuxdoEnabled: false, // Linux DO binding availability.
+    qqEnabled: false, // QQ binding availability.
+    smsLoginEnabled: false, // SMS code login availability for phone binding.
     dingtalkEnabled: false, // DingTalk binding availability.
     oidcEnabled: false, // OIDC binding availability.
     oidcProviderName: 'OIDC', // Configured OIDC display name.
@@ -250,12 +309,18 @@ const authStore = useAuthStore()
 const localUser = ref<User | null>(null)
 const isSendingEmailCode = ref(false)
 const isBindingEmail = ref(false)
+const isSendingPhoneCode = ref(false)
+const isBindingPhone = ref(false)
 const isEmailFormExpanded = ref(!props.compact)
 const unbindingProvider = ref<BindableProvider | null>(null)
 const emailBindingForm = reactive({
   email: '', // Requested binding address.
   verifyCode: '', // Email confirmation code.
   password: '', // Binding or replacement password.
+})
+const phoneBindingForm = reactive({
+  phone: '', // Requested binding number.
+  code: '', // SMS confirmation code.
 })
 
 watch(
@@ -303,6 +368,10 @@ const canManageEmail = computed(() => !emailBound.value || userEmailChangeEnable
 const showEmailForm = computed(
   () => canManageEmail.value && (!compact.value || isEmailFormExpanded.value),
 )
+// showPhoneForm offers the SMS binding form only while SMS login is enabled
+// and no number is bound yet; a bound number manages removal through the
+// row's unbind action instead.
+const showPhoneForm = computed(() => props.smsLoginEnabled && !getBindingStatus('phone'))
 const emailPasswordPlaceholder = computed(() =>
   emailBound.value
     ? t('profile.authBindings.replaceEmailPasswordPlaceholder')
@@ -469,6 +538,9 @@ function isProviderEnabledForBinding(provider: ConfigurableBindingProvider): boo
   if (provider === 'oidc') {
     return props.oidcEnabled
   }
+  if (provider === 'qq') {
+    return props.qqEnabled
+  }
   return resolvedWeChatBinding.value.mode !== null
 }
 
@@ -527,6 +599,28 @@ const providerItems = computed(() => [
     canUnbind: Boolean(getBindingStatus('wechat') && getBindingDetails('wechat')?.can_unbind),
     details: getBindingDetails('wechat'),
   },
+  {
+    provider: 'qq' as const,
+    label: t('profile.authBindings.providers.qq'),
+    bound: getBindingStatus('qq'),
+    canBind:
+      !getBindingStatus('qq') &&
+      isProviderEnabledForBinding('qq') &&
+      (getBindingDetails('qq')?.can_bind ?? true),
+    canUnbind: Boolean(getBindingStatus('qq') && getBindingDetails('qq')?.can_unbind),
+    details: getBindingDetails('qq'),
+  },
+  {
+    // Phone binding runs through the inline SMS form below the row, so the
+    // generic bind action stays off; unbinding uses the shared identity
+    // removal like every other provider.
+    provider: 'phone' as const,
+    label: t('profile.authBindings.providers.phone'),
+    bound: getBindingStatus('phone'),
+    canBind: false,
+    canUnbind: Boolean(getBindingStatus('phone') && getBindingDetails('phone')?.can_unbind),
+    details: getBindingDetails('phone'),
+  },
 ])
 
 // providerInitial supplies the single-letter emblem used by the displayed provider row.
@@ -542,6 +636,12 @@ function providerInitial(provider: UserAuthProvider): string {
   }
   if (provider === 'oidc') {
     return 'O'
+  }
+  if (provider === 'qq') {
+    return 'Q'
+  }
+  if (provider === 'phone') {
+    return 'P'
   }
   return 'E'
 }
@@ -559,6 +659,12 @@ function providerIconClass(provider: UserAuthProvider): string {
   }
   if (provider === 'oidc') {
     return 'bg-sky-100 text-sky-600 dark:bg-sky-900/20 dark:text-sky-300'
+  }
+  if (provider === 'qq') {
+    return 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/20 dark:text-cyan-300'
+  }
+  if (provider === 'phone') {
+    return 'bg-violet-100 text-violet-600 dark:bg-violet-900/20 dark:text-violet-300'
   }
   return 'bg-primary-100 text-primary-600 dark:bg-primary-900/20 dark:text-primary-300'
 }
@@ -629,7 +735,7 @@ function toggleEmailForm(): void {
 // location. Email is ignored, and WeChat receives the resolved capability settings used to
 // select its authorization mode.
 function startBinding(provider: UserAuthProvider): void {
-  if (provider === 'email') {
+  if (provider === 'email' || provider === 'phone') {
     return
   }
   startOAuthBinding(provider, {
@@ -759,6 +865,60 @@ async function bindEmail(): Promise<void> {
     )
   } finally {
     isBindingEmail.value = false
+  }
+}
+
+// sendPhoneCode validates the number shape and requests its binding code.
+// The server enforces cooldown and the daily cap; failures keep the form
+// values available for correction.
+async function sendPhoneCode(): Promise<void> {
+  if (!/^1[3-9]\d{9}$/.test(phoneBindingForm.phone)) {
+    appStore.showError(t('auth.sms.invalidPhone'))
+    return
+  }
+
+  isSendingPhoneCode.value = true
+  try {
+    await sendPhoneBindCodeRequest(phoneBindingForm.phone)
+    appStore.showSuccess(
+      t('profile.authBindings.codeSentToPhone', { phone: phoneBindingForm.phone }),
+    )
+  } catch (error) {
+    appStore.showError(
+      (error as { message?: string /* Optional API failure explanation. */ }).message ||
+        t('auth.sendCodeFailed'),
+    )
+  } finally {
+    isSendingPhoneCode.value = false
+  }
+}
+
+// bindPhone verifies the code and attaches the number to the account. The
+// bind endpoint returns no profile, so success refreshes the shared user
+// before clearing the code draft.
+async function bindPhone(): Promise<void> {
+  if (!/^1[3-9]\d{9}$/.test(phoneBindingForm.phone)) {
+    appStore.showError(t('auth.sms.invalidPhone'))
+    return
+  }
+  if (!phoneBindingForm.code) {
+    appStore.showError(t('auth.codeRequired'))
+    return
+  }
+
+  isBindingPhone.value = true
+  try {
+    await bindPhoneRequest(phoneBindingForm.phone, phoneBindingForm.code)
+    await authStore.refreshUser()
+    phoneBindingForm.code = ''
+    appStore.showSuccess(t('profile.authBindings.bindSuccess'))
+  } catch (error) {
+    appStore.showError(
+      (error as { message?: string /* Optional API failure explanation. */ }).message ||
+        t('common.tryAgain'),
+    )
+  } finally {
+    isBindingPhone.value = false
   }
 }
 </script>

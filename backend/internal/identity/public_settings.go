@@ -34,6 +34,13 @@ type PublicAuthSettings struct {
 	// Google: advertised Google email login. GoogleOneTap: advertised One Tap
 	// login.
 	LinuxDo, DingTalk, OIDC, WeChat, WeChatOpen, WeChatMP, WeChatMobile, GitHub, Google, GoogleOneTap bool
+	// QQ follows the LinuxDo switch rule: a supplied stored switch decides,
+	// and a missing key falls back to the startup default. QQ: advertised
+	// QQ login.
+	QQ bool
+	// SMSLogin follows the runtime switch exactly: only a stored true
+	// advertises phone code login. SMSLogin: advertised SMS code login.
+	SMSLogin bool
 	// OIDCName uses the trimmed supplied label, then a nonblank startup label,
 	// then OIDC for the browser's provider display. GoogleClientID is emitted when
 	// GoogleOneTap is true; all other cases return an empty client ID so the
@@ -79,6 +86,13 @@ func (s *OAuthSettings) PublicSettingsFromValues(settings map[string]string) Pub
 	} else {
 		oidcEnabled = s.defaults != nil && s.defaults.OIDC.Enabled
 	}
+	qqEnabled := false
+	if raw, ok := settings[SettingKeyQQConnectEnabled]; ok {
+		qqEnabled = raw == "true"
+	} else {
+		qqEnabled = s.defaults != nil && s.defaults.QQ.Enabled
+	}
+	smsLoginEnabled := settings[SettingKeySMSLoginEnabled] == "true"
 	oidcProviderName := strings.TrimSpace(settings[SettingKeyOIDCConnectProviderName])
 	if oidcProviderName == "" && s.defaults != nil {
 		oidcProviderName = strings.TrimSpace(s.defaults.OIDC.ProviderName)
@@ -97,7 +111,7 @@ func (s *OAuthSettings) PublicSettingsFromValues(settings map[string]string) Pub
 	}
 
 	return PublicAuthSettings{
-		LinuxDo: linuxDoEnabled, DingTalk: dingTalkEnabled, OIDC: oidcEnabled, OIDCName: oidcProviderName,
+		LinuxDo: linuxDoEnabled, DingTalk: dingTalkEnabled, OIDC: oidcEnabled, OIDCName: oidcProviderName, QQ: qqEnabled, SMSLogin: smsLoginEnabled,
 		WeChat: weChatEnabled, WeChatOpen: weChatOpenEnabled, WeChatMP: weChatMPEnabled, WeChatMobile: weChatMobileEnabled,
 		GitHub: gitHubOAuthEnabled, Google: googleOAuthEnabled, GoogleOneTap: googleOneTapEnabled, GoogleClientID: googleOAuthClientID,
 		RegistrationSuffixes: ParseRegistrationEmailSuffixWhitelist(settings[SettingKeyRegistrationEmailSuffixWhitelist]), TencentRegion: NormalizeTencentCaptchaRegion(settings[SettingKeyTencentCaptchaRegion]), AliyunRegion: NormalizeAliyunCaptchaRegion(settings[SettingKeyAliyunCaptchaRegion]),

@@ -9,7 +9,7 @@
 - [会话生命周期](#会话生命周期)：Token 轮换、多标签页刷新、撤销范围与邮箱挑战。
 - [强认证与敏感操作](#强认证与敏感操作)：TOTP step-up 与 Passkey 流程约束。
 - [外部身份接入](#外部身份接入)：OAuth pending 意图与防重放要求。
-- [登录提供方差异](#登录提供方差异)：七类登录提供方的主体、流程与首次绑定权益。
+- [登录提供方差异](#登录提供方差异)：九类登录提供方的主体、流程与首次绑定权益。
 - [身份绑定与解绑](#身份绑定与解绑)：第三方绑定、邮箱换绑别名查重与解绑清理。
 - [用户属性与来源](#用户属性与来源)：精确查找、自定义属性定义与外部资料同步。
 - [团队租户](#团队租户)：单层租户模型、报表范围、所有权转移与团队 Key 校验。
@@ -148,7 +148,7 @@ pending 流程安全要求：
 
 ## 登录提供方差异
 
-`AuthIdentity.provider_type` 支持 `email`、`github`、`google`、`linuxdo`、`oidc`、`wechat` 和 `dingtalk`。`provider_key` 区分同类型下的发行方或兼容渠道，`provider_subject` 为该 key 下的稳定外部主体，三者组合全局唯一。
+`AuthIdentity.provider_type` 支持 `email`、`github`、`google`、`linuxdo`、`oidc`、`wechat`、`dingtalk`、`qq` 和 `phone`。`provider_key` 区分同类型下的发行方或兼容渠道，`provider_subject` 为该 key 下的稳定外部主体，三者组合全局唯一。
 
 | 提供方 | 持久主体与验证要求 | 流程差异 |
 | --- | --- | --- |
@@ -159,6 +159,8 @@ pending 流程安全要求：
 | GitHub | GitHub user ID；注册须拿到已验证邮箱 | 支持登录和注册完成；个人资料页无自助绑定和解绑 |
 | Google | Google `sub`；注册须拿到已验证邮箱 | OAuth 跳转与 One Tap 共用唯一性、pending 注册和首次绑定权益；个人资料页无自助绑定和解绑 |
 | DingTalk | unionID 为稳定 subject，企业与部门信息存为 claims 或用户属性 | 支持组织策略、建号或绑定已有登录、当前用户 bind；跨组织降级仍以 unionID 为主体，企业内 user ID 仅作资料 |
+| QQ | 优先 unionid、无 unionid 时用 openid 作 subject；QQ 互联不返回邮箱 | 支持 start/callback、pending exchange、建号或绑定已有登录、当前用户 bind；建号用 `@qq-connect.invalid` 合成邮箱占位，昵称仅作资料输入 |
+| Phone | 规范化后的 11 位大陆手机号为 subject，`provider_key` 为短信渠道（如 `juhe`） | 无 OAuth 跳转：验证码校验通过即视为持有证明；未绑定走 pending 建号，已有账号在个人资料页用验证码自助绑定；验证码单次有效、限次试错与发送节流由挑战服务统一约束 |
 
 新增绑定路由或前端入口前，须补齐服务端意图、CSRF/state、pending session、解绑安全检查和接口测试，不可直接复用 OAuth callback。
 
@@ -180,7 +182,7 @@ Email 绑定与换绑规则：
 事务与解绑约束：
 
 - 绑定事务校验外部三元组不属他人、当前用户与会话有效、pending 意图与 provider 一致，然后原子写入 identity、channel 和接纳决定。Email 换绑在同一事务中锁住规范化邮箱和收件箱 alias 复查占用者，再更新邮箱和密码哈希。管理员直接绑定遵守同等唯一约束和标准 `provider_key` 规则。
-- 解绑后用户至少保留一个可登录身份。Email 不走第三方解绑；LinuxDo、OIDC、WeChat 和 DingTalk 自助解绑依据当前身份集合判定。
+- 解绑后用户至少保留一个可登录身份。Email 不走第三方解绑；LinuxDo、OIDC、WeChat、DingTalk、QQ 和 Phone 自助解绑依据当前身份集合判定。
 - 解绑成功且认证服务可用时调用 `RevokeAllUserTokens` 清理 refresh 会话，既有 access token 继续按会话校验规则判定。远端授权是否撤销取决于各 provider 实现，仅删本地记录时远端 token 可能仍有效。
 
 ## 用户属性与来源

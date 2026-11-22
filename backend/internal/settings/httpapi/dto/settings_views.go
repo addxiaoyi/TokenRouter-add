@@ -93,6 +93,15 @@ type SystemSettings struct {
 	LinuxDoConnectClientSecretConfigured bool   `json:"linuxdo_connect_client_secret_configured"` // LinuxDo token secret presence display flag
 	LinuxDoConnectRedirectURL            string `json:"linuxdo_connect_redirect_url"`             // LinuxDo registered backend callback URL
 
+	QQConnectEnabled                bool   `json:"qq_connect_enabled"`                  // QQ login availability switch
+	QQConnectClientID               string `json:"qq_connect_client_id"`                // QQ registered OAuth application identifier
+	QQConnectClientSecretConfigured bool   `json:"qq_connect_client_secret_configured"` // QQ token secret presence display flag
+	QQConnectRedirectURL            string `json:"qq_connect_redirect_url"`             // QQ registered backend callback URL
+
+	SMSLoginEnabled           bool   `json:"sms_login_enabled"`       // SMS code login availability switch
+	SMSLoginJuheKeyConfigured bool   `json:"sms_juhe_key_configured"` // Juhe SMS key presence display flag
+	SMSLoginJuheTemplateID    string `json:"sms_juhe_tpl_id"`         // Juhe SMS verification template identifier
+
 	DingTalkConnectEnabled                 bool   `json:"dingtalk_connect_enabled"`                     // DingTalk login availability switch
 	DingTalkConnectClientID                string `json:"dingtalk_connect_client_id"`                   // DingTalk registered OAuth client identifier
 	DingTalkConnectClientSecretConfigured  bool   `json:"dingtalk_connect_client_secret_configured"`    // DingTalk token secret presence display flag

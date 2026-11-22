@@ -50,6 +50,8 @@ export type SettingsForm = Omit<
   tencent_captcha_cloud_secret_key: string // Tencent cloud secret
   aliyun_captcha_access_key_secret: string // Aliyun access secret
   linuxdo_connect_client_secret: string // LinuxDo client secret
+  qq_connect_client_secret: string // QQ client secret
+  sms_juhe_key: string // Juhe SMS key
   dingtalk_connect_client_secret: string // DingTalk client secret
   wechat_connect_app_secret: string // Legacy WeChat secret
   wechat_connect_open_app_secret: string // WeChat website secret
@@ -248,6 +250,15 @@ export function createSettingsForm() {
     linuxdo_connect_client_secret: '',
     linuxdo_connect_client_secret_configured: false,
     linuxdo_connect_redirect_url: '',
+    qq_connect_enabled: false,
+    qq_connect_client_id: '',
+    qq_connect_client_secret: '',
+    qq_connect_client_secret_configured: false,
+    qq_connect_redirect_url: '',
+    sms_login_enabled: false,
+    sms_juhe_key: '',
+    sms_juhe_key_configured: false,
+    sms_juhe_tpl_id: '',
     dingtalk_connect_enabled: false,
     dingtalk_connect_client_id: '',
     dingtalk_connect_client_secret: '',

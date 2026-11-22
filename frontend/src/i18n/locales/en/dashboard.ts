@@ -977,6 +977,9 @@ export default {
       confirmEmailBindAction: 'Bind email',
       confirmEmailReplaceAction: 'Replace primary email',
       codeSentTo: 'Code sent to {email}',
+      phonePlaceholder: 'Enter mobile number',
+      codeSentToPhone: 'Code sent to {phone}',
+      confirmPhoneBindAction: 'Bind phone',
       replaceSuccess: 'Primary email updated',
       unbindAction: 'Unbind',
       unbindSuccess: '{providerName} unbound',
@@ -991,6 +994,8 @@ export default {
         dingtalk: 'DingTalk',
         oidc: '{providerName}',
         wechat: 'WeChat',
+        qq: 'QQ',
+        phone: 'Phone',
       },
       notes: {
         canUnbind: 'You can unbind this sign-in method',

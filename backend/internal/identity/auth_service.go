@@ -916,6 +916,8 @@ func AuthAuthSourceSignupSettings(defaults *AuthSourceDefaultSettings, signupSou
 		return defaults.LinuxDo, true
 	case "oidc":
 		return defaults.OIDC, true
+	case "qq":
+		return defaults.QQ, true
 	case "wechat":
 		return defaults.WeChat, true
 	case "github":
@@ -1016,6 +1018,8 @@ func AuthInferLegacySignupSource(email string) string {
 		return "linuxdo"
 	case strings.HasSuffix(normalized, OIDCConnectSyntheticEmailDomain):
 		return "oidc"
+	case strings.HasSuffix(normalized, QQConnectSyntheticEmailDomain):
+		return "qq"
 	case strings.HasSuffix(normalized, WeChatConnectSyntheticEmailDomain):
 		return "wechat"
 	default:

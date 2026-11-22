@@ -8,7 +8,7 @@ import type { UserSubscription } from '@/api/subscriptions.types'
 
 // UserAuthProvider identifies a supported provider for an account identity binding.
 export type UserAuthProvider =
-  'email' | 'linuxdo' | 'oidc' | 'wechat' | 'github' | 'google' | 'dingtalk'
+  'email' | 'linuxdo' | 'oidc' | 'wechat' | 'github' | 'google' | 'dingtalk' | 'qq' | 'phone'
 
 // UserAuthBindingStatus describes the provider identity bound to an account.
 export interface UserAuthBindingStatus {

@@ -64,6 +64,8 @@ func RegisterAuthenticationRoutes(v1 *gin.RouterGroup, endpoints AuthEndpoints, 
 		auth.POST("/passkey/login/begin", guards.Limit("passkey-login-begin", 20, time.Minute), passkeys.BeginLogin)
 		auth.POST("/passkey/login/finish", guards.Limit("passkey-login-finish", 20, time.Minute), passkeys.FinishLogin)
 		auth.POST("/send-verify-code", guards.Limit("auth-send-verify-code", 5, time.Minute), endpoints.SendVerifyCode)
+		auth.POST("/sms/send-code", guards.Limit("auth-sms-send-code", 5, time.Minute), endpoints.SendSMSCode)
+		auth.POST("/sms/login", guards.Limit("auth-sms-login", 20, time.Minute), endpoints.SMSLogin)
 		auth.POST("/refresh", guards.Limit("refresh-token", 30, time.Minute), endpoints.RefreshToken)
 		// Logout is public so clients can revoke a refresh token without an access
 		// token.
@@ -136,6 +138,30 @@ func RegisterAuthenticationRoutes(v1 *gin.RouterGroup, endpoints AuthEndpoints, 
 		auth.POST("/oauth/wechat/create-account",
 			guards.Limit("oauth-wechat-create-account", 10, time.Minute),
 			endpoints.CreateWeChatOAuthAccount,
+		)
+		auth.GET("/oauth/qq/start", endpoints.QQOAuthStart)
+		auth.POST("/oauth/qq/start", guards.Limit("oauth-qq-start", 20, time.Minute), endpoints.QQOAuthStart)
+		auth.GET("/oauth/qq/bind/start", func(c *gin.Context) {
+			// The QQ bind-start route selects current-user intent before provider
+			// dispatch, so its start handler authenticates the binding target and skips
+			// anonymous-login CAPTCHA.
+			query := c.Request.URL.Query()
+			query.Set("intent", "bind_current_user")
+			c.Request.URL.RawQuery = query.Encode()
+			endpoints.QQOAuthStart(c)
+		})
+		auth.GET("/oauth/qq/callback", endpoints.QQOAuthCallback)
+		auth.POST("/oauth/qq/complete-registration",
+			guards.Limit("oauth-qq-complete", 10, time.Minute),
+			endpoints.CompleteQQOAuthRegistration,
+		)
+		auth.POST("/oauth/qq/bind-login",
+			guards.Limit("oauth-qq-bind-login", 20, time.Minute),
+			endpoints.BindQQOAuthLogin,
+		)
+		auth.POST("/oauth/qq/create-account",
+			guards.Limit("oauth-qq-create-account", 10, time.Minute),
+			endpoints.CreateQQOAuthAccount,
 		)
 		auth.GET("/oauth/oidc/start", endpoints.OIDCOAuthStart)
 		auth.POST("/oauth/oidc/start", guards.Limit("oauth-oidc-start", 20, time.Minute), endpoints.OIDCOAuthStart)
@@ -214,4 +240,6 @@ func RegisterSessionRoutes(v1 *gin.RouterGroup, endpoints AuthEndpoints, guards 
 	authenticated.GET("/auth/me", endpoints.GetCurrentUser)
 	authenticated.POST("/auth/revoke-all-sessions", endpoints.RevokeAllSessions)
 	authenticated.POST("/auth/oauth/bind-token", endpoints.PrepareOAuthBindAccessTokenCookie)
+	authenticated.POST("/auth/phone/bind/send-code", guards.Limit("auth-phone-bind-send-code", 5, time.Minute), endpoints.SendPhoneBindCode)
+	authenticated.POST("/auth/phone/bind", guards.Limit("auth-phone-bind", 10, time.Minute), endpoints.BindPhone)
 }

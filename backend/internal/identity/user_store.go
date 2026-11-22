@@ -390,6 +390,8 @@ type UserIdentitySummarySet struct {
 	OIDC     UserIdentitySummary `json:"oidc"`     // issuer-scoped OIDC relationship view
 	WeChat   UserIdentitySummary `json:"wechat"`   // WeChat provider relationship view
 	DingTalk UserIdentitySummary `json:"dingtalk"` // DingTalk provider relationship view
+	QQ       UserIdentitySummary `json:"qq"`       // QQ provider relationship view
+	Phone    UserIdentitySummary `json:"phone"`    // phone number relationship view
 }
 
 // StartUserIdentityBindingRequest selects a supported provider and local

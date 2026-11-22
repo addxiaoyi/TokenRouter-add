@@ -941,6 +941,9 @@ export default {
       confirmEmailBindAction: '绑定邮箱',
       confirmEmailReplaceAction: '更换主邮箱',
       codeSentTo: '验证码已发送到 {email}',
+      phonePlaceholder: '输入手机号',
+      codeSentToPhone: '验证码已发送到 {phone}',
+      confirmPhoneBindAction: '绑定手机号',
       replaceSuccess: '主邮箱已更新',
       unbindAction: '解绑',
       unbindSuccess: '{providerName} 已解绑',
@@ -955,6 +958,8 @@ export default {
         dingtalk: '钉钉',
         oidc: '{providerName}',
         wechat: '微信',
+        qq: 'QQ',
+        phone: '手机号',
       },
       notes: {
         canUnbind: '你可以解绑这个登录方式。',

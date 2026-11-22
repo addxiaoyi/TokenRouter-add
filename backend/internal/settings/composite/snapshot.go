@@ -108,6 +108,17 @@ type Snapshot struct {
 	LinuxDoConnectClientSecretConfigured bool   // LinuxDo token secret presence display flag
 	LinuxDoConnectRedirectURL            string // LinuxDo registered backend callback URL
 
+	QQConnectEnabled                bool   // QQ login availability switch
+	QQConnectClientID               string // QQ registered OAuth application identifier
+	QQConnectClientSecret           string // QQ internal token exchange secret
+	QQConnectClientSecretConfigured bool   // QQ token secret presence display flag
+	QQConnectRedirectURL            string // QQ registered backend callback URL
+
+	SMSLoginEnabled           bool   // SMS code login availability switch
+	SMSLoginJuheKey           string // Juhe SMS service key
+	SMSLoginJuheKeyConfigured bool   // Juhe SMS key presence display flag
+	SMSLoginJuheTemplateID    string // Juhe SMS verification template identifier
+
 	DingTalkConnectEnabled                 bool   // DingTalk login availability switch
 	DingTalkConnectClientID                string // DingTalk registered OAuth client identifier
 	DingTalkConnectClientSecret            string // DingTalk internal token exchange secret

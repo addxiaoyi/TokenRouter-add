@@ -114,6 +114,8 @@
           data-testid="profile-auth-bindings-panel"
           :user="user"
           :linuxdo-enabled="linuxdoEnabled"
+          :qq-enabled="qqEnabled"
+          :sms-login-enabled="smsLoginEnabled"
           :dingtalk-enabled="dingtalkEnabled"
           :oidc-enabled="oidcEnabled"
           :oidc-provider-name="oidcProviderName"
@@ -183,6 +185,8 @@ const props = withDefaults(
   defineProps<{
     user: User | null // Current account profile.
     linuxdoEnabled?: boolean // Linux DO binding availability.
+    qqEnabled?: boolean // QQ binding availability.
+    smsLoginEnabled?: boolean // SMS code login availability.
     dingtalkEnabled?: boolean // DingTalk binding availability.
     oidcEnabled?: boolean // OIDC binding availability.
     oidcProviderName?: string // Configured OIDC display name.
@@ -192,6 +196,8 @@ const props = withDefaults(
   }>(),
   {
     linuxdoEnabled: false, // Linux DO binding availability.
+    qqEnabled: false, // QQ binding availability.
+    smsLoginEnabled: false, // SMS code login availability.
     dingtalkEnabled: false, // DingTalk binding availability.
     oidcEnabled: false, // OIDC binding availability.
     oidcProviderName: 'OIDC', // Configured OIDC display name.
@@ -291,6 +297,8 @@ const providerLabels = computed<Record<UserAuthProvider, string>>(() => ({
   wechat: t('profile.authBindings.providers.wechat'),
   github: 'GitHub',
   google: 'Google',
+  qq: t('profile.authBindings.providers.qq'),
+  phone: t('profile.authBindings.providers.phone'),
 }))
 
 // normalizeProvider recognizes the source-provider spellings accepted by this profile
@@ -303,7 +311,9 @@ function normalizeProvider(value: string): UserAuthProvider | null {
     normalized === 'linuxdo' ||
     normalized === 'wechat' ||
     normalized === 'github' ||
-    normalized === 'google'
+    normalized === 'google' ||
+    normalized === 'qq' ||
+    normalized === 'phone'
   ) {
     return normalized
   }

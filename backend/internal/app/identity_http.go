@@ -106,6 +106,12 @@ func (s identityHTTPSettings) LinuxDo(ctx context.Context) (identity.LinuxDoOAut
 	return identity.LinuxDoOAuthOptions(value), err
 }
 
+// QQ converts shared OAuth settings into QQ HTTP flow options.
+func (s identityHTTPSettings) QQ(ctx context.Context) (identity.QQOAuthOptions, error) {
+	value, err := s.oauth.GetQQConnectOAuthConfig(ctx)
+	return identity.QQOAuthOptions(value), err
+}
+
 // OIDC converts shared OAuth settings into OIDC HTTP flow options.
 func (s identityHTTPSettings) OIDC(ctx context.Context) (identity.OIDCOAuthOptions, error) {
 	value, err := s.oauth.GetOIDCConnectOAuthConfig(ctx)
@@ -210,10 +216,12 @@ func provideIdentityHTTP(
 	auth := &identityhttp.AuthenticationHandler{
 		Session: session, Pending: pending, Bind: bind,
 		LinuxDo: identityhttp.NewLinuxDoHandler(pending, bind, identityadapter.LinuxDoClient{}, runtime.LinuxDo),
+		QQ:      identityhttp.NewQQHandler(pending, bind, identityadapter.QQClient{}, runtime.QQ),
 		OIDC:    identityhttp.NewOIDCHandler(pending, bind, identityadapter.OIDCClient{}, runtime.OIDC),
 		Email:   identityhttp.NewEmailOAuthHandler(pending, identityadapter.EmailOAuthClientAdapter{}, runtime.Email),
 		Google:  identityhttp.NewGoogleOneTapHandler(pending, identityadapter.GoogleAPIIDTokenVerifier{}, identityhttp.GoogleOneTapHTTPOptions{LoadConfig: runtime.GoogleOneTap, RegistrationEnabled: settings.IsRegistrationEnabled}),
 		WeChat:  wechat, DingTalk: identityhttp.NewDingTalkHandler(pending, bind, syncer, identityhttp.DingTalkHTTPOptions{LoadConfig: runtime.DingTalk, RegistrationEnabled: settings.IsRegistrationEnabled}),
+		SMS: identityhttp.NewSMSHandler(pending, runtime.GetSMSLoginSettings),
 	}
 	pay := paymenthttp.NewWeChatPaymentHandler(paymenthttp.WeChatPaymentHTTPOptions{
 		Config: wechat.GetConfig, CallbackURL: func(_ context.Context, c *gin.Context) string {
