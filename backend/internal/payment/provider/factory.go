@@ -21,6 +21,8 @@ func CreateProvider(providerKey string, instanceID string, config map[string]str
 	switch providerKey {
 	case payment.TypeEPUSDT:
 		return NewEPUSDT(instanceID, config)
+	case payment.TypeNOWPayments:
+		return NewNOWPayments(instanceID, config)
 	case payment.TypeEasyPay:
 		return NewEasyPay(instanceID, config)
 	case payment.TypeAlipay:

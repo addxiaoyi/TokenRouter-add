@@ -42,6 +42,7 @@ export type PaymentType =
   | 'link'
   | 'airwallex'
   | 'epusdt'
+  | 'nowpayments'
 
 // OrderType distinguishes a wallet recharge from a subscription plan purchase.
 export type OrderType = 'balance' | 'subscription'

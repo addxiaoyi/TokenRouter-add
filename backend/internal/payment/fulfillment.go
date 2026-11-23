@@ -187,7 +187,7 @@ func ParseLegacyPaymentOrderID(orderID string, notFound bool) (int64, bool) {
 // ordinary audit before returning. Snapshot metadata validation separately has
 // its own absent/unrecognized-key rules and is not implied by a successful key
 // comparison. The caller retains signature verification ownership before this
-// order association stage. EasyPay and EPUSDT EPay observations must retain a saved
+// order association stage. EasyPay, EPUSDT EPay and NOWPayments observations must retain a saved
 // transaction number so another external payment cannot replace that binding.
 // The initial EasyPay merchant-number echo can be corrected before payment only
 // when adapter-owned confirmation metadata explicitly permits that order.
@@ -221,8 +221,8 @@ func (s *Fulfillment) ValidatePaymentNotificationOrder(ctx context.Context, o *O
 	return nil
 }
 
-// validatePaymentTradeNumber preserves a previously bound EasyPay or EPUSDT
-// transaction. Other adapters own their reference transitions. Empty references
+// validatePaymentTradeNumber preserves a previously bound EasyPay, EPUSDT or
+// NOWPayments transaction. Other adapters own their reference transitions. Empty references
 // and exact matches use ordinary confirmation, whose caller still verifies money
 // and merchant identity before changing persistent state.
 //
@@ -232,7 +232,7 @@ func (s *Fulfillment) ValidatePaymentNotificationOrder(ctx context.Context, o *O
 // reloads keeps an established transaction binding immutable.
 func validatePaymentTradeNumber(order *Order, providerKey, tradeNo string, metadata map[string]string) error {
 	isEasyPay := GetBasePaymentType(providerKey) == TypeEasyPay
-	if (!isEasyPay && providerKey != TypeEPUSDT) || order.PaymentTradeNo == "" || order.PaymentTradeNo == tradeNo {
+	if (!isEasyPay && providerKey != TypeEPUSDT && providerKey != TypeNOWPayments) || order.PaymentTradeNo == "" || order.PaymentTradeNo == tradeNo {
 		return nil
 	}
 	if isEasyPay && order.PaidAt == nil && order.OutTradeNo != "" &&

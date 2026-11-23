@@ -82,6 +82,7 @@ export const PROVIDER_SUPPORTED_TYPES: Record<string, string[]> = {
   stripe: ['stripe'],
   airwallex: ['airwallex'],
   epusdt: ['epusdt'],
+  nowpayments: ['nowpayments'],
 }
 
 // PAYMENT_CURRENCY_OPTIONS lists the currency codes exposed by provider currency
@@ -113,6 +114,7 @@ export const WEBHOOK_PATHS: Record<string, string> = {
   stripe: '/api/v1/payment/webhook/stripe',
   airwallex: '/api/v1/payment/webhook/airwallex',
   epusdt: '/api/v1/payment/webhook/epusdt',
+  nowpayments: '/api/v1/payment/webhook/nowpayments',
 }
 
 // RETURN_PATH identifies the browser result page appended to configured return origins for
@@ -126,6 +128,7 @@ export const PROVIDER_CALLBACK_PATHS: Record<string, CallbackPaths> = {
   alipay: { notifyUrl: WEBHOOK_PATHS.alipay, returnUrl: RETURN_PATH },
   wxpay: { notifyUrl: WEBHOOK_PATHS.wxpay },
   epusdt: { notifyUrl: WEBHOOK_PATHS.epusdt },
+  nowpayments: { notifyUrl: WEBHOOK_PATHS.nowpayments },
 }
 
 // PROVIDER_CONFIG_FIELDS drives credential inputs and validation for each provider;
@@ -149,6 +152,27 @@ export const PROVIDER_CONFIG_FIELDS: Record<string, ConfigFieldDef[]> = {
         (option) => option.value === 'CNY' || option.value === 'USD',
       ),
     },
+  ],
+  nowpayments: [
+    {
+      key: 'apiBase',
+      label: '',
+      sensitive: false,
+      defaultValue: 'https://api.nowpayments.io/v1',
+      hintKey: 'admin.settings.payment.field_nowpaymentsApiBaseHint',
+    },
+    { key: 'apiKey', label: '', sensitive: true },
+    { key: 'ipnSecret', label: '', sensitive: true },
+    {
+      key: 'currency',
+      label: '',
+      sensitive: false,
+      defaultValue: 'USD',
+      options: PAYMENT_CURRENCY_OPTIONS.filter(
+        (option) => option.value === 'CNY' || option.value === 'USD',
+      ),
+    },
+    { key: 'payCurrency', label: '', sensitive: false, defaultValue: 'usdttrc20' },
   ],
   easypay: [
     { key: 'pid', label: 'PID', sensitive: false },

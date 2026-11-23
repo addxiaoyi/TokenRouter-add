@@ -23,6 +23,7 @@ TokenRouter 内置支付系统，支持用户自助充值、购买套餐和发�
 | 微信官方 | Native 扫码、H5、公众号和 JSAPI 支付 | 直接对接微信支付 APIv3，按终端环境自动选择 |
 | Stripe | 银行卡、支付宝、微信支付、Link 等 | 国际支付，支持多币种 |
 | EPUSDT / GMPay（EPay 协议） | 加密货币 | 通过独立部署的 epusdt 收银台选择币种和网络，支持 CNY / USD 计价 |
+| NOWPayments | 加密货币 | 托管加密货币收款，实例固定结算币种（默认 USDT-TRC20），支持 USD / CNY 计价 |
 | Airwallex（空中云汇） | Airwallex 托管收银台支持的支付方式 | 国际支付，支持测试和生产 API、多币种和可选的平台提供商 |
 
 支付宝官方、微信官方和易支付可以同时作为后台的服务商实例存在，但前台只展示"支付宝"和"微信支付"两个按钮。管理员需要为每个按钮选择一个支付来源：官方或易支付。官方渠道直接对接 API，资金直接进入商户账户，手续费较低；易支付通过第三方平台聚合，接入门槛较低。
@@ -182,6 +183,23 @@ TokenRouter 内置支付系统，支持用户自助充值、购买套餐和发�
 下单提示结果正在核实时，先查看已有订单。上游交易号未保存时，自动查单无法按商户订单号恢复，请等待回调或到 epusdt 后台核实后处理。
 
 网关明确返回验签或已知的配置、参数校验错误时，本地订单会标为失败，可修正实例配置后重新下单。商品名称中的 `&` 和 `=` 仅在传给网关时改为全角字符，本地仍显示原名称。
+
+### NOWPayments
+
+本接入使用 NOWPayments 的支付 API。先在 NOWPayments 后台完成账户验证，设置收款钱包地址（资金从 NOWPayments 结算到该钱包），再到 Settings 中创建 API Key 并取得 IPN Secret。在 TokenRouter 支付设置中启用加密货币渠道，添加 NOWPayments 实例。沙盒密钥只能配合沙盒 API 地址使用，生产密钥只能配合生产地址使用，两者混用时 API 会返回 `INVALID_API_KEY`。
+
+| 字段 | 说明 |
+| --- | --- |
+| API 基础地址 | 生产环境使用 `https://api.nowpayments.io/v1`，沙盒环境使用 `https://api-sandbox.nowpayments.io/v1` |
+| API Key | NOWPayments 后台 Settings 中的 API Key |
+| IPN Secret | NOWPayments 后台的 IPN 签名密钥，用于验证付款回调 |
+| 支付币种 | USD 或 CNY，默认 USD；表示订单的法币价格 |
+| 结算币种 | 买家实际转账的币种代码，默认 `usdttrc20`（USDT-TRC20） |
+| 异步通知地址 | TokenRouter 的 `/api/v1/payment/webhook/nowpayments` 公网 HTTPS 地址；实例未填时须在 NOWPayments 后台把 IPN 回调地址设为该地址 |
+
+用户在购买页选择 USDT (NOWPayments) 后，页面展示收款地址与二维码。买家按页面显示的币种数量转账，链上确认完成后 NOWPayments 回调本站并发放余额或订阅；只付一部分时订单保持待付款，不会按比例发放。自动退款不开放，退款在 NOWPayments 后台处理。
+
+NOWPayments 对每种结算币种设有最低收款额，订单法币金额过低时下单会被拒绝并提示调整金额。下单提示结果正在核实时，先查看已有订单，等待回调或在订单记录中查看进度，不要重复下单。
 
 ## 服务商实例管理
 

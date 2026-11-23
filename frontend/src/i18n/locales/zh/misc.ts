@@ -598,6 +598,7 @@ export default {
     },
     methods: {
       epusdt: '加密货币',
+      nowpayments: 'USDT（NOWPayments）',
       easypay: '易支付',
       alipay: '支付宝',
       wxpay: '微信支付',

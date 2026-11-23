@@ -1012,6 +1012,9 @@ export default {
       providerEPUSDT: 'EPUSDT / GMPay（EPay 协议）',
       field_epusdtApiBaseHint:
         '填写 EPUSDT HTTPS 基础地址，例如 https://pay.example.com。使用 EPay submit.php 跳转协议和 MD5 签名，密钥填写商户 API Key 的 secret。',
+      providerNOWPayments: 'NOWPayments',
+      field_nowpaymentsApiBaseHint:
+        '填写 NOWPayments API 基础地址。生产密钥用 https://api.nowpayments.io/v1，沙盒密钥用 https://api-sandbox.nowpayments.io/v1；API Key 的环境必须与此地址一致。',
       typeDisabled: '类型已禁用',
       enableTypesFirst: '请先在上方启用至少一种服务商',
       easypayRedirect: '跳转',
@@ -1053,6 +1056,8 @@ export default {
       field_secretKey: '密钥',
       field_clientId: 'Client ID',
       field_apiKey: 'API Key',
+      field_ipnSecret: 'IPN 密钥',
+      field_payCurrency: '结算币种',
       field_publishableKey: '公开密钥',
       field_webhookSecret: 'Webhook 密钥',
       field_countryCode: '国家/地区代码',

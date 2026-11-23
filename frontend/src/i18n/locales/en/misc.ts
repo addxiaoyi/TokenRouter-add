@@ -614,6 +614,7 @@ export default {
     },
     methods: {
       epusdt: 'Cryptocurrency',
+      nowpayments: 'USDT (NOWPayments)',
       easypay: 'EasyPay',
       alipay: 'Alipay',
       wxpay: 'WeChat Pay',

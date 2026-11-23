@@ -1081,6 +1081,9 @@ export default {
       providerEPUSDT: 'EPUSDT / GMPay (EPay protocol)',
       field_epusdtApiBaseHint:
         'Enter the EPUSDT HTTPS base URL, such as https://pay.example.com. Uses the EPay submit.php flow with MD5 signatures and the merchant API key secret.',
+      providerNOWPayments: 'NOWPayments',
+      field_nowpaymentsApiBaseHint:
+        'Enter the NOWPayments API base URL. Use https://api.nowpayments.io/v1 for production keys and https://api-sandbox.nowpayments.io/v1 for sandbox keys; the API key environment must match this base URL.',
       typeDisabled: 'type disabled',
       enableTypesFirst: 'Enable at least one payment type above first',
       easypayRedirect: 'Redirect',
@@ -1124,6 +1127,8 @@ export default {
       field_secretKey: 'Secret Key',
       field_clientId: 'Client ID',
       field_apiKey: 'API Key',
+      field_ipnSecret: 'IPN Secret',
+      field_payCurrency: 'Settlement currency',
       field_publishableKey: 'Publishable Key',
       field_webhookSecret: 'Webhook Secret',
       field_countryCode: 'Country/region code',

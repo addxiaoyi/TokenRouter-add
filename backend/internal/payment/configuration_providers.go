@@ -50,12 +50,13 @@ var (
 	// remain visible. Keep its recognized secret names aligned with frontend
 	// providerConfig.ts sensitive metadata when changing the schema.
 	ConfigProviderSensitiveConfigFields = map[string]map[string]struct{}{
-		TypeEasyPay:   {"pkey": {}},
-		TypeEPUSDT:    {"secretkey": {}},
-		TypeAlipay:    {"privatekey": {}, "publickey": {}, "alipaypublickey": {}},
-		TypeWxpay:     {"privatekey": {}, "apiv3key": {}, "publickey": {}},
-		TypeStripe:    {"secretkey": {}, "webhooksecret": {}},
-		TypeAirwallex: {"apikey": {}, "webhooksecret": {}},
+		TypeEasyPay:     {"pkey": {}},
+		TypeEPUSDT:      {"secretkey": {}},
+		TypeNOWPayments: {"apikey": {}, "ipnsecret": {}},
+		TypeAlipay:      {"privatekey": {}, "publickey": {}, "alipaypublickey": {}},
+		TypeWxpay:       {"privatekey": {}, "apiv3key": {}, "publickey": {}},
+		TypeStripe:      {"secretkey": {}, "webhooksecret": {}},
+		TypeAirwallex:   {"apikey": {}, "webhooksecret": {}},
 	}
 
 	// ConfigProviderPendingOrderProtectedConfigFields lists credentials and
@@ -64,18 +65,19 @@ var (
 	// separate count includes pending, processing, paid and recharging in the
 	// PostgreSQL adapter.
 	ConfigProviderPendingOrderProtectedConfigFields = map[string]map[string]struct{}{
-		TypeEasyPay:   {"pkey": {}, "pid": {}},
-		TypeEPUSDT:    {"secretkey": {}, "pid": {}, "currency": {}, "apibase": {}},
-		TypeAlipay:    {"privatekey": {}, "publickey": {}, "alipaypublickey": {}, "appid": {}},
-		TypeWxpay:     {"privatekey": {}, "apiv3key": {}, "publickey": {}, "appid": {}, "mpappid": {}, "mchid": {}, "publickeyid": {}, "certserial": {}},
-		TypeStripe:    {"secretkey": {}, "webhooksecret": {}, "currency": {}},
-		TypeAirwallex: {"clientid": {}, "apikey": {}, "webhooksecret": {}, "apibase": {}, "accountid": {}, "currency": {}},
+		TypeEasyPay:     {"pkey": {}, "pid": {}},
+		TypeEPUSDT:      {"secretkey": {}, "pid": {}, "currency": {}, "apibase": {}},
+		TypeNOWPayments: {"apikey": {}, "ipnsecret": {}, "currency": {}, "paycurrency": {}, "apibase": {}},
+		TypeAlipay:      {"privatekey": {}, "publickey": {}, "alipaypublickey": {}, "appid": {}},
+		TypeWxpay:       {"privatekey": {}, "apiv3key": {}, "publickey": {}, "appid": {}, "mpappid": {}, "mchid": {}, "publickeyid": {}, "certserial": {}},
+		TypeStripe:      {"secretkey": {}, "webhooksecret": {}, "currency": {}},
+		TypeAirwallex:   {"clientid": {}, "apikey": {}, "webhooksecret": {}, "apibase": {}, "accountid": {}, "currency": {}},
 	}
 
 	// ConfigValidProviderKeys contains exact provider labels accepted by creation
 	// request validation and the configured adapter factory choices.
 	ConfigValidProviderKeys = map[string]bool{
-		TypeEasyPay: true, TypeAlipay: true, TypeWxpay: true, TypeStripe: true, TypeAirwallex: true, TypeEPUSDT: true,
+		TypeEasyPay: true, TypeAlipay: true, TypeWxpay: true, TypeStripe: true, TypeAirwallex: true, TypeEPUSDT: true, TypeNOWPayments: true,
 	}
 
 	// ConfigEasyPayCustomMethodCodePattern accepts nonempty lowercase ASCII
@@ -245,6 +247,7 @@ func (s *ConfigService) ConfigCountPendingOrders(ctx context.Context, providerIn
 // nonblank name are required; disabled drafts skip provider construction.
 // EPUSDT requires its cryptocurrency method, selects hosted popup checkout,
 // and rejects requests enabling automatic or buyer-initiated refunds.
+// NOWPayments likewise rejects automatic or buyer-initiated refunds.
 //
 // EasyPay name preparation mutates the supplied config map before custom
 // mapping validation. Enabled requests construct an adapter, which can defer
@@ -262,6 +265,11 @@ func (s *ConfigService) CreateProviderInstance(ctx context.Context, req CreatePr
 			return nil, infraerrors.BadRequest("REFUND_UNSUPPORTED", "epusdt automatic refunds are not supported")
 		}
 		req.PaymentMode = "popup"
+	}
+	if req.ProviderKey == TypeNOWPayments {
+		if req.RefundEnabled || req.AllowUserRefund {
+			return nil, infraerrors.BadRequest("REFUND_UNSUPPORTED", "nowpayments automatic refunds are not supported")
+		}
 	}
 	if req.ProviderKey == TypeEasyPay {
 		if err := ConfigValidateEasyPayTradeNumberCompatibility(req.Config); err != nil {
@@ -355,15 +363,18 @@ func (s *ConfigService) TestProviderDraft(ctx context.Context, req TestProviderD
 }
 
 // ConfigValidateProviderRequest requires a trimmed nonblank display name and
-// exact key in ConfigValidProviderKeys. EPUSDT requires its single hosted
-// cryptocurrency method; other provider support rules are validated by their
-// configuration-specific paths before persistence.
+// exact key in ConfigValidProviderKeys. EPUSDT and NOWPayments each require
+// their single hosted cryptocurrency method; other provider support rules are
+// validated by their configuration-specific paths before persistence.
 func ConfigValidateProviderRequest(providerKey, name, supportedTypes string) error {
 	if strings.TrimSpace(name) == "" {
 		return infraerrors.BadRequest("VALIDATION_ERROR", "provider name is required")
 	}
 	if providerKey == TypeEPUSDT && supportedTypes != TypeEPUSDT {
 		return infraerrors.BadRequest("VALIDATION_ERROR", "epusdt supports only the cryptocurrency payment method")
+	}
+	if providerKey == TypeNOWPayments && supportedTypes != TypeNOWPayments {
+		return infraerrors.BadRequest("VALIDATION_ERROR", "nowpayments supports only the cryptocurrency payment method")
 	}
 	if !ConfigValidProviderKeys[providerKey] {
 		return infraerrors.BadRequest("VALIDATION_ERROR", fmt.Sprintf("invalid provider key: %s", providerKey))
@@ -442,6 +453,7 @@ func ConfigEasyPayCustomMethodTypeConflictsWithBuiltin(methodType string) bool {
 // generally retain stored fields, while a supplied empty collection participates
 // in its corresponding update rules. EPUSDT always selects hosted popup mode
 // and rejects requests enabling automatic or buyer-initiated refunds.
+// NOWPayments likewise rejects automatic or buyer-initiated refunds.
 //
 // One successful in-progress count is memoized for protected credential
 // changes, disabling and support removal checks. Config merging rereads the
@@ -462,6 +474,11 @@ func (s *ConfigService) UpdateProviderInstance(ctx context.Context, id int64, re
 			return nil, infraerrors.BadRequest("REFUND_UNSUPPORTED", "epusdt automatic refunds are not supported")
 		}
 		req.PaymentMode = configPointer("popup")
+	}
+	if current.ProviderKey == TypeNOWPayments {
+		if req.RefundEnabled != nil && *req.RefundEnabled || req.AllowUserRefund != nil && *req.AllowUserRefund {
+			return nil, infraerrors.BadRequest("REFUND_UNSUPPORTED", "nowpayments automatic refunds are not supported")
+		}
 	}
 	var pendingOrderCount *int
 	getPendingOrderCount := func() (int, error) {
@@ -488,6 +505,9 @@ func (s *ConfigService) UpdateProviderInstance(ctx context.Context, id int64, re
 	}
 	if current.ProviderKey == TypeEPUSDT && nextSupportedTypes != TypeEPUSDT {
 		return nil, infraerrors.BadRequest("VALIDATION_ERROR", "epusdt requires its cryptocurrency payment method")
+	}
+	if current.ProviderKey == TypeNOWPayments && nextSupportedTypes != TypeNOWPayments {
+		return nil, infraerrors.BadRequest("VALIDATION_ERROR", "nowpayments requires its cryptocurrency payment method")
 	}
 	if err := s.ConfigValidateVisibleMethodEnablementConflicts(ctx, id, current.ProviderKey, nextSupportedTypes, nextEnabled); err != nil {
 		return nil, err

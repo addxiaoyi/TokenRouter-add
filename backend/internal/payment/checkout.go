@@ -167,7 +167,7 @@ func (s *Checkout) CreateOrder(ctx context.Context, req CreateOrderRequest) (*Cr
 	if err != nil {
 		appErr := new(infraerrors.ApplicationError)
 		if errors.As(err, &appErr) && appErr.Reason == CodePaymentCreateUnconfirmed {
-			// EPUSDT EPay may have committed a checkout before its response was lost. Keep
+			// EPUSDT EPay or NOWPayments may have committed a payment before its response was lost. Keep
 			// this merchant number pending so a later signed callback can complete it.
 			return nil, appErr.WithMetadata(map[string]string{
 				"order_id": strconv.FormatInt(order.ID, 10), "out_trade_no": order.OutTradeNo,
@@ -257,7 +257,7 @@ func (s *Checkout) CreateOrderInTx(ctx context.Context, req CreateOrderRequest, 
 //
 // Official WeChat app identity follows the payer/OpenID mode, Alipay stores
 // appId, EasyPay/EPUSDT store pid, and Airwallex stores accountId. Currency for
-// EPUSDT, Stripe and Airwallex comes from selected configuration; WeChat records
+// EPUSDT, Stripe, Airwallex and NOWPayments comes from selected configuration; WeChat records
 // CNY. Secret
 // credentials remain outside this snapshot and are read from current instance
 // configuration during provider construction. A map containing only
@@ -305,7 +305,7 @@ func BuildPaymentOrderProviderSnapshot(sel *InstanceSelection, req CreateOrderRe
 			snapshot["merchant_id"] = merchantID
 		}
 	}
-	if providerKey == TypeStripe || providerKey == TypeEPUSDT {
+	if providerKey == TypeStripe || providerKey == TypeEPUSDT || providerKey == TypeNOWPayments {
 		snapshot["currency"] = ProviderConfigCurrency(providerKey, sel.Config)
 	}
 	if providerKey == TypeAirwallex {
@@ -508,8 +508,8 @@ func (s *Checkout) InvokeProvider(ctx context.Context, order *Order, req CreateO
 	SanitizeCreatePaymentResponseDetails(pr)
 	order, err = s.PersistCreatePaymentResponse(ctx, order.ID, sel, pr)
 	if err != nil {
-		if sel.ProviderKey == TypeEPUSDT {
-			// The cashier already exists even if its detail write failed. Preserve the
+		if sel.ProviderKey == TypeEPUSDT || sel.ProviderKey == TypeNOWPayments {
+			// The external payment already exists even if its detail write failed. Preserve the
 			// pending merchant order for a later signed callback instead of failure marking.
 			return nil, infraerrors.ServiceUnavailable(CodePaymentCreateUnconfirmed, "payment details could not be saved")
 		}

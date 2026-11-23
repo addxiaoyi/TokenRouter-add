@@ -85,6 +85,7 @@ export function usePaymentSettings(
     { value: 'alipay', label: '支付宝' },
     { value: 'wxpay', label: '微信支付' },
     { value: 'epusdt', label: t('admin.settings.payment.providerEPUSDT') },
+    { value: 'nowpayments', label: t('admin.settings.payment.providerNOWPayments') },
   ] as const
 
   /**
@@ -191,6 +192,7 @@ export function usePaymentSettings(
     { value: 'stripe', label: t('payment.methods.stripe') },
     { value: 'airwallex', label: t('payment.methods.airwallex') },
     { value: 'epusdt', label: t('payment.methods.epusdt') },
+    { value: 'nowpayments', label: t('payment.methods.nowpayments') },
   ])
 
   /**
@@ -335,6 +337,7 @@ export function usePaymentSettings(
     { value: 'stripe', label: t('admin.settings.payment.providerStripe') },
     { value: 'airwallex', label: t('admin.settings.payment.providerAirwallex') },
     { value: 'epusdt', label: t('admin.settings.payment.providerEPUSDT') },
+    { value: 'nowpayments', label: t('admin.settings.payment.providerNOWPayments') },
   ])
 
   const enabledProviderKeyOptions = computed(() => {

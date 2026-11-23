@@ -19,7 +19,7 @@
       @click="method.available && emit('select', selected === method.type ? '' : method.type)"
     >
       <Icon
-        v-if="method.type === 'epusdt'"
+        v-if="method.type === 'epusdt' || method.type === 'nowpayments'"
         name="recharge"
         size="lg"
         class="h-6 w-6 shrink-0 text-primary-600"

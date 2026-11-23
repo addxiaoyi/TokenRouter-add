@@ -40,6 +40,8 @@ const (
 	TypeLink        PaymentType = "link"    // historical Stripe Link alias
 	TypeEasyPay     PaymentType = "easypay" // EasyPay adapter identity
 	TypeEPUSDT      PaymentType = "epusdt"  // EPUSDT EPay cryptocurrency checkout
+	// NOWPayments hosted cryptocurrency checkout adapter identity.
+	TypeNOWPayments PaymentType = "nowpayments"
 	// Airwallex checkout adapter identity.
 	TypeAirwallex PaymentType = "airwallex"
 

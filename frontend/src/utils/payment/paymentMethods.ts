@@ -20,6 +20,7 @@ export const METHOD_ORDER = [
   'stripe',
   'airwallex',
   'epusdt',
+  'nowpayments',
 ] as const
 
 /**
