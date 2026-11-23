@@ -2,6 +2,25 @@
 // Empty sampling windows remain distinct from healthy service, and metric labels
 // distinguish request duration from the nullable first-token latency measurement.
 export default {
+  availability: 'Availability',
+  successfulRequests: '{success}/{total} requests succeeded',
+  cacheReadTokens: 'Cache read tokens',
+  activeModels: 'Active models',
+  activeModelCount: '{count} models with traffic',
+  viewModels: 'View models',
+  cacheExplanation: 'Cache statistics',
+  tpsHint:
+    'TPS averages output tokens per second across complete streams with valid output timing. Requests without valid timing are excluded.',
+  groupCount: '{count} groups',
+  windowHours: '{count}-hour observation window',
+  hours1: '1h',
+  sortLabel: 'Sort groups',
+  sort: {
+    requests: 'Requests',
+    availability: 'Availability',
+    latency: 'Latency',
+    cache: 'Cache hit rate',
+  },
   availableModels: 'Available models',
   past: 'Past',
   now: 'Now',
@@ -13,9 +32,9 @@ export default {
   title: 'Service monitoring',
   description: 'Review request performance, latency, and model activity across available groups.',
   window: 'Observation window',
-  hours24: '24 hours',
+  hours24: '24h',
   hours72: '3 days',
-  hours168: '7 days',
+  hours168: '7d',
   search: 'Search groups',
   all: 'All statuses',
   healthy: 'Healthy',
@@ -25,7 +44,7 @@ export default {
   successRate: 'Request success',
   requests: 'Requests',
   failures: 'Failed requests',
-  latency: 'Average duration',
+  latency: 'Latency',
   ttft: 'Average first-token delay',
   noSamples: 'No request samples in this window',
   sampleNote:
@@ -37,8 +56,9 @@ export default {
   disabled: 'Service monitoring is disabled',
   disabledHint: 'Observed requests will appear here after an administrator enables monitoring.',
   details: 'View group details',
-  trend: 'Hourly request success',
-  trendHint: 'Gaps have no observed samples. Lines do not bridge missing hours.',
+  trend: 'Request success history',
+  trendHint:
+    'The 1h, 24h, and 7d windows use 5-minute, 30-minute, and 4-hour buckets. Gaps have no samples and lines do not bridge them.',
   models: 'Most-used models',
   model: 'Model',
   modelRequests: 'Successful requests',

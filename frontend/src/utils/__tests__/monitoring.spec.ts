@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { monitoringStatus, trendSegments } from '../monitoring'
+import { monitoringStatus, trendSegments, monitoringBuckets } from '../monitoring'
 import type { MonitoringGroup } from '@/api/monitoring'
 
 // monitoring.spec.ts protects no-sample semantics and missing-hour chart gaps.
@@ -26,6 +26,25 @@ function group(success: number, errors: number, rate: number | null): Monitoring
 }
 
 describe('service monitoring observations', () => {
+  // Fine-grained samples share an hour and a later interval has no traffic.
+  // Request weighting preserves the busy sample, and an exact end excludes the following bucket.
+  it('combines counts and preserves empty intervals at exclusive boundaries', () => {
+    const buckets = monitoringBuckets(
+      [
+        { time: '2026-11-23T10:00:00Z', success: 9, errors: 0 },
+        { time: '2026-11-23T10:30:00Z', success: 0, errors: 1 },
+        { time: '2026-11-23T12:00:00Z', success: 1, errors: 0 },
+      ],
+      '2026-11-23T10:00:00Z',
+      '2026-11-23T12:00:00Z',
+    )
+    expect(buckets.map((bucket) => bucket.rate)).toEqual([0.9, null])
+    expect(monitoringBuckets([], '2026-11-23T10:00:00Z', '2026-11-23T11:00:00Z', 5)).toHaveLength(
+      12,
+    )
+    expect(monitoringBuckets([], 'invalid', 'invalid')).toEqual([])
+  })
+
   // Empty traffic must remain idle even if a malformed response carries a rate.
   // Measured zero-percent success remains an incident instead of becoming an empty state.
   it('distinguishes empty observations from healthy and failed traffic', () => {

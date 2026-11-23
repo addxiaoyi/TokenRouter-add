@@ -16,6 +16,8 @@ const fixture = vi.hoisted(() => ({
   available: vi.fn(),
   monitoring: vi.fn(),
   copy: vi.fn(),
+  back: vi.fn(),
+  push: vi.fn(),
 }))
 const auth = reactive({ isAuthenticated: true, user: { id: 7 }, checkAuth: vi.fn() })
 const route = reactive({ path: '/models', query: {} as Record<string, string> })
@@ -29,7 +31,10 @@ vi.mock('@/stores', () => ({
   useAppStore: () => ({ publicSettingsLoaded: true, fetchPublicSettings: vi.fn() }),
 }))
 vi.mock('@/stores/auth', () => ({ useAuthStore: () => auth }))
-vi.mock('vue-router', () => ({ useRoute: () => route }))
+vi.mock('vue-router', () => ({
+  useRoute: () => route,
+  useRouter: () => ({ back: fixture.back, push: fixture.push }),
+}))
 vi.mock('vue-i18n', async (original) => ({
   ...(await original<typeof import('vue-i18n')>()),
   useI18n: () => ({ t: (key: string) => key }),
@@ -122,6 +127,22 @@ beforeEach(() => {
 })
 
 describe('model catalog', () => {
+  // Returning from a shared link must keep the visitor inside this application.
+  // Existing internal navigation uses history, while direct entry chooses the authenticated dashboard.
+  it('returns through internal history and falls back on direct entry', async () => {
+    const original = window.history.state
+    const view = mountCatalog()
+    await flushPromises()
+    window.history.replaceState({ back: '/monitoring' }, '')
+    await view.get('.catalog-back').trigger('click')
+    expect(fixture.back).toHaveBeenCalledOnce()
+    window.history.replaceState({ back: '//elsewhere.invalid' }, '')
+    await view.get('.catalog-back').trigger('click')
+    expect(fixture.push).toHaveBeenCalledWith('/dashboard')
+    window.history.replaceState(original, '')
+    view.unmount()
+  })
+
   // The lowest priced offer can appear after the first group in catalog order.
   // Opening details must preserve that displayed offer before the user selects another route.
   it('opens the displayed starting quote when a later group is cheaper', async () => {

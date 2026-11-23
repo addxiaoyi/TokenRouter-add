@@ -50,6 +50,8 @@
               :description="option.description"
               :stats="monitoring?.groups.find((group) => group.id === option.value)"
               :window-end="monitoring?.end"
+              :window-start="monitoring?.start"
+              :bucket-minutes="monitoring?.bucket_minutes"
               :selected="isSelectedGroup(option.value)"
               class="w-full"
             />

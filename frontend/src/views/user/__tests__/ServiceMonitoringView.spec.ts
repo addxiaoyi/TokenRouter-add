@@ -66,6 +66,23 @@ beforeEach(() => {
 })
 
 describe('service monitoring', () => {
+  // A time-window change retires the previous response before loading fine-grained observations.
+  // The one-hour control sends its actual duration and the cards preserve supplied TPS and interval gaps.
+  it('loads the one-hour window and displays measured throughput', async () => {
+    const observed = snapshot('Stream group')
+    observed.groups[0]!.avg_tps = 25.5
+    observed.bucket_minutes = 30
+    read.mockResolvedValue(observed)
+    const view = mountMonitoring()
+    await flushPromises()
+    expect(view.text()).toContain('25.5 t/s')
+    await view.findAll('.monitoring-window button')[0]!.trigger('click')
+    await flushPromises()
+    expect(read).toHaveBeenLastCalledWith(1)
+    expect(view.findAll('.group-monitor-bars span')).toHaveLength(48)
+    view.unmount()
+  })
+
   // Two visible groups carry a measured hit rate and an absent token sample.
   // Each card must show its own rate without turning missing observations into zero.
   it('shows group cache hit rates and preserves no-sample states', async () => {

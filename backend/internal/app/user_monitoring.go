@@ -17,6 +17,8 @@ import (
 // Public active groups and explicitly granted exclusive groups are the only
 // inputs to aggregate queries. Administrator identity does not bypass user-view
 // authorization, and disabled monitoring returns an explicit unavailable state.
+// Description and multiplier fields expose the same group metadata as the model
+// catalog; the multiplier visibility flag applies before observations are read.
 
 // userMonitoring joins permission readers to the bounded Ops aggregate store.
 type userMonitoring struct {
@@ -33,6 +35,7 @@ type userMonitoring struct {
 func (s userMonitoring) Read(ctx context.Context, userID int64, hours int) (ops.UserMonitoring, error) {
 	end := time.Now().UTC()
 	view := ops.UserMonitoring{Enabled: s.ops.IsMonitoringEnabled(ctx), Start: end.Add(-time.Duration(hours) * time.Hour), End: end, Groups: []ops.MonitoringGroup{}}
+	view.BucketMinutes = ops.UserMonitoringBucketMinutes(view.Start, view.End)
 	allowed, err := s.access.AllowedGroupIDs(ctx, userID)
 	if err != nil {
 		return view, err
@@ -57,7 +60,13 @@ func (s userMonitoring) Read(ctx context.Context, userID int64, hours int) (ops.
 		if group.ProviderCount <= 0 {
 			continue
 		}
-		view.Groups = append(view.Groups, ops.MonitoringGroup{ID: group.ID, Name: group.Name})
+		visible := ops.MonitoringGroup{ID: group.ID, Name: group.Name, Description: group.Description}
+		hideRate, _ := group.RoutingPolicy.FeaturesConfig["hide_marketplace_rate_multiplier"].(bool)
+		if !hideRate {
+			rate := group.RateMultiplier
+			visible.RateMultiplier = &rate
+		}
+		view.Groups = append(view.Groups, visible)
 	}
 	queryCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()

@@ -30,7 +30,7 @@ func NewUserMonitoringHandler(reader UserMonitoringReader) *UserMonitoringHandle
 	return &UserMonitoringHandler{reader: reader}
 }
 
-// Read returns service summaries for the current user over 24, 72, or 168 hours.
+// Read returns service summaries for the current user over 1, 24, 72, or 168 hours.
 // Unknown windows and missing identity are rejected before any query, and the
 // supplied request context cancels both permission and observation reads.
 func (h *UserMonitoringHandler) Read(c *gin.Context) {
@@ -41,8 +41,8 @@ func (h *UserMonitoringHandler) Read(c *gin.Context) {
 		return
 	}
 	hours, err := strconv.Atoi(c.DefaultQuery("hours", "24"))
-	if err != nil || (hours != 24 && hours != 72 && hours != 168) {
-		httpx.BadRequest(c, "Monitoring window must be 24, 72, or 168 hours")
+	if err != nil || (hours != 1 && hours != 24 && hours != 72 && hours != 168) {
+		httpx.BadRequest(c, "Monitoring window must be 1, 24, 72, or 168 hours")
 		return
 	}
 	view, err := h.reader.Read(c.Request.Context(), subject.UserID, hours)

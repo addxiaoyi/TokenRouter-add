@@ -715,6 +715,8 @@
                 "
                 :stats="groupMonitoring.byID.value.get(Number(option.value))"
                 :window-end="groupMonitoring.snapshot.value?.end"
+                :window-start="groupMonitoring.snapshot.value?.start"
+                :bucket-minutes="groupMonitoring.snapshot.value?.bucket_minutes"
                 :selected="selected"
               />
             </template>

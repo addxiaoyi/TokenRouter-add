@@ -7,6 +7,7 @@ import ModelPriceSummary from './ModelPriceSummary.vue'
 import type { ModelSearchEntry } from '@/utils/marketplaceCatalog'
 import type { CatalogQuote } from '@/utils/catalogQuote'
 import type { MonitoringGroup } from '@/api/monitoring'
+import { monitoringBuckets } from '@/utils/monitoring'
 
 // ModelOfferCard.vue presents an indexed model with a coherent original quote.
 // Compact input, output, and cache prices share that offer's routing identity.
@@ -72,18 +73,15 @@ const buckets = computed(() => {
   // present; the exclusive endpoint keeps an exact hour boundary in the preceding
   // bucket. Status bands follow monitoring's 99% healthy and 95% degraded cutoffs.
   const hourMS = 3600000
-  const lastHour =
-    Math.floor(
-      ((props.windowEnd ? new Date(props.windowEnd).getTime() : Date.now()) - 1) / hourMS,
-    ) * hourMS
-  const points = new Map(
-    props.stats?.trend.map((point) => [new Date(point.time).getTime(), point]) ?? [],
-  )
-  return Array.from({ length: 12 }, (_, index) => {
-    const point = points.get(lastHour - (11 - index) * hourMS)
-    const total = point ? point.success + point.errors : 0
-    return total ? point!.success / total : null
-  })
+  const end = props.windowEnd ? Date.parse(props.windowEnd) : Date.now()
+  const lastHour = Math.floor((end - 1) / hourMS) * hourMS
+  // Condense finer observations by request counts so each miniature bar remains
+  // one hour; empty intervals still carry no success-rate claim after conversion.
+  return monitoringBuckets(
+    props.stats?.trend ?? [],
+    new Date(lastHour - 11 * hourMS).toISOString(),
+    new Date(end).toISOString(),
+  ).map((bucket) => bucket.rate)
 })
 
 // openDetails delegates model selection without changing the quoted group identity.

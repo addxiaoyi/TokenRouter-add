@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import BaseDialog from '@/components/common/BaseDialog.vue'
@@ -39,6 +39,7 @@ import { providerBrandDisplayName } from '@/utils/providerBrand'
 // Browsing presentation belongs to this mounted page; catalog and measurement
 // ownership remain encapsulated in composables that invalidate retired account scopes.
 const route = useRoute()
+const router = useRouter()
 const auth = useAuthStore()
 const { t } = useI18n()
 const { copyToClipboard } = useClipboard()
@@ -131,6 +132,23 @@ const countDigits = computed(() =>
   catalog.loading.value ? ['—'] : String(catalog.allModels.value.length).split(''),
 )
 
+// goBack returns to a previous application route or a stable account entrypoint.
+// Direct links have no application history, so authenticated visitors return to
+// their dashboard and guests return home instead of leaving the current site.
+function goBack(): void {
+  const previous = window.history.state?.back
+  if (
+    typeof previous === 'string' &&
+    previous.startsWith('/') &&
+    !previous.startsWith('//') &&
+    previous.split('?')[0] !== '/models'
+  ) {
+    router.back()
+    return
+  }
+  void router.push(auth.isAuthenticated ? '/dashboard' : '/')
+}
+
 // groupState labels observed group traffic without inventing a running state.
 function groupState(id: number): string {
   const rate = monitoring.byID.value.get(id)?.success_rate
@@ -188,6 +206,9 @@ watch(
     <AppHeader public-page class="reference-header" />
     <main id="main-content" class="catalog-page catalog-public">
       <header class="reference-title-row">
+        <button type="button" class="offer-toolbar-button catalog-back" @click="goBack"
+          ><Icon name="arrowLeft" size="sm" />{{ t('common.back') }}</button
+        >
         <h1>{{ t('marketplace.referenceEnabledModels') }}</h1>
         <output
           class="reference-model-count"
@@ -474,6 +495,8 @@ watch(
             :model-count="group.model_count"
             :stats="monitoring.byID.value.get(group.id)"
             :window-end="monitoring.snapshot.value?.end"
+            :window-start="monitoring.snapshot.value?.start"
+            :bucket-minutes="monitoring.snapshot.value?.bucket_minutes"
             :selected="catalog.groupID.value === group.id" /><GroupAvailabilityBar
             v-if="!auth.isAuthenticated && group.availability"
             :availability="group.availability"
@@ -530,6 +553,8 @@ watch(
           "
           :stats="monitoring.byID.value.get(catalog.selectedOffer.value.group.id)"
           :window-end="monitoring.snapshot.value?.end"
+          :window-start="monitoring.snapshot.value?.start"
+          :bucket-minutes="monitoring.snapshot.value?.bucket_minutes"
         />
         <ModelPriceSummary v-if="selectedQuote" :price="selectedQuote" :token-unit="tokenUnit" />
         <ModelPricingPanel
@@ -556,7 +581,7 @@ watch(
   @apply mx-auto w-full max-w-[1800px] px-4 pb-10 pt-7 sm:px-6;
 }
 .reference-title-row {
-  @apply mb-6 flex items-center gap-3;
+  @apply mb-6 flex flex-wrap items-center gap-3;
 }
 .reference-title-row h1 {
   @apply text-lg font-semibold;

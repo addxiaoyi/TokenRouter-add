@@ -2,6 +2,20 @@
 // No-sample states stay distinct from healthy traffic, and summary copy identifies
 // observations as aggregate service measurements rather than a user's own bill.
 export default {
+  availability: '可用性',
+  successfulRequests: '{success}/{total} 次请求成功',
+  cacheReadTokens: '缓存读取 tokens',
+  activeModels: '有流量模型',
+  activeModelCount: '{count} 个模型有流量',
+  viewModels: '查看模型',
+  cacheExplanation: '缓存统计说明',
+  tpsHint:
+    'TPS 为具有完整输出计时的流式请求的平均输出速度，单位为 tokens/秒。没有有效计时的请求不参与平均。',
+  groupCount: '{count} 个分组',
+  windowHours: '{count} 小时观测窗口',
+  hours1: '1h',
+  sortLabel: '分组排序',
+  sort: { requests: '请求量', availability: '可用率', latency: '延迟', cache: '缓存命中率' },
   availableModels: '可用模型',
   past: '过去',
   now: '现在',
@@ -13,9 +27,9 @@ export default {
   title: '服务监控',
   description: '查看可用分组的请求表现、延迟和模型使用情况。',
   window: '观测时间',
-  hours24: '24 小时',
+  hours24: '24h',
   hours72: '3 天',
-  hours168: '7 天',
+  hours168: '7d',
   search: '搜索分组',
   all: '全部状态',
   healthy: '运行正常',
@@ -25,7 +39,7 @@ export default {
   successRate: '请求成功率',
   requests: '请求数',
   failures: '失败请求',
-  latency: '平均请求时长',
+  latency: '延迟',
   ttft: '平均首字延迟',
   noSamples: '这个时间段内没有请求样本',
   sampleNote:
@@ -37,8 +51,9 @@ export default {
   disabled: '服务监控暂未开启',
   disabledHint: '管理员开启监控后，这里会显示实际请求的观测结果。',
   details: '查看分组详情',
-  trend: '每小时成功率',
-  trendHint: '空缺时段没有观测样本，折线不会跨过空缺。',
+  trend: '历史请求成功率',
+  trendHint:
+    '1h、24h 和 7d 窗口分别按 5 分钟、30 分钟和 4 小时汇总。空缺时段没有观测样本，折线不会跨过空缺。',
   models: '常用模型',
   model: '模型',
   modelRequests: '成功请求数',

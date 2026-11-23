@@ -56,14 +56,18 @@ func TestUserMonitoringRevokedGrants(t *testing.T) {
 	users := &monitoringUsers{user: identity.User{ID: 7, Role: "admin", Status: "active", AllowedGroups: []int64{2}}}
 	metrics := &monitoringMetrics{}
 	service := userMonitoring{access: marketplaceGroupAccess{users: users}, metrics: metrics, ops: &ops.OpsService{}, groups: monitoringGroups{groups: []routing.Group{
-		{ID: 1, ProviderCount: 1, ActiveProviderCount: 1},
-		{ID: 2, IsExclusive: true, ProviderCount: 1, ActiveProviderCount: 1},
+		{ID: 1, ProviderCount: 1, ActiveProviderCount: 1, Description: "Public routing information", RateMultiplier: 0.5},
+		{ID: 2, IsExclusive: true, ProviderCount: 1, ActiveProviderCount: 1, RateMultiplier: 0.8, RoutingPolicy: routing.GroupRoutingPolicy{FeaturesConfig: map[string]any{"hide_marketplace_rate_multiplier": true}}},
 		{ID: 3, IsExclusive: true, ProviderCount: 1, ActiveProviderCount: 1},
 		{ID: 4},
 	}}}
-	_, err := service.Read(t.Context(), 7, 24)
+	view, err := service.Read(t.Context(), 7, 24)
 	require.NoError(t, err)
 	require.Equal(t, []int64{1, 2}, metrics.ids)
+	require.Equal(t, 30, view.BucketMinutes)
+	require.Equal(t, "Public routing information", view.Groups[0].Description)
+	require.Equal(t, 0.5, *view.Groups[0].RateMultiplier)
+	require.Nil(t, view.Groups[1].RateMultiplier)
 	users.user.AllowedGroups = nil
 	_, err = service.Read(t.Context(), 7, 24)
 	require.NoError(t, err)

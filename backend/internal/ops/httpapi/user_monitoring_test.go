@@ -42,7 +42,7 @@ func TestUserMonitoringAuthAndWindow(t *testing.T) {
 		user   int64
 		status int
 	}{
-		{"?hours=24", 0, 401}, {"?hours=8760", 7, 400}, {"?hours=x", 7, 400}, {"?hours=72&user_id=99", 7, 200},
+		{"?hours=24", 0, 401}, {"?hours=8760", 7, 400}, {"?hours=x", 7, 400}, {"?hours=72&user_id=99", 7, 200}, {"?hours=1", 7, 200},
 	} {
 		reader := &monitoringReader{}
 		handler := NewUserMonitoringHandler(reader)
@@ -58,7 +58,11 @@ func TestUserMonitoringAuthAndWindow(t *testing.T) {
 		require.Equal(t, tc.status, response.Code)
 		if tc.status == 200 {
 			require.Equal(t, int64(7), reader.user)
-			require.Equal(t, 72, reader.hours)
+			if tc.query == "?hours=1" {
+				require.Equal(t, 1, reader.hours)
+			} else {
+				require.Equal(t, 72, reader.hours)
+			}
 			require.Contains(t, response.Body.String(), `"enabled":false`)
 			require.Equal(t, "private, no-store", response.Header().Get("Cache-Control"))
 		} else {
