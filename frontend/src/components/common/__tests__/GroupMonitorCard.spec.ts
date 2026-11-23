@@ -6,7 +6,10 @@ import type { MonitoringGroup } from '@/api/monitoring'
 // GroupMonitorCard.spec.ts protects measured cache rates and missing-hour presentation.
 // Fixed observation endpoints make the current empty hour distinguishable from
 // the last successful request, while zero cache shares remain measured misses.
-vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
+vi.mock('vue-i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('vue-i18n')>()),
+  useI18n: () => ({ t: (key: string) => key }),
+}))
 
 // observed creates one successful earlier hour with an observed zero cache share.
 function observed(): MonitoringGroup {

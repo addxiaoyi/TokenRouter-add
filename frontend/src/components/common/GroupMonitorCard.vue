@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { MonitoringGroup } from '@/api/monitoring'
+import { formatCompactNumber } from '@/utils/format'
 import { monitoringBuckets, monitoringStatus } from '@/utils/monitoring'
 
 // GroupMonitorCard.vue presents routing metadata beside measured group performance.
@@ -158,10 +159,12 @@ function bucketTitle(time: number, rate: number | null): string {
         ><dt>{{ t('monitoring.cacheHitRate') }}</dt
         ><dd>{{ percent(stats?.cache_hit_rate) }}</dd></div
       >
+      <!-- Compact totals keep large cache volumes on one line; the title retains
+           the exact observed count for inspecting a rounded display. -->
       <div
         ><dt>{{ t('monitoring.cacheReadTokens') }}</dt
-        ><dd>{{
-          stats?.cache_read_tokens == null ? '—' : stats.cache_read_tokens.toLocaleString()
+        ><dd class="whitespace-nowrap" :title="stats?.cache_read_tokens?.toLocaleString()">{{
+          stats?.cache_read_tokens == null ? '—' : formatCompactNumber(stats.cache_read_tokens)
         }}</dd></div
       >
       <div v-if="referenceMultiplier != null"
