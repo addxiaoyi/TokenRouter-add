@@ -151,6 +151,18 @@ vi.mock('@/api', () => ({
   },
 }))
 
+// Monitoring reads use a bounded account fixture; key lifecycle tests retain
+// their existing API doubles and never contact live group observation services.
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ user: { id: 1 } }) }))
+vi.mock('@/api/monitoring', () => ({
+  readMonitoring: async () => ({
+    enabled: true,
+    start: '2026-11-22T00:00:00Z',
+    end: '2026-11-23T00:00:00Z',
+    groups: [],
+  }),
+}))
+
 vi.mock('@/stores/app', () => ({
   useAppStore: () => ({
     showError,
@@ -471,6 +483,25 @@ describe('user KeysView column settings', () => {
     isCurrentStep.mockReturnValue(false)
     createKey.mockResolvedValue(createApiKey())
     updateKey.mockResolvedValue(createApiKey())
+  })
+
+  // A key carries measured today misses and a weighted recent-range cache share.
+  // The usage cell must show both independently while preserving its charged amounts.
+  it('shows cache shares from the key usage response', async () => {
+    getDashboardApiKeysUsage.mockResolvedValueOnce({
+      stats: {
+        '1': {
+          api_key_id: 1,
+          today_actual_cost: 1,
+          total_actual_cost: 2,
+          today_cache_hit_rate: 0,
+          total_cache_hit_rate: 0.6,
+        },
+      },
+    })
+    const wrapper = await mountView()
+    expect(wrapper.get('[data-testid="key-cache-today"]').text()).toContain('0.00%')
+    expect(wrapper.get('[data-testid="key-cache-range"]').text()).toContain('60.00%')
   })
 
   // The usage endpoint returns different daily and thirty-day charged costs. The test
@@ -977,9 +1008,8 @@ describe('user KeysView column settings', () => {
 
     await wrapper.get('[title="keys.clickToChangeGroup"]').trigger('click')
     await nextTick()
-    expect(wrapper.get('[data-test="group-option-item"]').attributes('data-has-capacity')).toBe(
-      'false',
-    )
+    expect(wrapper.text()).not.toContain('144')
+    expect(wrapper.find('[data-test="group-capacity"]').exists()).toBe(false)
 
     await getButtonByText(wrapper, 'Create API Key').trigger('click')
     await nextTick()

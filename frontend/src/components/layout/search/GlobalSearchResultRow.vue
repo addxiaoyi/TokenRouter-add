@@ -152,7 +152,7 @@ function formatTokenSide(value: number | null): string {
 }
 
 // formatPrice converts a price summary into display text. Token quotes show input and
-// output per million tokens; image and video quotes show their single cheapest unit;
+// output per million tokens; image, video, and request quotes retain their billing unit;
 // unpriced models show the marketplace's unpriced label without a unit line.
 function formatPrice(summary: ModelPriceSummary): PriceDisplay {
   if (summary.kind === 'token') {
@@ -162,9 +162,13 @@ function formatPrice(summary: ModelPriceSummary): PriceDisplay {
       from: summary.varies,
     }
   }
-  if (summary.kind === 'image' || summary.kind === 'video') {
+  if (summary.kind === 'image' || summary.kind === 'video' || summary.kind === 'per_request') {
     const perUnit =
-      summary.kind === 'image' ? t('marketplace.perImage') : t('marketplace.perSecond')
+      summary.kind === 'image'
+        ? t('marketplace.perImage')
+        : summary.kind === 'per_request'
+          ? t('marketplace.catalogUnit.per_request')
+          : t('marketplace.perSecond')
     return {
       value: formatPriceNumber(summary.amount),
       unit: `${balanceUnitName.value} ${perUnit}`,

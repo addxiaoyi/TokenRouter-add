@@ -5,6 +5,26 @@
 
 export default {
   marketplace: {
+    catalogLoadFailed: 'Could not load the model catalog. Try again.',
+    catalogDescription:
+      '{count} models · {groups} available groups. Compare capabilities and quoted prices.',
+    catalogFilters: 'Model filters',
+    catalogGroupHint: 'Compare observed group performance, then browse its models and quotes.',
+    catalogModels: 'models',
+    catalogSort: 'Sort order',
+    catalogDefaultOrder: 'Default order',
+    catalogNameOrder: 'Name order',
+    catalogTokenScale: 'Token display unit',
+    catalogView: 'View mode',
+    catalogCards: 'Cards',
+    catalogTable: 'Table',
+    catalogOffers: '{count} available groups',
+    catalogDetails: 'View details',
+    catalogModel: 'Model',
+    catalogStartingPrice: 'Starting quote',
+    catalogPrice: 'Reference price',
+    requestPricing: 'Per request',
+    catalogUnit: { image: '/ image', video: '/ second', per_request: '/ request' },
     exclusive: 'Exclusive',
     title: 'Model Marketplace',
     subtitle: 'View available models',

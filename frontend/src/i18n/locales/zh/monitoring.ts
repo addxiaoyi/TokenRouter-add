@@ -2,6 +2,10 @@
 // No-sample states stay distinct from healthy traffic, and summary copy identifies
 // observations as aggregate service measurements rather than a user's own bill.
 export default {
+  availableModels: '可用模型',
+  past: '过去',
+  now: '现在',
+  referenceMultiplier: '参考倍率',
   cacheHitRate: '缓存命中率',
   noCacheSamples: '暂无输入 token 数据',
   cacheHitRateHint:

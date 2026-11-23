@@ -77,6 +77,8 @@ export default {
   },
   // API Keys
   keys: {
+    cacheToday: '缓存命中（今日）',
+    cacheRange: '缓存命中（30天）',
     title: 'API 密钥',
     description: '管理您的 API 密钥和访问令牌',
     searchPlaceholder: '搜索名称或Key...',

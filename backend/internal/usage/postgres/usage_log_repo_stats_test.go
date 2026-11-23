@@ -10,14 +10,16 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/TokenFlux/TokenRouter/internal/pkg/timezone"
 	"github.com/TokenFlux/TokenRouter/internal/usage"
 )
 
-// Summary and endpoint SQL must retain user-charge meanings even when a provider
+// usage_log_repo_stats_test.go verifies report scopes and user-charge meanings
+// even when provider filtering narrows records. Summary and endpoint SQL must
+// retain user-charge meanings even when a provider
 // filter narrows records. Mocked reports check transaction-local JIT recovery,
 // endpoint-source dispatch, model and transport predicates, and platform cost
 // accumulation while keeping provider expense separate from actual_cost.
-
 // TestProviderReportOwnsJITTransaction injects successful and failed report
 // queries on a pool-backed store. It checks local JIT setup followed by commit
 // on success or rollback on failure.
@@ -98,7 +100,6 @@ func TestResolveEndpointColumn(t *testing.T) {
 		{"", "ul.inbound_endpoint"},        // Default column
 		{"unknown", "ul.inbound_endpoint"}, // Unknown types use the default column.
 	}
-
 	for _, tc := range tests {
 		t.Run(tc.endpointType, func(t *testing.T) {
 			got := resolveEndpointColumn(tc.endpointType)
@@ -117,7 +118,6 @@ func TestProviderFilteredEndpointStatsKeepUserActualCost(t *testing.T) {
 	end := start.Add(7 * 24 * time.Hour)
 	providerID := int64(3667)
 	actualExpr := regexp.QuoteMeta("COALESCE(SUM(actual_cost), 0) as actual_cost")
-
 	// Supply a user charge far above base cost for each endpoint shape, making a
 	// provider-cost substitution fail the same decoded-value assertions.
 	for _, endpoint := range []string{"/v1/chat/completions", "/api/v1/coding/chat", "/v1/chat/completions -> /api/v1/coding/chat"} {
@@ -126,14 +126,12 @@ func TestProviderFilteredEndpointStatsKeepUserActualCost(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"endpoint", "requests", "total_tokens", "cost", "actual_cost"}).
 				AddRow(endpoint, int64(1247), int64(300), 10.603, 530.797))
 	}
-
 	inbound, err := repo.GetEndpointStatsWithFilters(context.Background(), start, end, 0, 0, providerID, 0, "", nil, nil, nil)
 	require.NoError(t, err)
 	upstream, err := repo.GetUpstreamEndpointStatsWithFilters(context.Background(), start, end, 0, 0, providerID, 0, "", nil, nil, nil)
 	require.NoError(t, err)
 	paths, err := repo.getEndpointPathStatsWithFilters(context.Background(), start, end, UsageLogFilters{ProviderID: providerID})
 	require.NoError(t, err)
-
 	// Apply one absolute tolerance to monetary readback in all three endpoint
 	// shapes, allowing decimal-to-float conversion differences.
 	for _, rows := range [][]EndpointStat{inbound, upstream, paths} {
@@ -154,7 +152,6 @@ func TestGeminiUsageTotalsBatchUsesProviderCost(t *testing.T) {
 	end := start.Add(24 * time.Hour)
 	providerID := int64(3667)
 	providerCostExpr := regexp.QuoteMeta("COALESCE(provider_stats_cost, total_cost) * COALESCE(provider_rate_multiplier, 1)")
-
 	// The mocked batch contains separate Flash/Pro expense expressions; matching
 	// both recorded-base formulas makes accidental actual-charge substitution
 	// observable.
@@ -163,9 +160,7 @@ func TestGeminiUsageTotalsBatchUsesProviderCost(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{
 			"provider_id", "flash_requests", "pro_requests", "flash_tokens", "pro_tokens", "flash_cost", "pro_cost",
 		}).AddRow(providerID, int64(3), int64(2), int64(400), int64(300), 2.0, 10.0))
-
 	totals, err := repo.GetGeminiUsageTotalsBatch(context.Background(), []int64{providerID}, start, end)
-
 	require.NoError(t, err)
 	require.Equal(t, int64(3), totals[providerID].FlashRequests)
 	require.Equal(t, int64(2), totals[providerID].ProRequests)
@@ -181,12 +176,10 @@ func TestGeminiUsageTotalsBatchUsesProviderCost(t *testing.T) {
 func TestUsageLogRepositoryGetStatsWithFiltersRequestedModelSource(t *testing.T) {
 	db, mock := newSQLMock(t)
 	repo := &Store{sql: db}
-
 	filters := usage.UsageLogFilters{
 		Model:             "gpt-5",
 		ModelFilterSource: usage.ModelSourceRequested,
 	}
-
 	mock.ExpectQuery("FROM usage_logs\\s+WHERE COALESCE\\(NULLIF\\(TRIM\\(model\\), ''\\), NULLIF\\(TRIM\\(requested_model\\), ''\\), ''\\) = \\$1").
 		WithArgs("gpt-5").
 		WillReturnRows(sqlmock.NewRows([]string{
@@ -210,7 +203,6 @@ func TestUsageLogRepositoryGetStatsWithFiltersRequestedModelSource(t *testing.T)
 	mock.ExpectQuery("SELECT CONCAT\\(").
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), "gpt-5").
 		WillReturnRows(sqlmock.NewRows([]string{"endpoint", "requests", "total_tokens", "cost", "actual_cost"}))
-
 	stats, err := repo.GetStatsWithFilters(context.Background(), filters)
 	require.NoError(t, err)
 	require.Equal(t, int64(1), stats.TotalRequests)
@@ -223,14 +215,12 @@ func TestUsageLogRepositoryGetStatsWithFiltersRequestedModelSource(t *testing.T)
 func TestUsageLogRepositoryGetStatsWithFiltersRequestTypePriority(t *testing.T) {
 	db, mock := newSQLMock(t)
 	repo := &Store{sql: db}
-
 	requestType := int16(usage.RequestTypeSync)
 	stream := true
 	filters := usage.UsageLogFilters{
 		RequestType: &requestType,
 		Stream:      &stream,
 	}
-
 	mock.ExpectQuery("FROM usage_logs\\s+WHERE \\(request_type = \\$1 OR \\(request_type = 0 AND stream = FALSE AND openai_ws_mode = FALSE\\)\\)").
 		WithArgs(requestType).
 		WillReturnRows(sqlmock.NewRows([]string{
@@ -254,7 +244,6 @@ func TestUsageLogRepositoryGetStatsWithFiltersRequestTypePriority(t *testing.T) 
 	mock.ExpectQuery("SELECT CONCAT\\(").
 		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), requestType).
 		WillReturnRows(sqlmock.NewRows([]string{"endpoint", "requests", "total_tokens", "cost", "actual_cost"}))
-
 	stats, err := repo.GetStatsWithFilters(context.Background(), filters)
 	require.NoError(t, err)
 	require.Equal(t, int64(1), stats.TotalRequests)
@@ -272,7 +261,6 @@ func TestUsageLogRepositoryGetStatsWithFiltersRequestTypePriority(t *testing.T) 
 func TestUsageLogRepositoryGetBatchUserUsageStatsSplitsByEffectivePlatform(t *testing.T) {
 	db, mock := newSQLMock(t)
 	repo := &Store{sql: db}
-
 	start := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	end := start.Add(30 * 24 * time.Hour)
 	rows := sqlmock.NewRows([]string{"user_id", "platform", "total_cost", "today_cost"}).
@@ -280,15 +268,12 @@ func TestUsageLogRepositoryGetBatchUserUsageStatsSplitsByEffectivePlatform(t *te
 		AddRow(int64(1), "openai", 2.25, 0.25).
 		AddRow(int64(1), nil, 0.75, 0.5).
 		AddRow(int64(2), "gemini", 7.0, 4.0)
-
 	mock.ExpectQuery("LEFT JOIN groups g ON g\\.id = ul\\.group_id").
 		WithArgs(sqlmock.AnyArg(), start, end, sqlmock.AnyArg()).
 		WillReturnRows(rows)
-
 	stats, err := repo.GetBatchUserUsageStats(context.Background(), []int64{1, 2}, start, end)
 	require.NoError(t, err)
 	require.NoError(t, mock.ExpectationsWereMet())
-
 	require.Len(t, stats, 2)
 	// Allow float accumulation differences while checking range and today charges
 	// for both actors and the accompanying platform entries.
@@ -298,7 +283,6 @@ func TestUsageLogRepositoryGetBatchUserUsageStatsSplitsByEffectivePlatform(t *te
 		{Platform: "anthropic", TotalActualCost: 3.5, TodayActualCost: 1.5},
 		{Platform: "openai", TotalActualCost: 2.25, TodayActualCost: 0.25},
 	}, stats[1].ByPlatform)
-
 	require.InDelta(t, 7.0, stats[2].TotalActualCost, 0.000001)
 	require.InDelta(t, 4.0, stats[2].TodayActualCost, 0.000001)
 	require.Equal(t, []PlatformUsage{
@@ -313,11 +297,9 @@ func TestUsageLogRepositoryGetBatchUserUsageStatsSplitsByEffectivePlatform(t *te
 func TestUsageLogRepositoryGetStatsWithFiltersAlwaysReturnsProviderCost(t *testing.T) {
 	db, mock := newSQLMock(t)
 	repo := &Store{sql: db}
-
 	// Global selected rows still carry provider expense. Leave ProviderID unset so
 	// the test catches response omission tied incorrectly to provider-only scope.
 	filters := usage.UsageLogFilters{}
-
 	mock.ExpectQuery("FROM usage_logs").
 		WillReturnRows(sqlmock.NewRows([]string{
 			"total_requests", "total_input_tokens", "total_output_tokens",
@@ -330,12 +312,30 @@ func TestUsageLogRepositoryGetStatsWithFiltersAlwaysReturnsProviderCost(t *testi
 		WillReturnRows(sqlmock.NewRows([]string{"endpoint", "requests", "total_tokens", "cost", "actual_cost"}))
 	mock.ExpectQuery("SELECT CONCAT\\(").
 		WillReturnRows(sqlmock.NewRows([]string{"endpoint", "requests", "total_tokens", "cost", "actual_cost"}))
-
 	stats, err := repo.GetStatsWithFilters(context.Background(), filters)
 	require.NoError(t, err)
 	require.NotNil(t, stats.TotalProviderCost, "TotalProviderCost must always be returned, even without ProviderID filter")
 	require.Equal(t, 11.0, *stats.TotalProviderCost)
 	require.Equal(t, int64(25), stats.TotalCacheCreationTokens)
 	require.Equal(t, int64(75), stats.TotalCacheReadTokens)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// TestBatchKeyCacheRates keeps measured misses separate from absent token samples.
+// Each key retains its own bounded-range and today rates without changing the
+// existing charge totals or exposing another key outside the requested ID set.
+func TestBatchKeyCacheRates(t *testing.T) {
+	db, mock := newSQLMock(t)
+	repo := &Store{sql: db, calendar: timezone.NewCalendar(time.UTC)}
+	start := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	end := start.Add(24 * time.Hour)
+	mock.ExpectQuery("(?s)SELECT.*total_cache_hit_rate.*today_cache_hit_rate.*FROM usage_logs").WithArgs("{1,2,3}", start, end, sqlmock.AnyArg()).WillReturnRows(sqlmock.NewRows([]string{"id", "total_cost", "today_cost", "total_cache_hit_rate", "today_cache_hit_rate"}).AddRow(1, 4, 2, 0.6, 0).AddRow(2, 0, 0, nil, nil))
+	stats, err := repo.GetBatchAPIKeyUsageStats(t.Context(), []int64{1, 2, 3}, start, end)
+	require.NoError(t, err)
+	require.Equal(t, 0.6, *stats[1].TotalCacheHitRate)
+	require.Equal(t, 0.0, *stats[1].TodayCacheHitRate)
+	require.Equal(t, 4.0, stats[1].TotalActualCost)
+	require.Nil(t, stats[2].TotalCacheHitRate)
+	require.Nil(t, stats[3].TodayCacheHitRate)
 	require.NoError(t, mock.ExpectationsWereMet())
 }

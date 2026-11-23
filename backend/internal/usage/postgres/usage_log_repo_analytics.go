@@ -29,7 +29,6 @@ import (
 // and batch cost reports then combine each source's metrics while retaining
 // actor/team ownership, independently chosen today ranges, and raw recent-rate
 // reads. Missing usable coverage asks callers to choose a complete raw query.
-
 // usageAnalyticsWindow describes report instants, covered bucket bounds, and raw
 // edges.
 type usageAnalyticsWindow struct {
@@ -122,13 +121,13 @@ func (r *Store) resolveUsageAnalyticsWindow(ctx context.Context, start, end time
 		SELECT live_watermark, coverage_start
 		FROM usage_analytics_aggregation_state
 		WHERE id = 1
-	`, nil, &state.watermark, &state.coverage); err != nil {
+	`,
+		nil, &state.watermark, &state.coverage); err != nil {
 		return window, false, err
 	}
 	if !state.coverage.Valid || !state.watermark.After(time.Unix(0, 0)) {
 		return window, false, nil
 	}
-
 	window.aggregateStart = ceilHourUTC(window.start)
 	if coverageStart := state.coverage.Time.UTC(); coverageStart.After(window.aggregateStart) {
 		// Persisted coverage starts after the requested first complete hour; advance
@@ -200,7 +199,8 @@ func (r *Store) getOwnedTeamID(ctx context.Context, userID int64) (int64, error)
 			FROM team_memberships tm
 			WHERE tm.user_id = $1 AND tm.role = 'owner' AND tm.left_at IS NULL
 		) AS team_id
-	`, []any{userID}, &teamID)
+	`,
+		[]any{userID}, &teamID)
 	if err != nil || !teamID.Valid {
 		return 0, err
 	}
@@ -241,13 +241,11 @@ func (r *Store) getUserDashboardStatsFromAnalytics(ctx context.Context, userID i
 		return nil, false, err
 	}
 	dailySplit := window.dailySplit()
-
 	stats := &usage.UserDashboardStats{}
 	var totalDuration, durationCount int64
 	var todayStats *UsageStats
 	var rpm, tpm int64
 	group, groupCtx := errgroup.WithContext(ctx)
-
 	// These queries write disjoint result fields. Wait for their errgroup before
 	// combining totals so a failed member cannot publish a partial dashboard.
 	group.Go(func() error {
@@ -259,7 +257,8 @@ func (r *Store) getUserDashboardStatsFromAnalytics(ctx context.Context, userID i
 				WHERE deleted_at IS NULL AND $2 > 0 AND team_id = $2 AND user_id <> $1
 			)
 			SELECT COUNT(*), COUNT(*) FILTER (WHERE status = $3) FROM scoped
-		`, []any{userID, teamID, identity.StatusActive}, &stats.TotalAPIKeys, &stats.ActiveAPIKeys)
+		`,
+			[]any{userID, teamID, identity.StatusActive}, &stats.TotalAPIKeys, &stats.ActiveAPIKeys)
 	})
 	group.Go(func() error {
 		return scanSingleRow(groupCtx, r.sql, `
@@ -329,10 +328,11 @@ func (r *Store) getUserDashboardStatsFromAnalytics(ctx context.Context, userID i
 			COALESCE(SUM(total_duration_ms), 0),
 			COALESCE(SUM(duration_count), 0)
 		FROM combined
-		`, append([]any{
-			userID, teamID, window.start, window.end, window.aggregateStart,
-			window.aggregateEnd, window.rawTailStart,
-		}, dailySplit.args()...),
+		`,
+			append([]any{
+				userID, teamID, window.start, window.end, window.aggregateStart,
+				window.aggregateEnd, window.rawTailStart,
+			}, dailySplit.args()...),
 			&stats.TotalRequests, &stats.TotalInputTokens, &stats.TotalOutputTokens,
 			&stats.TotalCacheCreationTokens, &stats.TotalCacheReadTokens,
 			&stats.TotalCost, &stats.TotalActualCost, &totalDuration, &durationCount,
@@ -403,7 +403,8 @@ func (r *Store) getPerformanceStatsForScope(ctx context.Context, userID, teamID 
 			WHERE $2 > 0 AND team_id = $2 AND user_id <> $1 AND created_at >= $3
 		)
 		SELECT COUNT(*), COALESCE(SUM(input_tokens + output_tokens), 0) FROM scoped
-	`, []any{userID, teamID, time.Now().Add(-5 * time.Minute)}, &requests, &tokens)
+	`,
+		[]any{userID, teamID, time.Now().Add(-5 * time.Minute)}, &requests, &tokens)
 	// Convert five-minute counts to integer per-minute averages, truncating
 	// fractions.
 	return requests / 5, tokens / 5, err
@@ -431,29 +432,32 @@ func (r *Store) getBatchAPIKeyUsageStatsFromAnalytics(ctx context.Context, apiKe
 	dailySplit := window.dailySplit()
 	rows, err := r.sql.QueryContext(ctx, `
 		WITH combined AS (
-			SELECT api_key_id, actual_cost
+			SELECT api_key_id, actual_cost, input_tokens, cache_creation_tokens, cache_read_tokens
 			FROM usage_analytics_daily
 			WHERE api_key_id = ANY($1) AND bucket_date >= $9::date AND bucket_date < $10::date
 			UNION ALL
-			SELECT api_key_id, actual_cost
+			SELECT api_key_id, actual_cost, input_tokens, cache_creation_tokens, cache_read_tokens
 			FROM usage_analytics_hourly
 			WHERE api_key_id = ANY($1)
 			  AND ((bucket_start >= $4 AND bucket_start < $7)
 			    OR (bucket_start >= $8 AND bucket_start < $5))
 			UNION ALL
-			SELECT api_key_id, actual_cost
+			SELECT api_key_id, actual_cost, input_tokens, cache_creation_tokens, cache_read_tokens
 			FROM usage_logs
 			WHERE api_key_id = ANY($1)
 			  AND ((created_at >= $2 AND created_at < $4)
 			    OR (created_at >= $6 AND created_at < $3))
 		)
-		SELECT api_key_id, COALESCE(SUM(actual_cost), 0)
+		SELECT api_key_id, COALESCE(SUM(actual_cost), 0),
+            SUM(cache_read_tokens)::double precision
+              / NULLIF(SUM(input_tokens + cache_creation_tokens + cache_read_tokens),0) AS cache_hit_rate
 		FROM combined
 		GROUP BY api_key_id
-	`, append([]any{
-		pq.Array(apiKeyIDs), window.start, window.end, window.aggregateStart,
-		window.aggregateEnd, window.rawTailStart,
-	}, dailySplit.args()...)...)
+	`,
+		append([]any{
+			pq.Array(apiKeyIDs), window.start, window.end, window.aggregateStart,
+			window.aggregateEnd, window.rawTailStart,
+		}, dailySplit.args()...)...)
 	if err != nil {
 		return nil, false, err
 	}
@@ -464,11 +468,13 @@ func (r *Store) getBatchAPIKeyUsageStatsFromAnalytics(ctx context.Context, apiKe
 	for rows.Next() {
 		var id int64
 		var total float64
-		if err := rows.Scan(&id, &total); err != nil {
+		var rate *float64
+		if err := rows.Scan(&id, &total, &rate); err != nil {
 			return nil, false, err
 		}
 		if stats := result[id]; stats != nil {
 			stats.TotalActualCost = total
+			stats.TotalCacheHitRate = rate
 		}
 	}
 	if err := rows.Err(); err != nil {
@@ -483,11 +489,14 @@ func (r *Store) getBatchAPIKeyUsageStatsFromAnalytics(ctx context.Context, apiKe
 	todayQuery.args = append(todayQuery.args, pq.Array(apiKeyIDs))
 	apiKeyIDsPosition := len(todayQuery.args)
 	todayRows, err := r.sql.QueryContext(ctx, todayQuery.cte+fmt.Sprintf(`
-		SELECT api_key_id, COALESCE(SUM(actual_cost), 0)
+		SELECT api_key_id, COALESCE(SUM(actual_cost), 0),
+            SUM(cache_read_tokens)::double precision
+              / NULLIF(SUM(input_tokens + cache_creation_tokens + cache_read_tokens),0) AS cache_hit_rate
 		FROM combined
 		WHERE api_key_id = ANY($%d)
 		GROUP BY api_key_id
-	`, apiKeyIDsPosition), todayQuery.args...)
+	`,
+		apiKeyIDsPosition), todayQuery.args...)
 	if err != nil {
 		return nil, false, err
 	}
@@ -497,11 +506,13 @@ func (r *Store) getBatchAPIKeyUsageStatsFromAnalytics(ctx context.Context, apiKe
 	for todayRows.Next() {
 		var id int64
 		var today float64
-		if err := todayRows.Scan(&id, &today); err != nil {
+		var rate *float64
+		if err := todayRows.Scan(&id, &today, &rate); err != nil {
 			return nil, false, err
 		}
 		if stats := result[id]; stats != nil {
 			stats.TodayActualCost = today
+			stats.TodayCacheHitRate = rate
 		}
 	}
 	if err := todayRows.Err(); err != nil {
@@ -553,10 +564,11 @@ func (r *Store) getBatchUserUsageStatsFromAnalytics(ctx context.Context, userIDs
 		SELECT user_id, platform, COALESCE(SUM(actual_cost), 0)
 		FROM combined
 		GROUP BY user_id, platform
-	`, append([]any{
-		pq.Array(userIDs), window.start, window.end, window.aggregateStart,
-		window.aggregateEnd, window.rawTailStart,
-	}, dailySplit.args()...)...)
+	`,
+		append([]any{
+			pq.Array(userIDs), window.start, window.end, window.aggregateStart,
+			window.aggregateEnd, window.rawTailStart,
+		}, dailySplit.args()...)...)
 	if err != nil {
 		return nil, false, err
 	}
@@ -598,7 +610,8 @@ func (r *Store) getBatchUserUsageStatsFromAnalytics(ctx context.Context, userIDs
 		FROM combined
 		WHERE user_id = ANY($%d) AND actual_cost > 0
 		GROUP BY user_id, platform
-	`, userIDsPosition), todayQuery.args...)
+	`,
+		userIDsPosition), todayQuery.args...)
 	if err != nil {
 		return nil, false, err
 	}

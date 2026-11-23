@@ -316,6 +316,10 @@ export interface BatchApiKeyUsageStats {
   api_key_id: number // API-key record identifier.
   today_actual_cost: number // Today actual cost.
   total_actual_cost: number // Total actual cost.
+  // Cache shares use all observed input-side tokens in the same cost windows.
+  // Null or omission marks missing samples; numeric zero remains a measured miss.
+  today_cache_hit_rate?: number | null // Today's cache read share.
+  total_cache_hit_rate?: number | null // Selected window cache share.
 }
 
 /**

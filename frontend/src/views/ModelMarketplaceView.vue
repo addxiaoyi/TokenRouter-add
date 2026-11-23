@@ -1,1137 +1,629 @@
-<template>
-  <component
-    :is="isAuthenticated ? AppLayout : 'div'"
-    :class="
-      isAuthenticated
-        ? ''
-        : 'ba-theme-shell relative min-h-screen overflow-hidden pt-[var(--header-h)]'
-    "
-  >
-    <template v-if="isAuthenticated" #page-heading-actions>
-      <div
-        class="model-marketplace-toolbar flex w-[calc(100vw-2rem)] max-w-full min-w-0 items-center gap-2 sm:w-auto"
-      >
-        <div class="min-w-0 flex-1 sm:w-80 sm:flex-none lg:w-[min(24rem,32vw)]">
-          <SearchInput
-            v-model="search"
-            :placeholder="t('marketplace.searchPlaceholder')"
-            :debounce-ms="120"
-          />
-        </div>
-
-        <FilterDropdown :active-count="activeFilterCount" keep-mounted @reset="resetPanelFilters">
-          <FilterField :label="t('marketplace.filterBrand')" icon="tag">
-            <FilterOptions v-model="selectedBrand" :options="brandSelectOptions">
-              <template #icon="{ value }">
-                <ProviderIcon :brand="String(value)" size="16px" hide-fallback />
-              </template>
-            </FilterOptions>
-          </FilterField>
-          <FilterField :label="t('marketplace.filterPricingMode')" icon="dollar">
-            <FilterOptions v-model="selectedPricingMode" :options="pricingSelectOptions" />
-          </FilterField>
-          <FilterField :label="t('marketplace.filterGroup')" icon="folder">
-            <FilterOptions v-model="selectedGroupId" :options="groupSelectOptions" searchable>
-              <template #icon="{ option }">
-                <ProviderIcon
-                  v-if="option?.brand"
-                  :brand="String(option.brand)"
-                  size="16px"
-                  hide-fallback
-                />
-              </template>
-            </FilterOptions>
-          </FilterField>
-        </FilterDropdown>
-      </div>
-    </template>
-
-    <template v-if="!isAuthenticated">
-      <div class="ba-theme-backdrop pointer-events-none fixed inset-0"></div>
-
-      <!-- Share the public application header so home and marketplace keep identical chrome. -->
-      <AppHeader public-page />
-    </template>
-
-    <section
-      v-content-reveal="!isAuthenticated && route?.path"
-      :class="isAuthenticated ? 'space-y-4' : 'relative z-10 px-4 pb-16 pt-10 sm:px-6 lg:px-8'"
-    >
-      <div :class="isAuthenticated ? 'space-y-4' : 'relative mx-auto max-w-[1320px] space-y-6'">
-        <!-- Public visitors see an editorial Liquid Glass header uniting title and search tools. -->
-        <div v-if="!isAuthenticated" class="glass-card relative overflow-hidden p-7 sm:p-10">
-          <div class="relative z-10 grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-end">
-            <div class="page-heading min-w-0 lg:col-span-7">
-              <h1
-                class="page-title text-3xl font-medium leading-[1.08] tracking-[-0.036em] sm:text-4xl md:text-[2.75rem]"
-              >
-                {{ t('marketplace.title') }}
-              </h1>
-              <p class="page-description mt-2.5 text-base">
-                {{ t('marketplace.subtitle') }}
-              </p>
-            </div>
-
-            <div class="flex min-w-0 items-center gap-2.5 lg:col-span-5">
-              <div class="min-w-0 flex-1">
-                <SearchInput
-                  v-model="search"
-                  :placeholder="t('marketplace.searchPlaceholder')"
-                  :debounce-ms="120"
-                />
-              </div>
-
-              <FilterDropdown
-                :active-count="activeFilterCount"
-                keep-mounted
-                @reset="resetPanelFilters"
-              >
-                <FilterField :label="t('marketplace.filterBrand')" icon="tag">
-                  <FilterOptions v-model="selectedBrand" :options="brandSelectOptions">
-                    <template #icon="{ value }">
-                      <ProviderIcon :brand="String(value)" size="16px" hide-fallback />
-                    </template>
-                  </FilterOptions>
-                </FilterField>
-                <FilterField :label="t('marketplace.filterPricingMode')" icon="dollar">
-                  <FilterOptions v-model="selectedPricingMode" :options="pricingSelectOptions" />
-                </FilterField>
-                <FilterField :label="t('marketplace.filterGroup')" icon="folder">
-                  <FilterOptions v-model="selectedGroupId" :options="groupSelectOptions" searchable>
-                    <template #icon="{ option }">
-                      <ProviderIcon
-                        v-if="option?.brand"
-                        :brand="String(option.brand)"
-                        size="16px"
-                        hide-fallback
-                      />
-                    </template>
-                  </FilterOptions>
-                </FilterField>
-              </FilterDropdown>
-            </div>
-          </div>
-        </div>
-
-        <ModelMarketplaceSkeleton v-if="loading" />
-
-        <div v-else-if="errorMessage" class="glass-card max-w-2xl p-6 sm:p-7">
-          <div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-            <div class="flex items-start gap-4">
-              <span
-                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-surface border border-red-200/80 bg-red-50/80 text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
-              >
-                <Icon name="exclamationCircle" size="md" />
-              </span>
-              <div class="min-w-0">
-                <h2
-                  class="text-base font-semibold tracking-[-0.015em] text-gray-950 dark:text-white"
-                >
-                  {{ t('common.error') }}
-                </h2>
-                <p class="mt-1 text-sm leading-6 text-gray-600 dark:text-dark-300">
-                  {{ errorMessage }}
-                </p>
-              </div>
-            </div>
-            <button
-              class="btn btn-primary shrink-0 self-start rounded-full px-6 sm:self-center"
-              type="button"
-              @click="fetchMarketplace"
-            >
-              {{ t('common.refresh') }}
-            </button>
-          </div>
-        </div>
-
-        <div v-else-if="!hasMarketplaceResults" class="glass-card px-6 py-14">
-          <div
-            class="mx-auto flex h-14 w-14 items-center justify-center rounded-surface border border-black/[0.08] bg-white/80 text-gray-700 shadow-sm dark:border-white/[0.10] dark:bg-white/[0.06] dark:text-dark-100"
-          >
-            <Icon name="inbox" size="xl" />
-          </div>
-          <h2
-            class="mt-6 text-balance text-center text-2xl font-semibold tracking-[-0.025em] text-gray-950 dark:text-white"
-          >
-            {{ t('marketplace.emptyTitle') }}
-          </h2>
-          <p
-            class="mx-auto mt-3 max-w-xl text-pretty text-center text-sm leading-7 text-gray-600 dark:text-dark-300"
-          >
-            {{ t('marketplace.emptyDescription') }}
-          </p>
-          <div class="mt-6 text-center">
-            <button class="btn btn-secondary rounded-full px-5" type="button" @click="resetFilters">
-              {{ t('common.reset') }}
-            </button>
-          </div>
-        </div>
-
-        <div v-else ref="groupListRef" class="space-y-5">
-          <section
-            v-for="group in filteredGroups"
-            :key="group.id"
-            class="glass-card overflow-hidden"
-            data-testid="marketplace-group-section"
-          >
-            <div
-              class="card-header flex flex-col gap-4 px-4 py-4 md:px-5 xl:flex-row xl:items-center xl:justify-between"
-            >
-              <div class="min-w-0 flex-1 space-y-3">
-                <div class="flex flex-wrap items-center gap-2">
-                  <span
-                    v-if="group.is_exclusive"
-                    data-testid="group-exclusive-tag"
-                    class="marketplace-exclusive-tag inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold"
-                  >
-                    <Icon name="crown" size="sm" :animate-on-hover="false" />
-                    {{ t('marketplace.exclusive') }}
-                  </span>
-                  <span :class="brandBadgeClass(group)">
-                    <ProviderIcon :brand="groupBrandSource(group)" size="14px" />
-                    {{ groupBrandLabel(group) }}
-                  </span>
-                  <!-- A group can hide its discount tag; visible discounts require a valid ratio and offer click or hover explanations. -->
-                  <HelpTooltip
-                    v-if="
-                      !group.hide_max_discount && formatMaxDiscountOff(group.official_price_ratio)
-                    "
-                    trigger="both"
-                    width-class="w-72"
-                    :closable="false"
-                    :content="t('marketplace.maxDiscountHint')"
-                  >
-                    <template #trigger>
-                      <span
-                        data-testid="group-max-discount-tag"
-                        class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200"
-                      >
-                        {{ formatMaxDiscountOff(group.official_price_ratio) }}
-                      </span>
-                    </template>
-                  </HelpTooltip>
-                  <HelpTooltip
-                    v-if="!group.hide_rate_multiplier"
-                    trigger="both"
-                    width-class="w-72"
-                    :closable="false"
-                    :content="t('marketplace.rateMultiplierHint')"
-                  >
-                    <template #trigger>
-                      <!-- The multiplier uses a neutral fill that remains distinct from the surrounding card in dark mode. -->
-                      <span
-                        data-testid="group-rate-multiplier-tag"
-                        class="rounded-full border border-gray-200/80 bg-gray-50 px-3 py-1 text-xs font-semibold text-gray-600 dark:border-dark-600 dark:bg-dark-700/60 dark:text-dark-200"
-                      >
-                        {{ formatRateMultiplierLabel(group.rate_multiplier) }}
-                      </span>
-                    </template>
-                  </HelpTooltip>
-                </div>
-
-                <div class="flex items-start gap-3.5">
-                  <span
-                    class="mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-surface border border-black/[0.08] bg-white/85 shadow-sm dark:border-white/[0.09] dark:bg-dark-950/85"
-                  >
-                    <ProviderIcon :brand="groupBrandSource(group)" size="28px" />
-                  </span>
-                  <div class="min-w-0">
-                    <h2
-                      class="text-lg font-semibold tracking-[-0.02em] text-gray-950 dark:text-white"
-                    >
-                      {{ group.name }}
-                    </h2>
-                    <p
-                      v-if="group.description"
-                      class="mt-1 max-w-[68ch] text-pretty text-sm leading-6 text-gray-600 dark:text-dark-300"
-                    >
-                      {{ group.description }}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div
-                v-if="group.availability"
-                class="w-full xl:ml-6 xl:w-[560px] xl:shrink-0"
-                data-testid="marketplace-group-availability"
-              >
-                <!-- Public group headers expose availability in the trailing region without adding administrator capacity controls. -->
-                <GroupAvailabilityBar :availability="group.availability" class="min-w-0" />
-              </div>
-            </div>
-
-            <div
-              class="grid min-w-0 grid-cols-1 items-start gap-4 p-4 md:grid-cols-2 lg:grid-cols-3 md:p-5"
-            >
-              <!-- Shrinkable cards wrap long pricing content in one narrow-screen column and expand to the desktop grid. -->
-              <article
-                v-for="model in group.models"
-                :key="`${group.id}-${model.id}`"
-                :data-model-id="model.id"
-                class="group min-w-0 max-w-full rounded-surface border border-black/[0.07] bg-white/65 p-4 shadow-sm backdrop-blur-md transition duration-fast hover:-translate-y-0.5 hover:border-black/[0.15] hover:bg-white/95 dark:border-white/[0.08] dark:bg-white/[0.03] dark:hover:border-white/[0.16] dark:hover:bg-white/[0.055]"
-              >
-                <div class="flex min-w-0 flex-wrap items-start justify-between gap-2">
-                  <div class="flex min-w-0 flex-1 basis-32 items-center">
-                    <h3
-                      class="min-w-0 truncate text-base font-semibold tracking-[-0.015em] text-gray-950 dark:text-white"
-                    >
-                      {{ model.display_name }}
-                    </h3>
-                    <!-- Keep attribute and protocol details beside the title, opening a floating panel without expanding card height. -->
-                    <ModelAttributeDetails
-                      v-if="model.attributes || marketplaceProtocols(model.protocols).length > 0"
-                      :model="model"
-                      class="shrink-0"
-                    />
-                  </div>
-                  <ModelCapabilityTags :model="model" />
-                </div>
-                <!-- Give the identifier its own row while capability icons remain beside the model title. -->
-                <ModelIdLabel :model-id="model.id" class="mt-1" />
-
-                <!-- Compact quotes stay visible above the independently expandable full pricing panel. -->
-                <div class="mt-4">
-                  <template v-if="compactPricingRows(model.pricing).length > 0">
-                    <dl class="space-y-2">
-                      <div
-                        v-for="row in compactPricingRows(model.pricing)"
-                        :key="row.key"
-                        class="flex items-baseline justify-between gap-3 text-sm"
-                      >
-                        <dt class="shrink-0 text-gray-500 dark:text-dark-400">{{ row.label }}</dt>
-                        <dd
-                          class="min-w-0 break-words text-right font-medium tabular-nums [overflow-wrap:anywhere] text-gray-900 dark:text-white"
-                        >
-                          {{ row.value }}
-                        </dd>
-                      </div>
-                    </dl>
-                  </template>
-                  <p v-else class="text-sm text-gray-400 dark:text-dark-500">
-                    {{ t('marketplace.pricingUnavailable') }}
-                  </p>
-
-                  <!-- The child panel owns disclosure and quote selectors while this page supplies the authorized model. -->
-                  <ModelPricingPanel :model="model" />
-                </div>
-              </article>
-            </div>
-          </section>
-        </div>
-      </div>
-    </section>
-  </component>
-</template>
-
 <script setup lang="ts">
-import { useLocaleRefresh } from '@/composables/useLocaleRefresh'
-import { vContentReveal } from '@/directives/contentReveal'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import AppHeader from '@/components/layout/AppHeader.vue'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import AppHeader from '@/components/layout/AppHeader.vue'
+import BaseDialog from '@/components/common/BaseDialog.vue'
+import Pagination from '@/components/common/Pagination.vue'
+import GroupMonitorCard from '@/components/common/GroupMonitorCard.vue'
 import Icon from '@/components/icons/Icon.vue'
+import ProviderIcon from '@/components/common/ProviderIcon.vue'
 import ModelMarketplaceSkeleton from '@/components/marketplace/ModelMarketplaceSkeleton.vue'
-import GroupAvailabilityBar from '@/components/marketplace/GroupAvailabilityBar.vue'
 import ModelCapabilityTags from '@/components/marketplace/ModelCapabilityTags.vue'
 import ModelAttributeDetails from '@/components/marketplace/ModelAttributeDetails.vue'
 import ModelPricingPanel from '@/components/marketplace/ModelPricingPanel.vue'
-import ProviderIcon from '@/components/common/ProviderIcon.vue'
-import HelpTooltip from '@/components/common/HelpTooltip.vue'
-import SearchInput from '@/components/common/SearchInput.vue'
-import FilterDropdown from '@/components/common/FilterDropdown.vue'
-import FilterField from '@/components/common/FilterField.vue'
-import FilterOptions from '@/components/common/FilterOptions.vue'
-import { BILLING_MODE_ICONS, withOptionIcons } from '@/components/common/filterOptionIcons'
-import ModelIdLabel from '@/components/common/ModelIdLabel.vue'
-import { useBalanceDisplay } from '@/composables/useBalanceDisplay'
-import { initTheme } from '@/composables/useTheme'
-import { getAvailableMarketplaceModels, getMarketplaceModels } from '@/api/marketplace'
-import {
-  providerBrandDisplayName,
-  providerBrandFilterKey,
-  resolveProviderBrand,
-} from '@/utils/providerBrand'
-import { formatCompactTokenRange } from '@/utils/formatters'
-import { formatPriceNumber, pricingKind, videoPricingEntries } from '@/utils/marketplacePricing'
-import { compareMarketplaceGroups, groupBrandSource } from '@/utils/marketplaceCatalog'
-import { marketplaceProtocols } from '@/utils/marketplaceProtocols'
-import type {
-  MarketplaceGroup,
-  MarketplaceModelPricing,
-  MarketplacePricingInterval,
-} from '@/api/marketplace.types'
+import ModelPriceSummary from '@/components/marketplace/ModelPriceSummary.vue'
+import GroupAvailabilityBar from '@/components/marketplace/GroupAvailabilityBar.vue'
+import { useAuthStore } from '@/stores'
+import { useClipboard } from '@/composables/useClipboard'
+import { useMarketplaceCatalog, type PricingFilter } from '@/composables/useMarketplaceCatalog'
+import { useGroupMonitoring } from '@/composables/useGroupMonitoring'
+import { buildModelIndex, groupBrandSource } from '@/utils/marketplaceCatalog'
+import { providerBrandDisplayName } from '@/utils/providerBrand'
 
-import { useAppStore, useAuthStore } from '@/stores'
-
-// ModelMarketplaceView.vue displays authorized model groups with searchable pricing
-// and capability details. Authenticated visitors use the application layout,
-// while guests receive the public header and theme controls. Filtering copies
-// matching groups and models for display without modifying the loaded response.
-// Child panels own protocol selection and expanded quote controls.
+// ModelMarketplaceView.vue presents model discovery, comparable quotes, and routing choices.
+// Search and persistent sidebar filters precede a model-level catalog, while
+// detailed pricing remains attached to each original group offer. Card and table
+// views use the same indexed models and price summaries, so changing density does
+// not change authorization, selected filters, or the meaning of quoted prices.
 //
-// Compact summaries distinguish token context intervals, image resolutions, and
-// named video prices using the server's group-scaled quote. Initialization restores
-// theme and account state, awaits missing public settings, then loads the catalog.
-// Locale and account changes request another catalog load. Request generations
-// and captured account identity reject stale responses, including errors and
-// loading completion. Account changes clear the previous catalog synchronously,
-// and unmounting invalidates outstanding requests. Exclusive groups appear first
-// with an inline exclusive tag; all filters operate on that same authorized response.
+// Group selection opens measured monitoring cards beside the catalog metadata.
+// Authenticated observations come from the permission-filtered monitoring reader;
+// guests retain the public probe history when it exists. Detail dialogs keep
+// model capabilities and complete price controls beside the selected offer,
+// allowing users to compare routing choices without merging their distinct quotes.
 
-// route supplies the path for the public page's reveal directive and the `q` query that
-// opens the marketplace filtered to one search term.
+// Browsing presentation belongs to this mounted page; catalog and measurement
+// ownership remain encapsulated in composables that invalidate retired account scopes.
 const route = useRoute()
-
-// VisibleMarketplaceGroup retains the authorized group shape after client-side model filtering.
-type VisibleMarketplaceGroup = MarketplaceGroup
-// PricingFilter selects the public quote category shown in marketplace results.
-type PricingFilter = 'all' | 'token' | 'image' | 'video' | 'unpriced'
-
-// PricingRow pairs a stable summary identity with its translated category and amount.
-interface PricingRow {
-  key: string // Stable quote-row identity.
-  label: string // Displayed price category.
-  value: string // Formatted amount and units.
-}
-
-// Display services provide translations, balance units, cached branding, account
-// state, and theme actions for the authenticated and public page variants.
+const auth = useAuthStore()
 const { t } = useI18n()
-const { balanceUnitName } = useBalanceDisplay()
-
-const appStore = useAppStore()
-const authStore = useAuthStore()
-
-// Loaded catalog state is separate from local search and select filters, allowing
-// filter resets to reuse the response without making another API request.
-const groups = ref<MarketplaceGroup[]>([])
-const loading = ref(true)
-const errorMessage = ref('')
-const search = ref('')
-const selectedBrand = ref<string | 'all'>('all')
-const selectedPricingMode = ref<PricingFilter>('all')
-const selectedGroupId = ref<number | 'all'>('all')
-
-// Request lifecycle state belongs to this mounted page; generation invalidation
-// prevents previous identities or locales from publishing late catalog responses.
-let requestGeneration = 0
-let catalogReady = false
-let disposed = false
-
-// Authentication selects the page shell and the account's authorized catalog scope.
-const isAuthenticated = computed(() => authStore.isAuthenticated)
-const catalogUserID = computed(() => (isAuthenticated.value ? (authStore.user?.id ?? null) : null))
-
-// Search normalization and the select-only active count feed the shared filter
-// controls; the free-text query is intentionally absent from the select badge count.
-const normalizedSearch = computed(() => search.value.trim().toLowerCase())
-const activeFilterCount = computed(
+const { copyToClipboard } = useClipboard()
+const catalog = useMarketplaceCatalog()
+const monitoringEnabled = computed(() => auth.isAuthenticated)
+const monitoring = useGroupMonitoring(monitoringEnabled)
+const viewMode = ref<'cards' | 'table'>('cards')
+const tokenUnit = ref<'M' | 'K'>('M')
+const mobileFiltersOpen = ref(false)
+const filterToggle = ref<HTMLButtonElement | null>(null)
+const groupsOpen = ref(false)
+const groupSearch = ref('')
+const pricingKinds: PricingFilter[] = ['all', 'token', 'image', 'video', 'per_request', 'unpriced']
+const pricingLabels: Record<PricingFilter, string> = {
+  all: 'allTypes',
+  token: 'tokenPricing',
+  image: 'imagePricing',
+  video: 'videoPricing',
+  per_request: 'requestPricing',
+  unpriced: 'unpriced',
+}
+const brandCounts = computed(
   () =>
-    [
-      selectedBrand.value !== 'all' ? selectedBrand.value : '',
-      selectedPricingMode.value !== 'all' ? selectedPricingMode.value : '',
-      selectedGroupId.value !== 'all' ? selectedGroupId.value : '',
-    ].filter(Boolean).length,
+    new Map(
+      catalog.brands.value.map((brand) => [
+        brand,
+        buildModelIndex(
+          catalog.groups.value.filter(
+            (group) => providerBrandDisplayName(groupBrandSource(group)) === brand,
+          ),
+        ).length,
+      ]),
+    ),
 )
-
-// Exclusive groups precede public groups, then use server order and ID ties.
-// Brand choices deduplicate normalized labels while retaining that group order.
-const sortedGroups = computed(() => [...groups.value].sort(compareMarketplaceGroups))
-
-const availableBrands = computed(() => {
-  const seen = new Set<string>()
-  const brands: string[] = []
-  for (const group of sortedGroups.value) {
-    const brand = groupBrandLabel(group)
-    const key = brandKey(brand)
-    if (seen.has(key)) {
-      continue
-    }
-    seen.add(key)
-    brands.push(brand)
-  }
-  return brands
-})
-
-// Filter choices retain their original values and append translated all-items
-// entries; available group choices also preserve the server's additional search terms
-// and carry the brand drawn as their filter-row icon, matching the brand on the cards.
-const brandSelectOptions = computed(() => [
-  { value: 'all', label: t('marketplace.allBrands') },
-  ...availableBrands.value.map((brand) => ({
-    value: brand,
-    label: brand,
-  })),
-])
-
-// pricingSelectOptions includes explicitly unpriced records alongside the three supported
-// billing units so missing quotes remain discoverable through the same filter control.
-const pricingSelectOptions = computed(() =>
-  withOptionIcons(
-    [
-      { value: 'all', label: t('marketplace.allTypes') },
-      { value: 'token', label: t('marketplace.tokenPricing') },
-      { value: 'image', label: t('marketplace.imagePricing') },
-      { value: 'video', label: t('marketplace.videoPricing') },
-      { value: 'unpriced', label: t('marketplace.unpriced') },
-    ],
-    BILLING_MODE_ICONS,
-  ),
+const selectedGroup = computed(() =>
+  catalog.groups.value.find((group) => group.id === catalog.groupID.value),
 )
-
-const groupSelectOptions = computed(() => [
-  { value: 'all', label: t('marketplace.allGroups') },
-  ...sortedGroups.value.map((group) => ({
-    value: group.id,
-    label: group.name,
-    search_terms: group.search_terms,
-    brand: groupBrandSource(group),
-  })),
-])
-
-// filteredGroups applies group restrictions before matching model pricing and text.
-// A group-level text match retains every model passing the pricing filter; otherwise
-// each model must match its own identifiers or attribute search terms. Empty
-// groups disappear, and retained groups receive a copied, filtered model count.
-const filteredGroups = computed<VisibleMarketplaceGroup[]>(() => {
-  const keyword = normalizedSearch.value
-
-  return sortedGroups.value.flatMap((group) => {
-    if (
-      selectedBrand.value !== 'all' &&
-      brandKey(groupBrandLabel(group)) !== brandKey(selectedBrand.value)
-    ) {
-      return []
-    }
-
-    if (selectedGroupId.value !== 'all' && group.id !== selectedGroupId.value) {
-      return []
-    }
-
-    const groupMatchesKeyword =
-      !keyword ||
-      [
-        group.name,
-        group.description,
-        groupBrandSource(group),
-        groupBrandLabel(group),
-        ...(group.search_terms || []),
-      ]
-        .filter(Boolean)
-        .some((value) => value.toLowerCase().includes(keyword))
-
-    const models = group.models.filter((model) => {
-      if (
-        selectedPricingMode.value !== 'all' &&
-        pricingKind(model.pricing) !== selectedPricingMode.value
-      ) {
-        return false
-      }
-
-      if (!keyword || groupMatchesKeyword) {
-        return true
-      }
-
-      return [model.id, model.display_name, ...(model.attributes?.search_terms || [])].some(
-        (value) => value.toLowerCase().includes(keyword),
+const groupChoices = computed(() =>
+  catalog.orderedGroups.value.filter((group) => {
+    const query = groupSearch.value.trim().toLowerCase()
+    return (
+      !query ||
+      [group.name, group.description, ...(group.search_terms ?? [])].some((value) =>
+        value?.toLowerCase().includes(query),
       )
-    })
-
-    if (models.length === 0) {
-      return []
-    }
-
-    return [
-      {
-        ...group,
-        model_count: models.length,
-        models,
-      },
-    ]
-  })
+    )
+  }),
+)
+const filtersActive = computed(
+  () =>
+    catalog.brand.value !== 'all' ||
+    catalog.pricing.value !== 'all' ||
+    catalog.groupID.value !== 'all',
+)
+// selectedQuote retains one selected group's original billing unit and amount,
+// independently of the cheaper cross-group summary shown in the catalog row.
+const selectedQuote = computed(() => {
+  const offer = catalog.selectedOffer.value
+  return offer ? buildModelIndex([{ ...offer.group, models: [offer.model] }])[0]?.price : null
 })
 
-// hasMarketplaceResults selects the populated versus empty display after loading
-// and error presentation have taken precedence in the page template.
-const hasMarketplaceResults = computed(() => filteredGroups.value.length > 0)
-
-// hasPositiveValue accepts numeric values greater than zero without a finiteness check.
-function hasPositiveValue(value?: number | null): value is number {
-  return typeof value === 'number' && value > 0
+// chooseGroup applies an authorized catalog identity and returns to model browsing.
+// Selection changes local filtering only; it never reassigns an API key or grants
+// access to a group absent from the authenticated catalog response.
+function chooseGroup(id: number | 'all'): void {
+  catalog.groupID.value = id
+  groupsOpen.value = false
+  mobileFiltersOpen.value = false
 }
 
-// hasContextIntervalPricing reports whether the quote contains any returned context ranges.
-function hasContextIntervalPricing(pricing: MarketplaceModelPricing): boolean {
-  // Returned ranges remain visible even when their zero-valued price fields were
-  // omitted; this check does not require a positive price within each interval.
-  return (pricing.context_intervals?.length ?? 0) > 0
+// closeFilters returns narrow-screen browsing focus after hiding inline filters.
+// The toggle remains mounted below the filter area. Waiting for the layout update
+// keeps focus visible instead of leaving it inside the newly hidden sidebar.
+async function closeFilters(): Promise<void> {
+  mobileFiltersOpen.value = false
+  await nextTick()
+  filterToggle.value?.focus()
 }
 
-// resetPanelFilters clears select filters while retaining the current text query.
-function resetPanelFilters() {
-  selectedBrand.value = 'all'
-  selectedPricingMode.value = 'all'
-  selectedGroupId.value = 'all'
+// refresh independently reloads model quotes and current group observations.
+// Each reader owns its account scope and failure state, so unavailable metrics
+// never prevent users from discovering models or inspecting a valid quote.
+function refresh(): void {
+  void catalog.refresh()
+  void monitoring.refresh()
 }
 
-// resetFilters clears the text query and every select filter for the empty-state action.
-function resetFilters() {
-  search.value = ''
-  resetPanelFilters()
-}
-
-// highlightModelId holds a model ID from the `q` query until the catalog has rendered
-// and its cards can be scrolled to and highlighted inside groupListRef.
-const highlightModelId = ref<string | null>(null)
-const groupListRef = ref<HTMLElement | null>(null)
-
-// The global search palette opens `/models?q=<model id>`, including while this page is
-// already shown. Each new `q` replaces the text query and clears the select filters,
-// which could otherwise hide the requested model. Typing in the search box does not
-// write back to the URL, so the query only flows from the route into the page.
+// Route search remains reactive for links from global search and monitoring.
+// An absent query keeps the user's existing local filter during navigation.
 watch(
-  () => route?.query?.q,
-  (value) => {
-    if (typeof value !== 'string' || value.trim() === '') return
-    search.value = value
-    resetPanelFilters()
-    highlightModelId.value = value.trim()
+  () => route.query.q,
+  (query) => {
+    if (typeof query === 'string') catalog.search.value = query
   },
   { immediate: true },
 )
-
-// flashModelCard restarts the card's one-shot highlight animation and removes the class
-// when the animation ends, so the next request can replay it on the same card.
-function flashModelCard(card: HTMLElement) {
-  card.classList.remove('marketplace-card-flash')
-  // Reading layout between removal and re-adding restarts an animation already running.
-  void card.offsetWidth
-  card.classList.add('marketplace-card-flash')
-  card.addEventListener('animationend', () => card.classList.remove('marketplace-card-flash'), {
-    once: true,
-  })
-}
-
-// After the catalog finishes loading, scroll the first card whose model ID equals the
-// requested term into the middle of the viewport and highlight every group's copy of
-// that model. Terms that are not an exact model ID only filter the list. The request is
-// consumed either way, so later catalog refreshes do not scroll the page again.
-watch(
-  [highlightModelId, loading],
-  async ([modelId, isLoading]) => {
-    if (!modelId || isLoading) return
-    await nextTick()
-    if (highlightModelId.value !== modelId) return
-    highlightModelId.value = null
-    const cards = Array.from(
-      groupListRef.value?.querySelectorAll<HTMLElement>('[data-model-id]') ?? [],
-    ).filter((card) => card.dataset.modelId === modelId)
-    if (cards.length === 0) return
-    cards[0].scrollIntoView({ block: 'center' })
-    cards.forEach(flashModelCard)
-  },
-  { flush: 'post' },
-)
-
-// formatMultiplier prefixes the multiplier and uses two decimals only for fractional values.
-function formatMultiplier(multiplier: number): string {
-  return `x${multiplier.toFixed(multiplier % 1 === 0 ? 0 : 2)}`
-}
-
-// formatRateMultiplierLabel lets translation messages position the formatted multiplier text.
-function formatRateMultiplierLabel(multiplier: number): string {
-  return t('marketplace.rateMultiplierValue', { multiplier: formatMultiplier(multiplier) })
-}
-
-// formatMaxDiscountOff formats savings for a finite positive ratio below one.
-// Missing, invalid, or undiscounted ratios return null and hide the label. Percentage
-// formatting uses the browser locale before the translated explanation is assembled.
-function formatMaxDiscountOff(ratio?: number): string | null {
-  if (typeof ratio !== 'number' || !Number.isFinite(ratio) || ratio <= 0 || ratio >= 1) {
-    return null
-  }
-  const percent = new Intl.NumberFormat(undefined, {
-    maximumFractionDigits: 1,
-  }).format((1 - ratio) * 100)
-  return t('marketplace.maxDiscountOff', { percent })
-}
-
-// formatPrice appends the selected internal balance unit to a formatted amount.
-function formatPrice(value: number): string {
-  return `${formatPriceNumber(value)} ${balanceUnitName.value}`
-}
-
-// formatPerMillion converts per-token amounts into the displayed million-token billing unit.
-function formatPerMillion(value: number): string {
-  return `${formatPrice(value * 1_000_000)} ${t('usage.perMillionTokens')}`
-}
-
-// formatCompactPerMillion scales token prices without adding the balance or billing labels.
-function formatCompactPerMillion(value: number): string {
-  return formatPriceNumber(value * 1_000_000)
-}
-
-// formatPerImage appends the translated per-image unit to the formatted balance amount.
-function formatPerImage(value: number): string {
-  return `${formatPrice(value)} ${t('marketplace.perImage')}`
-}
-
-// groupBrandLabel resolves the group's selected brand source into its shared display name.
-function groupBrandLabel(group: Pick<MarketplaceGroup, 'display_brand' | 'name'>): string {
-  return providerBrandDisplayName(groupBrandSource(group))
-}
-
-// brandKey delegates brand normalization to the shared marketplace filtering helper.
-function brandKey(label: string): string {
-  return providerBrandFilterKey(label)
-}
-
-// brandBadgeClass combines the common badge layout with the group's resolved brand palette.
-function brandBadgeClass(group: MarketplaceGroup): string {
-  const base =
-    'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset'
-  return `${base} ${resolveProviderBrand(groupBrandSource(group)).badgeClass}`
-}
-
-// tokenPricingRowsFromValues collects positive standard and fast token-price categories.
-// Each row retains its category-specific key and the complete million-token unit.
-// Callers choose compact subsets or zero fallbacks from this ordered result.
-function tokenPricingRowsFromValues(
-  pricing: MarketplaceModelPricing | MarketplacePricingInterval,
-): PricingRow[] {
-  const rows: PricingRow[] = []
-
-  if (hasPositiveValue(pricing.input_price_per_token)) {
-    rows.push({
-      key: 'input',
-      label: t('marketplace.input'),
-      value: formatPerMillion(pricing.input_price_per_token),
-    })
-  }
-  if (hasPositiveValue(pricing.image_input_price_per_token)) {
-    rows.push({
-      key: 'image_input',
-      label: t('marketplace.imageInput'),
-      value: formatPerMillion(pricing.image_input_price_per_token),
-    })
-  }
-  if (hasPositiveValue(pricing.output_price_per_token)) {
-    rows.push({
-      key: 'output',
-      label: t('marketplace.output'),
-      value: formatPerMillion(pricing.output_price_per_token),
-    })
-  }
-  if (pricing.cache_write_30m_price_per_token != null) {
-    rows.push({
-      key: 'cache_write_30m',
-      label: t('marketplace.cacheWriteLifetime', { ttl: '30m' }),
-      value: formatPerMillion(pricing.cache_write_30m_price_per_token),
-    })
-  }
-  if (pricing.cache_write_12h_price_per_token != null) {
-    rows.push({
-      key: 'cache_write_12h',
-      label: t('marketplace.cacheWriteLifetime', { ttl: '12h' }),
-      value: formatPerMillion(pricing.cache_write_12h_price_per_token),
-    })
-  }
-  if (
-    pricing.cache_write_30m_price_per_token == null &&
-    pricing.cache_write_12h_price_per_token == null &&
-    hasPositiveValue(pricing.cache_write_price_per_token)
-  ) {
-    rows.push({
-      key: 'cache_write',
-      label: t('marketplace.cacheWrite'),
-      value: formatPerMillion(pricing.cache_write_price_per_token),
-    })
-  }
-  if (hasPositiveValue(pricing.cache_write_1h_price_per_token)) {
-    rows.push({
-      key: 'cache_write_1h',
-      label: t('marketplace.cacheWrite1h'),
-      value: formatPerMillion(pricing.cache_write_1h_price_per_token),
-    })
-  }
-  if (hasPositiveValue(pricing.cache_read_price_per_token)) {
-    rows.push({
-      key: 'cache_read',
-      label: t('marketplace.cacheRead'),
-      value: formatPerMillion(pricing.cache_read_price_per_token),
-    })
-  }
-  if (hasPositiveValue(pricing.image_output_price_per_token)) {
-    rows.push({
-      key: 'image_output',
-      label: t('marketplace.imageOutput'),
-      value: formatPerMillion(pricing.image_output_price_per_token),
-    })
-  }
-  if (hasPositiveValue(pricing.fast_input_price_per_token)) {
-    rows.push({
-      key: 'fast_input',
-      label: t('marketplace.fastInput'),
-      value: formatPerMillion(pricing.fast_input_price_per_token),
-    })
-  }
-  if (hasPositiveValue(pricing.fast_image_input_price_per_token)) {
-    rows.push({
-      key: 'fast_image_input',
-      label: t('marketplace.fastImageInput'),
-      value: formatPerMillion(pricing.fast_image_input_price_per_token),
-    })
-  }
-  if (hasPositiveValue(pricing.fast_output_price_per_token)) {
-    rows.push({
-      key: 'fast_output',
-      label: t('marketplace.fastOutput'),
-      value: formatPerMillion(pricing.fast_output_price_per_token),
-    })
-  }
-  if (pricing.fast_cache_write_30m_price_per_token != null) {
-    rows.push({
-      key: 'fast_cache_write_30m',
-      label: t('marketplace.cacheWriteLifetime', { ttl: '30m' }),
-      value: formatPerMillion(pricing.fast_cache_write_30m_price_per_token),
-    })
-  }
-  if (pricing.fast_cache_write_12h_price_per_token != null) {
-    rows.push({
-      key: 'fast_cache_write_12h',
-      label: t('marketplace.cacheWriteLifetime', { ttl: '12h' }),
-      value: formatPerMillion(pricing.fast_cache_write_12h_price_per_token),
-    })
-  }
-  if (
-    pricing.fast_cache_write_30m_price_per_token == null &&
-    pricing.fast_cache_write_12h_price_per_token == null &&
-    hasPositiveValue(pricing.fast_cache_write_price_per_token)
-  ) {
-    rows.push({
-      key: 'fast_cache_write',
-      label: t('marketplace.fastCacheWrite'),
-      value: formatPerMillion(pricing.fast_cache_write_price_per_token),
-    })
-  }
-  if (hasPositiveValue(pricing.fast_cache_write_1h_price_per_token)) {
-    rows.push({
-      key: 'fast_cache_write_1h',
-      label: t('marketplace.fastCacheWrite1h'),
-      value: formatPerMillion(pricing.fast_cache_write_1h_price_per_token),
-    })
-  }
-  if (hasPositiveValue(pricing.fast_cache_read_price_per_token)) {
-    rows.push({
-      key: 'fast_cache_read',
-      label: t('marketplace.fastCacheRead'),
-      value: formatPerMillion(pricing.fast_cache_read_price_per_token),
-    })
-  }
-  if (hasPositiveValue(pricing.fast_image_output_price_per_token)) {
-    rows.push({
-      key: 'fast_image_output',
-      label: t('marketplace.fastImageOutput'),
-      value: formatPerMillion(pricing.fast_image_output_price_per_token),
-    })
-  }
-
-  return rows
-}
-
-// compactTokenPricingRows prefers ordinary input and output prices for card summaries.
-// When absent, it uses at most two other standard categories. A completely empty
-// price list receives two zero-priced input and output rows; a fast-only list
-// has no standard fallback rows.
-function compactTokenPricingRows(
-  pricing: MarketplaceModelPricing | MarketplacePricingInterval,
-): PricingRow[] {
-  const primaryRows: PricingRow[] = []
-  if (hasPositiveValue(pricing.input_price_per_token)) {
-    primaryRows.push({
-      key: 'input',
-      label: t('marketplace.input'),
-      value: formatPerMillion(pricing.input_price_per_token),
-    })
-  }
-  if (hasPositiveValue(pricing.output_price_per_token)) {
-    primaryRows.push({
-      key: 'output',
-      label: t('marketplace.output'),
-      value: formatPerMillion(pricing.output_price_per_token),
-    })
-  }
-  if (primaryRows.length > 0) {
-    return primaryRows
-  }
-
-  // Inspect all price categories after ordinary input/output are absent so a
-  // completely empty quote can show free input/output prices while fast-only
-  // quotes stay distinct.
-  const rows = tokenPricingRowsFromValues(pricing)
-  if (rows.length === 0) {
-    return zeroTokenPricingRows()
-  }
-
-  // Use at most two standard alternatives for the card summary; fast categories
-  // belong to the expanded speed selector and cannot replace standard summary prices.
-  return rows.filter((row) => !row.key.startsWith('fast_')).slice(0, 2)
-}
-
-// zeroTokenPricingRows formats the input and output categories with explicit free amounts.
-function zeroTokenPricingRows(): PricingRow[] {
-  return [
-    { key: 'input', label: t('marketplace.input'), value: formatPerMillion(0) },
-    { key: 'output', label: t('marketplace.output'), value: formatPerMillion(0) },
-  ]
-}
-
-// compactContextIntervalRows retains each returned context range as a summary row.
-// Available price categories are joined within that range; an interval without
-// standard prices uses the existing zero fallback with its full unit labels.
-function compactContextIntervalRows(pricing: MarketplaceModelPricing): PricingRow[] {
-  return (
-    pricing.context_intervals?.flatMap((interval, index) => {
-      const pricedRows = compactIntervalTokenPricingRows(interval)
-      // Keep an interval visible when it has no standard summary categories by
-      // supplying free input/output rows, including intervals containing only fast prices.
-      const rows = pricedRows.length > 0 ? pricedRows : zeroTokenPricingRows()
-      return [
-        {
-          key: `compact-${interval.min_tokens}-${interval.max_tokens ?? 'up'}-${index}`,
-          label: formatCompactTokenRange(interval.min_tokens, interval.max_tokens),
-          value: rows.map((row) => `${row.label} ${row.value}`).join(' / '),
-        },
-      ]
-    }) ?? []
-  )
-}
-
-// compactIntervalTokenPricingRows prefers bare input and output amounts for context summaries.
-// Otherwise it takes at most two non-fast categories from the complete formatter,
-// retaining that fallback's full unit text rather than adding a second label.
-function compactIntervalTokenPricingRows(pricing: MarketplacePricingInterval): PricingRow[] {
-  const rows: PricingRow[] = []
-  if (hasPositiveValue(pricing.input_price_per_token)) {
-    rows.push({
-      key: 'input',
-      label: t('marketplace.input'),
-      value: formatCompactPerMillion(pricing.input_price_per_token),
-    })
-  }
-  if (hasPositiveValue(pricing.output_price_per_token)) {
-    rows.push({
-      key: 'output',
-      label: t('marketplace.output'),
-      value: formatCompactPerMillion(pricing.output_price_per_token),
-    })
-  }
-  if (rows.length > 0) {
-    return rows
-  }
-
-  // Without ordinary input/output prices, retain up to two other standard
-  // categories with their full unit labels; the interval caller supplies free rows
-  // if none remain.
-  return tokenPricingRowsFromValues(pricing)
-    .filter((row) => !row.key.startsWith('fast_'))
-    .slice(0, 2)
-}
-
-/**
- * compactPricingRows selects summary rows with units matching the public quote.
- * Unpriced models return no rows. Token context ranges use compact summaries,
- * while image and video models expose their available unit prices.
- */
-function compactPricingRows(pricing: MarketplaceModelPricing): PricingRow[] {
-  const kind = pricingKind(pricing)
-  if (kind === 'token' && hasContextIntervalPricing(pricing)) {
-    return compactContextIntervalRows(pricing)
-  }
-  if (kind === 'token') {
-    return compactTokenPricingRows(pricing)
-  }
-  if (kind === 'image') {
-    return imagePricingRows(pricing)
-  }
-  if (kind === 'video') {
-    return videoPricingRows(pricing)
-  }
-  return []
-}
-
-/**
- * videoPricingRows formats video dimensions using the displayed balance unit.
- * Named dimensions use their supplied labels; the explicit default uses a
- * translated label, and every row retains the per-second billing unit.
- */
-function videoPricingRows(pricing: MarketplaceModelPricing): PricingRow[] {
-  return videoPricingEntries(pricing).map((item) => ({
-    key: item.key,
-    label: item.resolution ?? t('marketplace.defaultVideoPrice'),
-    value: `${formatPrice(item.price)} ${t('marketplace.perSecond')}`,
-  }))
-}
-
-// imagePricingRows emits the declared finite, nonnegative image-resolution prices.
-// Explicit zero values remain visible as free tiers. Missing, negative, and
-// nonfinite values are omitted while the standard resolution order remains unchanged.
-function imagePricingRows(pricing: MarketplaceModelPricing): PricingRow[] {
-  const values = [
-    { key: '1k', label: '1K', price: pricing.image_price_1k },
-    { key: '2k', label: '2K', price: pricing.image_price_2k },
-    { key: '4k', label: '4K', price: pricing.image_price_4k },
-  ]
-
-  return values.flatMap((item) => {
-    if (typeof item.price !== 'number' || !Number.isFinite(item.price) || item.price < 0) {
-      return []
-    }
-
-    return [
-      {
-        key: item.key,
-        label: item.label,
-        value: formatPerImage(item.price),
-      },
-    ]
-  })
-}
-
-// fetchMarketplace loads the catalog for the current authenticated identity.
-// Each request captures its generation and user before awaiting the API. A newer
-// request, account change, or unmount prevents that completion from publishing
-// data, errors, or loading state. Same-account refresh failures retain previous
-// data behind the error view; successful refreshes reset unavailable group filters.
-//
-// Public and personal endpoints remain distinct so homepage behavior stays public.
-// Request completion checks identity as well as generation because authentication
-// can change while the shared API client refreshes a token or retries a request.
-async function fetchMarketplace() {
-  if (disposed) return
-  const generation = ++requestGeneration
-  const userID = catalogUserID.value
-  const authenticated = isAuthenticated.value
-  loading.value = true
-  errorMessage.value = ''
-
-  // isCurrent checks all ownership boundaries before a pending request publishes state.
-  const isCurrent = () =>
-    !disposed &&
-    generation === requestGeneration &&
-    userID === catalogUserID.value &&
-    authenticated === isAuthenticated.value
-
-  try {
-    const result = await (authenticated ? getAvailableMarketplaceModels() : getMarketplaceModels())
-    if (!isCurrent()) return
-    groups.value = result
-    if (
-      selectedGroupId.value !== 'all' &&
-      !result.some((group) => group.id === selectedGroupId.value)
-    ) {
-      selectedGroupId.value = 'all'
-    }
-  } catch (error) {
-    if (!isCurrent()) return
-    console.error('Failed to load marketplace models:', error)
-    errorMessage.value =
-      typeof error === 'object' && error !== null && 'message' in error
-        ? String(error.message)
-        : t('common.unknownError')
-  } finally {
-    if (isCurrent()) loading.value = false
-  }
-}
-
-// Clear personal data before the next render when identity changes. Synchronous
-// invalidation also prevents an already queued response from restoring the old catalog.
-watch(
-  [isAuthenticated, catalogUserID],
-  () => {
-    requestGeneration++
-    groups.value = []
-    errorMessage.value = ''
-    loading.value = true
-    if (catalogReady) void fetchMarketplace()
-  },
-  { flush: 'sync' },
-)
-
-// Invalidate every pending completion before unmount; queued locale refresh callbacks
-// also check disposal and cannot start another request for this retired page instance.
-onBeforeUnmount(() => {
-  disposed = true
-  requestGeneration++
-})
-
-// Restore theme and account state before loading missing public settings, then
-// request model groups so branding is available for the initial public presentation.
-onMounted(async () => {
-  initTheme()
-  authStore.checkAuth()
-  if (!appStore.publicSettingsLoaded) {
-    await appStore.fetchPublicSettings()
-  }
-  if (disposed) return
-  catalogReady = true
-  await fetchMarketplace()
-})
-
-// Language changes reload localized catalog records while preserving the page's
-// current search and select filters through the shared locale-refresh subscription.
-useLocaleRefresh(fetchMarketplace)
 </script>
 
+<template>
+  <component
+    :is="auth.isAuthenticated ? AppLayout : 'div'"
+    :hide-page-heading="true"
+    :class="
+      auth.isAuthenticated ? '' : 'min-h-screen bg-gray-50 pt-[var(--header-h)] dark:bg-dark-900'
+    "
+  >
+    <AppHeader v-if="!auth.isAuthenticated" public-page />
+    <section class="catalog-page" :class="{ 'catalog-public': !auth.isAuthenticated }">
+      <header class="catalog-heading">
+        <div
+          ><h1 class="text-2xl font-semibold tracking-tight">{{ t('marketplace.title') }}</h1
+          ><p class="mt-2 text-sm text-gray-500 dark:text-dark-300">{{
+            t('marketplace.catalogDescription', {
+              count: catalog.allModels.value.length,
+              groups: catalog.groups.value.length,
+            })
+          }}</p></div
+        >
+        <div class="catalog-search"
+          ><label for="model-catalog-search" class="sr-only">{{
+            t('marketplace.searchPlaceholder')
+          }}</label
+          ><Icon name="search" size="sm" class="text-gray-400" /><input
+            id="model-catalog-search"
+            v-model="catalog.search.value"
+            class="min-w-0 flex-1 bg-transparent text-base outline-none"
+            :placeholder="t('marketplace.searchPlaceholder')"
+            data-testid="marketplace-search"
+        /></div>
+      </header>
+      <div class="catalog-workspace">
+        <aside
+          class="catalog-sidebar"
+          :class="{ 'catalog-sidebar-open': mobileFiltersOpen }"
+          :aria-label="t('marketplace.catalogFilters')"
+        >
+          <div class="flex items-center justify-between gap-2"
+            ><h2 class="text-sm font-semibold">{{ t('marketplace.catalogFilters') }}</h2
+            ><button
+              type="button"
+              class="btn btn-secondary btn-icon catalog-sidebar-close"
+              :aria-label="t('common.close')"
+              @click="closeFilters"
+              ><Icon name="x" size="sm" /></button
+            ><button
+              v-if="filtersActive"
+              type="button"
+              class="text-xs text-primary-500"
+              @click="catalog.reset"
+              >{{ t('common.reset') }}</button
+            ></div
+          >
+          <section class="mt-5"
+            ><h3 class="catalog-filter-title">{{ t('marketplace.filterGroup') }}</h3
+            ><button
+              type="button"
+              class="catalog-filter catalog-group-filter"
+              @click="groupsOpen = true"
+              ><span class="min-w-0 break-words text-left">{{
+                selectedGroup?.name ?? t('marketplace.allGroups')
+              }}</span
+              ><Icon name="chevronDown" size="sm" class="ml-auto shrink-0" /></button
+            ><p class="mt-2 text-xs leading-5 text-gray-500 dark:text-dark-300">{{
+              t('marketplace.catalogGroupHint')
+            }}</p></section
+          >
+          <section class="mt-5"
+            ><h3 class="catalog-filter-title">{{ t('marketplace.filterPricingMode') }}</h3
+            ><button
+              v-for="kind in pricingKinds"
+              :key="kind"
+              type="button"
+              class="catalog-filter"
+              :class="{ 'catalog-filter-active': catalog.pricing.value === kind }"
+              @click="catalog.pricing.value = kind"
+              >{{ t(`marketplace.${pricingLabels[kind]}`) }}</button
+            ></section
+          >
+          <section class="mt-5"
+            ><h3 class="catalog-filter-title">{{ t('marketplace.filterBrand') }}</h3>
+            <div class="catalog-brand-list"
+              ><button
+                type="button"
+                class="catalog-filter"
+                :class="{ 'catalog-filter-active': catalog.brand.value === 'all' }"
+                @click="catalog.brand.value = 'all'"
+                ><span>{{ t('marketplace.allBrands') }}</span
+                ><span class="catalog-filter-count">{{
+                  catalog.allModels.value.length
+                }}</span></button
+              ><button
+                v-for="brand in catalog.brands.value"
+                :key="brand"
+                type="button"
+                class="catalog-filter"
+                :class="{ 'catalog-filter-active': catalog.brand.value === brand }"
+                @click="catalog.brand.value = brand"
+                ><ProviderIcon :brand="brand" size="18px" hide-fallback /><span
+                  class="min-w-0 flex-1 truncate"
+                  >{{ brand }}</span
+                ><span class="catalog-filter-count">{{ brandCounts.get(brand) }}</span></button
+              ></div
+            >
+          </section>
+        </aside>
+        <div class="min-w-0 space-y-4">
+          <div class="catalog-toolbar">
+            <div class="flex flex-wrap items-center gap-3"
+              ><button
+                type="button"
+                ref="filterToggle"
+                class="btn btn-secondary catalog-mobile-filter"
+                :aria-expanded="mobileFiltersOpen"
+                @click="mobileFiltersOpen = !mobileFiltersOpen"
+                ><Icon name="filter" size="sm" />{{ t('marketplace.catalogFilters') }}</button
+              ><p class="text-sm"
+                ><strong class="tabular-nums">{{ catalog.models.value.length }}</strong>
+                {{ t('marketplace.catalogModels')
+                }}<span class="ml-1 text-gray-400">/ {{ catalog.allModels.value.length }}</span></p
+              ></div
+            >
+            <div class="flex flex-wrap items-center gap-2"
+              ><label class="sr-only" for="catalog-sort">{{ t('marketplace.catalogSort') }}</label
+              ><select
+                id="catalog-sort"
+                v-model="catalog.sort.value"
+                class="input w-auto text-base sm:text-sm"
+                ><option value="default">{{ t('marketplace.catalogDefaultOrder') }}</option
+                ><option value="name">{{ t('marketplace.catalogNameOrder') }}</option></select
+              ><div
+                class="flex rounded-control border border-gray-200 p-1 dark:border-dark-600"
+                :aria-label="t('marketplace.catalogTokenScale')"
+                ><button
+                  v-for="unit in ['M', 'K'] as const"
+                  :key="unit"
+                  type="button"
+                  class="catalog-view-button"
+                  :class="{ 'catalog-view-active': tokenUnit === unit }"
+                  :aria-pressed="tokenUnit === unit"
+                  @click="tokenUnit = unit"
+                  >/1{{ unit }}</button
+                ></div
+              ><div
+                class="flex rounded-control border border-gray-200 p-1 dark:border-dark-600"
+                :aria-label="t('marketplace.catalogView')"
+                ><button
+                  type="button"
+                  class="catalog-view-button"
+                  :class="{ 'catalog-view-active': viewMode === 'cards' }"
+                  :aria-pressed="viewMode === 'cards'"
+                  @click="viewMode = 'cards'"
+                  >{{ t('marketplace.catalogCards') }}</button
+                ><button
+                  type="button"
+                  class="catalog-view-button"
+                  :class="{ 'catalog-view-active': viewMode === 'table' }"
+                  :aria-pressed="viewMode === 'table'"
+                  @click="viewMode = 'table'"
+                  >{{ t('marketplace.catalogTable') }}</button
+                ></div
+              ><button
+                type="button"
+                class="btn btn-secondary btn-icon"
+                :disabled="catalog.loading.value"
+                :aria-label="t('common.refresh')"
+                @click="refresh"
+                ><Icon name="refresh" size="sm" /></button
+            ></div>
+          </div>
+          <ModelMarketplaceSkeleton v-if="catalog.loading.value" />
+          <div v-else-if="catalog.error.value" class="card p-6" role="alert"
+            ><h2 class="font-semibold">{{ t('common.error') }}</h2
+            ><p class="mt-2 text-sm text-gray-500 dark:text-dark-300">{{ catalog.error.value }}</p
+            ><button type="button" class="btn btn-primary mt-4" @click="refresh">{{
+              t('common.retry')
+            }}</button></div
+          >
+          <div v-else-if="!catalog.models.value.length" class="card px-5 py-16 text-center"
+            ><h2 class="font-semibold">{{ t('marketplace.emptyTitle') }}</h2
+            ><p class="mt-2 text-sm text-gray-500 dark:text-dark-300">{{
+              t('marketplace.emptyDescription')
+            }}</p
+            ><button type="button" class="btn btn-secondary mt-4" @click="catalog.reset">{{
+              t('common.reset')
+            }}</button></div
+          >
+          <template v-else>
+            <div v-if="viewMode === 'cards'" class="catalog-model-grid">
+              <article
+                v-for="entry in catalog.visible.value"
+                :key="entry.id"
+                class="catalog-model-card"
+                :data-model-id="entry.id"
+              >
+                <div class="flex items-start gap-3"
+                  ><ProviderIcon :brand="entry.brands[0] ?? ''" size="28px" hide-fallback /><div
+                    class="min-w-0 flex-1"
+                    ><h2 class="break-words text-base font-semibold">{{ entry.displayName }}</h2
+                    ><p class="mt-1 truncate text-xs text-gray-500 dark:text-dark-300">{{
+                      entry.brands.join(' · ')
+                    }}</p></div
+                  ></div
+                >
+                <div class="flex items-center justify-between gap-2"
+                  ><code
+                    class="min-w-0 truncate text-xs text-gray-500 dark:text-dark-300"
+                    :title="entry.id"
+                    >{{ entry.id }}</code
+                  ><button
+                    type="button"
+                    class="shrink-0 text-gray-500 dark:text-dark-300"
+                    :aria-label="`${t('common.copy')} ${entry.id}`"
+                    @click="copyToClipboard(entry.id)"
+                    ><Icon name="copy" size="sm" /></button
+                ></div>
+                <ModelCapabilityTags
+                  v-if="catalog.representatives.value.get(entry.id)"
+                  :model="catalog.representatives.value.get(entry.id)!"
+                />
+                <div class="mt-auto border-t border-gray-100 pt-4 dark:border-dark-600"
+                  ><ModelPriceSummary :price="entry.price" :token-unit="tokenUnit"
+                /></div>
+                <button
+                  type="button"
+                  class="catalog-detail-button"
+                  @click="catalog.openModel(entry.id)"
+                  ><span>{{ t('marketplace.catalogOffers', { count: entry.groupCount }) }}</span
+                  ><span class="inline-flex items-center gap-1"
+                    >{{ t('marketplace.catalogDetails') }}<Icon name="arrowRight" size="sm" /></span
+                ></button>
+              </article>
+            </div>
+            <div v-else class="card overflow-x-auto"
+              ><table class="w-full min-w-[540px] text-left text-sm"
+                ><thead class="bg-gray-50 text-xs text-gray-500 dark:text-dark-300 dark:bg-dark-800"
+                  ><tr
+                    ><th class="p-4">{{ t('marketplace.catalogModel') }}</th
+                    ><th class="p-4">{{ t('marketplace.catalogPrice') }}</th
+                    ><th class="p-4">{{ t('marketplace.filterGroup') }}</th
+                    ><th class="p-4"
+                      ><span class="sr-only">{{ t('marketplace.catalogDetails') }}</span></th
+                    ></tr
+                  ></thead
+                ><tbody
+                  ><tr
+                    v-for="entry in catalog.visible.value"
+                    :key="entry.id"
+                    class="border-t border-gray-100 dark:border-dark-600"
+                    :data-model-id="entry.id"
+                    ><td class="p-4"
+                      ><button
+                        type="button"
+                        class="break-words text-left font-semibold"
+                        @click="catalog.openModel(entry.id)"
+                        >{{ entry.displayName }}</button
+                      ><p
+                        class="mt-1 max-w-64 truncate font-mono text-xs text-gray-500 dark:text-dark-300"
+                        :title="entry.id"
+                        >{{ entry.id }}</p
+                      ></td
+                    ><td class="p-4"
+                      ><ModelPriceSummary :price="entry.price" :token-unit="tokenUnit" /></td
+                    ><td class="p-4 tabular-nums">{{ entry.groupCount }}</td
+                    ><td class="p-4"
+                      ><button
+                        type="button"
+                        class="btn btn-secondary"
+                        @click="catalog.openModel(entry.id)"
+                        >{{ t('marketplace.catalogDetails') }}</button
+                      ></td
+                    ></tr
+                  ></tbody
+                ></table
+              ></div
+            >
+            <Pagination
+              :total="catalog.models.value.length"
+              :page="catalog.page.value"
+              :page-size="catalog.pageSize"
+              :show-page-size-selector="false"
+              @update:page="catalog.page.value = $event"
+            />
+          </template>
+        </div>
+      </div>
+    </section>
+    <BaseDialog
+      :show="groupsOpen"
+      :title="t('marketplace.filterGroup')"
+      width="wide"
+      trap-focus
+      @close="groupsOpen = false"
+    >
+      <label class="sr-only" for="catalog-group-search">{{ t('keys.searchGroup') }}</label
+      ><input
+        id="catalog-group-search"
+        v-model="groupSearch"
+        class="input mb-4 text-base"
+        :placeholder="t('keys.searchGroup')"
+      />
+      <div
+        v-if="monitoring.failed.value"
+        class="mb-4 flex flex-wrap items-center justify-between gap-2 text-sm text-red-600"
+        role="alert"
+        ><span>{{ t('monitoring.refreshFailed') }}</span
+        ><button type="button" class="btn btn-secondary" @click="monitoring.refresh">{{
+          t('common.retry')
+        }}</button></div
+      >
+      <button type="button" class="btn btn-secondary mb-4 w-full" @click="chooseGroup('all')">{{
+        t('marketplace.allGroups')
+      }}</button>
+      <div class="catalog-group-grid"
+        ><button
+          v-for="group in groupChoices"
+          :key="group.id"
+          type="button"
+          class="min-w-0 rounded-surface text-left"
+          @click="chooseGroup(group.id)"
+          ><GroupMonitorCard
+            :name="group.name"
+            :description="group.description"
+            :multiplier="group.hide_rate_multiplier ? null : group.rate_multiplier"
+            :reference-multiplier="group.hide_max_discount ? null : group.official_price_ratio"
+            :model-count="group.model_count"
+            :stats="monitoring.byID.value.get(group.id)"
+            :window-end="monitoring.snapshot.value?.end"
+            :selected="catalog.groupID.value === group.id" /><GroupAvailabilityBar
+            v-if="!auth.isAuthenticated && group.availability"
+            :availability="group.availability"
+            class="mt-2" /></button
+      ></div>
+      <p
+        v-if="!groupChoices.length"
+        class="py-8 text-center text-sm text-gray-500 dark:text-dark-300"
+        >{{ t('keys.noGroupFound') }}</p
+      >
+    </BaseDialog>
+    <BaseDialog
+      :show="!!catalog.selectedOffer.value"
+      :title="catalog.selectedOffer.value?.model.display_name ?? ''"
+      width="wide"
+      trap-focus
+      @close="catalog.selectedID.value = null"
+    >
+      <div v-if="catalog.selectedOffer.value" class="space-y-5">
+        <div class="flex flex-wrap items-center gap-3"
+          ><code class="min-w-0 break-all text-sm">{{ catalog.selectedOffer.value.model.id }}</code
+          ><button
+            type="button"
+            class="btn btn-secondary"
+            @click="copyToClipboard(catalog.selectedOffer.value.model.id)"
+            >{{ t('common.copy') }}</button
+          ><ModelAttributeDetails :model="catalog.selectedOffer.value.model"
+        /></div>
+        <ModelCapabilityTags :model="catalog.selectedOffer.value.model" />
+        <label for="catalog-offer" class="input-label">{{ t('marketplace.filterGroup') }}</label
+        ><select id="catalog-offer" v-model="catalog.offerGroupID.value" class="input"
+          ><option
+            v-for="offer in catalog.offers.value"
+            :key="offer.group.id"
+            :value="offer.group.id"
+            >{{ offer.group.name }}</option
+          ></select
+        >
+        <GroupMonitorCard
+          :name="catalog.selectedOffer.value.group.name"
+          :description="catalog.selectedOffer.value.group.description"
+          :multiplier="
+            catalog.selectedOffer.value.group.hide_rate_multiplier
+              ? null
+              : catalog.selectedOffer.value.group.rate_multiplier
+          "
+          :reference-multiplier="
+            catalog.selectedOffer.value.group.hide_max_discount
+              ? null
+              : catalog.selectedOffer.value.group.official_price_ratio
+          "
+          :stats="monitoring.byID.value.get(catalog.selectedOffer.value.group.id)"
+          :window-end="monitoring.snapshot.value?.end"
+        />
+        <ModelPriceSummary v-if="selectedQuote" :price="selectedQuote" :token-unit="tokenUnit" />
+        <ModelPricingPanel
+          :key="catalog.selectedOffer.value.group.id"
+          :model="catalog.selectedOffer.value.model"
+        />
+      </div>
+    </BaseDialog>
+  </component>
+</template>
+
 <style scoped>
-/*
- * The exclusive badge uses a muted gold palette distinct from warning amber.
- * Its crown and text inherit one foreground, while theme-specific surfaces keep
- * the label readable beside the existing brand and pricing tags.
- */
-.marketplace-exclusive-tag {
-  border-color: #dfcea3;
-  background-color: #f7f2e5;
-  color: #7c6128;
+/* Catalog surfaces use compact comparison lanes; the local table alone scrolls
+   at narrow widths while the page, search, filters, and cards reflow naturally. */
+.catalog-page {
+  @apply min-w-0 space-y-6;
 }
-
-/*
- * A card opened from global search pulses a brand-colored ring twice and fades out.
- * Reduced motion skips the pulse; the card is still scrolled into view and filtered.
- */
-.marketplace-card-flash {
-  animation: marketplace-card-flash 1.6s var(--motion-ease);
-  --flash-color: theme('colors.primary.600');
+.catalog-public {
+  @apply mx-auto max-w-[1560px] px-4 py-8 sm:px-6 lg:px-8;
 }
-
-.dark .marketplace-card-flash {
-  --flash-color: theme('colors.primary.500');
+.catalog-heading {
+  @apply flex flex-wrap items-end justify-between gap-5;
 }
-
-@keyframes marketplace-card-flash {
-  0%,
-  50% {
-    box-shadow: 0 0 0 2px var(--flash-color);
+.catalog-search {
+  @apply flex min-w-0 flex-1 basis-80 items-center gap-2 rounded-control border border-gray-200 bg-white px-3 py-2.5 dark:border-dark-600 dark:bg-dark-800;
+}
+.catalog-workspace {
+  @apply grid min-w-0 grid-cols-1 gap-5;
+}
+.catalog-sidebar {
+  @apply hidden self-start rounded-surface border border-gray-200 bg-white p-4 dark:border-dark-600 dark:bg-dark-800;
+}
+.catalog-sidebar-close {
+  display: inline-flex;
+}
+.catalog-sidebar-open {
+  @apply block;
+}
+.catalog-brand-list {
+  max-height: 14rem;
+  overflow-y: auto;
+}
+.catalog-filter-title {
+  @apply mb-2 text-xs font-medium text-gray-500 dark:text-dark-300;
+}
+.catalog-filter {
+  @apply mb-1 flex min-h-11 w-full sm:min-h-10 items-center gap-2 rounded-control px-2.5 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-dark-700;
+}
+.catalog-filter-active {
+  background-color: var(--tr-color-brand);
+  color: var(--tr-color-brand-contrast);
+}
+.catalog-filter-active:hover {
+  background-color: var(--tr-color-brand);
+  color: var(--tr-color-brand-contrast);
+}
+.catalog-filter:focus-visible,
+.catalog-view-button:focus-visible,
+.catalog-detail-button:focus-visible,
+.catalog-group-grid > button:focus-visible {
+  outline: 2px solid var(--tr-color-brand);
+  outline-offset: 2px;
+}
+.catalog-filter-count {
+  @apply ml-auto text-xs tabular-nums opacity-70;
+}
+.catalog-group-filter {
+  @apply border border-gray-200 dark:border-dark-600;
+}
+.catalog-toolbar {
+  @apply flex flex-wrap items-center justify-between gap-3 rounded-surface border border-gray-200 bg-white p-3 dark:border-dark-600 dark:bg-dark-800;
+}
+.catalog-view-button {
+  @apply min-h-11 rounded-control sm:min-h-8 px-2.5 text-xs;
+}
+.catalog-view-active {
+  background-color: var(--tr-color-brand);
+  color: var(--tr-color-brand-contrast);
+}
+.catalog-model-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 1rem;
+}
+.catalog-model-card {
+  @apply flex min-w-0 flex-col gap-3 rounded-surface border border-gray-200 bg-white p-4 dark:border-dark-600 dark:bg-dark-800;
+}
+.catalog-detail-button {
+  @apply mt-1 flex min-h-11 items-center justify-between sm:min-h-10 gap-2 border-t border-gray-100 pt-3 text-xs text-gray-500 dark:text-dark-300 dark:border-dark-600;
+}
+.catalog-group-grid {
+  @apply grid grid-cols-1 gap-4 sm:grid-cols-2;
+}
+@media (min-width: 1000px) {
+  .catalog-workspace {
+    grid-template-columns: 190px minmax(0, 1fr);
   }
-
-  25%,
-  100% {
-    box-shadow: 0 0 0 2px transparent;
+  .catalog-sidebar {
+    display: block;
+    position: sticky;
+    top: calc(var(--header-h) + 1rem);
+    max-height: calc(100vh - var(--header-h) - 2rem);
+    overflow-y: auto;
   }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .marketplace-card-flash {
-    animation-duration: 1ms;
+  .catalog-mobile-filter,
+  .catalog-sidebar-close {
+    display: none;
   }
-}
-
-.dark .marketplace-exclusive-tag {
-  border-color: #594b2c;
-  background-color: #29251c;
-  color: #d6bd7b;
 }
 </style>

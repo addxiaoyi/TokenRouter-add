@@ -2,6 +2,10 @@
 // Empty sampling windows remain distinct from healthy service, and metric labels
 // distinguish request duration from the nullable first-token latency measurement.
 export default {
+  availableModels: 'Available models',
+  past: 'Past',
+  now: 'Now',
+  referenceMultiplier: 'Reference multiplier',
   cacheHitRate: 'Cache hit rate',
   noCacheSamples: 'No input token samples',
   cacheHitRateHint:

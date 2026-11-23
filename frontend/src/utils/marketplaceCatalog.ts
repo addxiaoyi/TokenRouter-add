@@ -46,7 +46,7 @@ export function compareMarketplaceGroups(left: MarketplaceGroup, right: Marketpl
 // varies reports that another group quotes a different amount for the same kind.
 export type ModelPriceSummary =
   | { kind: 'token'; input: number | null; output: number | null; varies: boolean }
-  | { kind: 'image' | 'video'; amount: number; varies: boolean }
+  | { kind: 'image' | 'video' | 'per_request'; amount: number; varies: boolean }
   | { kind: 'unpriced' }
 
 // ModelSearchEntry is one searchable model merged across every group that offers it.
@@ -62,7 +62,7 @@ export interface ModelSearchEntry {
 // PricedQuote is one group's quote reduced to a comparable primary amount.
 type PricedQuote =
   | { kind: 'token'; input: number | null; output: number | null; primary: number }
-  | { kind: 'image' | 'video'; amount: number; primary: number }
+  | { kind: 'image' | 'video' | 'per_request'; amount: number; primary: number }
 
 // isQuoteAmount accepts finite nonnegative amounts, keeping explicit zero as free.
 function isQuoteAmount(value: unknown): value is number {
@@ -78,8 +78,25 @@ function tokenQuote(pricing: MarketplaceModelPricing): PricedQuote {
     isQuoteAmount(pricing.input_price_per_token) || isQuoteAmount(pricing.output_price_per_token)
       ? pricing
       : (pricing.context_intervals?.[0] ?? pricing)
-  const input = isQuoteAmount(source.input_price_per_token) ? source.input_price_per_token : null
-  const output = isQuoteAmount(source.output_price_per_token) ? source.output_price_per_token : null
+  const input = isQuoteAmount(source.input_price_per_token)
+    ? source.input_price_per_token
+    : isQuoteAmount(source.image_input_price_per_token)
+      ? source.image_input_price_per_token
+      : null
+  const output = isQuoteAmount(source.output_price_per_token)
+    ? source.output_price_per_token
+    : isQuoteAmount(source.image_output_price_per_token)
+      ? source.image_output_price_per_token
+      : null
+  // The priced DTO omits numeric zero token rates. When both primary sides are
+  // absent, restore their declared zeros instead of presenting a priced free offer as unknown.
+  const omittedPrimaryRates = [
+    source.input_price_per_token,
+    source.output_price_per_token,
+    source.image_input_price_per_token,
+    source.image_output_price_per_token,
+  ].every((value) => value == null)
+  if (omittedPrimaryRates) return { kind: 'token', input: 0, output: 0, primary: 0 }
   return { kind: 'token', input, output, primary: input ?? output ?? Number.POSITIVE_INFINITY }
 }
 
@@ -98,6 +115,9 @@ function quoteFor(pricing: MarketplaceModelPricing): PricedQuote | null {
     const amount = Math.min(...amounts)
     return { kind, amount, primary: amount }
   }
+  if (kind === 'per_request' && pricing.price_per_request != null) {
+    return { kind, amount: pricing.price_per_request, primary: pricing.price_per_request }
+  }
   if (kind === 'video') {
     const amount = Math.min(...videoPricingEntries(pricing).map((entry) => entry.price))
     return { kind, amount, primary: amount }
@@ -107,15 +127,29 @@ function quoteFor(pricing: MarketplaceModelPricing): PricedQuote | null {
 
 // summarizePrices picks the cheapest quote of the first priced kind in group order.
 // Mixed billing kinds across groups are rare; following group order keeps the summary
-// consistent with the first card a user sees in the marketplace.
+// consistent with the first offer in catalog order. Token summaries compare both
+// input and output sides when reporting variation, even when their sorting side
+// is identical. The quoted pair always comes from one group, rather than combining
+// the cheapest input from one group with the cheapest output from another.
 function summarizePrices(quotes: PricedQuote[]): ModelPriceSummary {
   if (quotes.length === 0) {
     return { kind: 'unpriced' }
   }
   const kind = quotes[0].kind
   const sameKind = quotes.filter((quote) => quote.kind === kind)
-  const cheapest = sameKind.reduce((best, quote) => (quote.primary < best.primary ? quote : best))
-  const varies = sameKind.some((quote) => quote.primary !== cheapest.primary)
+  const cheapest = sameKind.reduce((best, quote) => {
+    if (quote.primary !== best.primary) return quote.primary < best.primary ? quote : best
+    if (quote.kind === 'token' && best.kind === 'token') {
+      return (quote.output ?? Infinity) < (best.output ?? Infinity) ? quote : best
+    }
+    return best
+  })
+  const varies = sameKind.some((quote) => {
+    if (cheapest.kind === 'token' && quote.kind === 'token') {
+      return quote.input !== cheapest.input || quote.output !== cheapest.output
+    }
+    return quote.primary !== cheapest.primary
+  })
   if (cheapest.kind === 'token') {
     return { kind: 'token', input: cheapest.input, output: cheapest.output, varies }
   }

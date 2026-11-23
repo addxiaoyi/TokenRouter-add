@@ -8,7 +8,7 @@ import type { ModelModality } from '@/api/models.types'
 // through each advertised group.
 
 // MarketplacePricingMode identifies the unit selected for a public model quote.
-export type MarketplacePricingMode = 'token' | 'image' | 'video' | 'unknown'
+export type MarketplacePricingMode = 'token' | 'image' | 'video' | 'per_request' | 'unknown'
 
 // MarketplacePriceStatus distinguishes an available public price from an unpriced model.
 export type MarketplacePriceStatus = 'priced' | 'unpriced'
@@ -74,6 +74,7 @@ export interface MarketplaceModelPricing {
   // video_price_per_second is the explicit default for unlisted resolutions; absence
   // means unavailable and zero remains a valid free default.
   video_price_per_second?: number // Video price per second.
+  price_per_request?: number // Group-adjusted USD per request.
   pricing_mode: MarketplacePricingMode // Public quote billing unit.
   price_status: MarketplacePriceStatus // Public quote availability.
   input_price_per_token?: number // Input price per token.

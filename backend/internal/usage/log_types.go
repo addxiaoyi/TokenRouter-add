@@ -9,7 +9,6 @@ import "time"
 // filters carry actor and team visibility separately from those reporting
 // identities, so a result's user label and a filter's UserID can name
 // different participants.
-
 // Model-source labels select the requested, outbound or mapping dimension
 // used by usage reporting queries.
 const (
@@ -25,22 +24,18 @@ type DashboardStats struct {
 	TodayNewUsers     int64 `json:"today_new_users"`     // today registered user count
 	ActiveUsers       int64 `json:"active_users"`        // today distinct actor count
 	HourlyActiveUsers int64 `json:"hourly_active_users"` // current hour distinct actor count
-
 	// StatsUpdatedAt and StatsStale describe aggregation progress, separately
 	// from cache insertion age. DashboardService emits an RFC3339 UTC watermark
 	// and reevaluates lag against enablement, interval and lookback on reads.
-	StatsUpdatedAt string `json:"stats_updated_at"` // aggregation watermark UTC text
-	StatsStale     bool   `json:"stats_stale"`      // aggregation lag stale flag
-
-	TotalAPIKeys  int64 `json:"total_api_keys"`  // current key total count
-	ActiveAPIKeys int64 `json:"active_api_keys"` // current active key count
-
-	TotalProviders     int64 `json:"total_providers"`     // current provider total count
-	NormalProviders    int64 `json:"normal_providers"`    // active schedulable provider count
-	ErrorProviders     int64 `json:"error_providers"`     // error status provider count
-	RateLimitProviders int64 `json:"ratelimit_providers"` // currently rate limited provider count
-	OverloadProviders  int64 `json:"overload_providers"`  // currently overloaded provider count
-
+	StatsUpdatedAt           string  `json:"stats_updated_at"`            // aggregation watermark UTC text
+	StatsStale               bool    `json:"stats_stale"`                 // aggregation lag stale flag
+	TotalAPIKeys             int64   `json:"total_api_keys"`              // current key total count
+	ActiveAPIKeys            int64   `json:"active_api_keys"`             // current active key count
+	TotalProviders           int64   `json:"total_providers"`             // current provider total count
+	NormalProviders          int64   `json:"normal_providers"`            // active schedulable provider count
+	ErrorProviders           int64   `json:"error_providers"`             // error status provider count
+	RateLimitProviders       int64   `json:"ratelimit_providers"`         // currently rate limited provider count
+	OverloadProviders        int64   `json:"overload_providers"`          // currently overloaded provider count
 	TotalRequests            int64   `json:"total_requests"`              // matching usage record total
 	TotalInputTokens         int64   `json:"total_input_tokens"`          // input token total count
 	TotalOutputTokens        int64   `json:"total_output_tokens"`         // output token total count
@@ -50,7 +45,6 @@ type DashboardStats struct {
 	TotalCost                float64 `json:"total_cost"`                  // standard cost total USD
 	TotalActualCost          float64 `json:"total_actual_cost"`           // user charge total USD
 	TotalProviderCost        float64 `json:"total_provider_cost"`         // provider cost total USD
-
 	TodayRequests            int64   `json:"today_requests"`              // today usage record count
 	TodayInputTokens         int64   `json:"today_input_tokens"`          // today input token count
 	TodayOutputTokens        int64   `json:"today_output_tokens"`         // today output token count
@@ -60,11 +54,9 @@ type DashboardStats struct {
 	TodayCost                float64 `json:"today_cost"`                  // today standard cost USD
 	TodayActualCost          float64 `json:"today_actual_cost"`           // today user charge USD
 	TodayProviderCost        float64 `json:"today_provider_cost"`         // today provider cost USD
-
-	AverageDurationMs float64 `json:"average_duration_ms"` // reported mean duration milliseconds
-
-	Rpm int64 `json:"rpm"` // five minute average request rate
-	Tpm int64 `json:"tpm"` // five minute input output token rate
+	AverageDurationMs        float64 `json:"average_duration_ms"`         // reported mean duration milliseconds
+	Rpm                      int64   `json:"rpm"`                         // five minute average request rate
+	Tpm                      int64   `json:"tpm"`                         // five minute input output token rate
 }
 
 // TrendDataPoint carries one formatted time bucket's usage and user charge
@@ -262,9 +254,8 @@ type APIKeyDailyUsagePoint struct {
 // UserDashboardStats carries visible usage totals, key counters and platform
 // summaries for a user or key.
 type UserDashboardStats struct {
-	TotalAPIKeys  int64 `json:"total_api_keys"`  // current key total count
-	ActiveAPIKeys int64 `json:"active_api_keys"` // current active key count
-
+	TotalAPIKeys             int64   `json:"total_api_keys"`              // current key total count
+	ActiveAPIKeys            int64   `json:"active_api_keys"`             // current active key count
 	TotalRequests            int64   `json:"total_requests"`              // matching usage record total
 	TotalInputTokens         int64   `json:"total_input_tokens"`          // input token total count
 	TotalOutputTokens        int64   `json:"total_output_tokens"`         // output token total count
@@ -273,7 +264,6 @@ type UserDashboardStats struct {
 	TotalTokens              int64   `json:"total_tokens"`                // combined general token total
 	TotalCost                float64 `json:"total_cost"`                  // standard cost total USD
 	TotalActualCost          float64 `json:"total_actual_cost"`           // user charge total USD
-
 	TodayRequests            int64   `json:"today_requests"`              // today usage record count
 	TodayInputTokens         int64   `json:"today_input_tokens"`          // today input token count
 	TodayOutputTokens        int64   `json:"today_output_tokens"`         // today output token count
@@ -282,12 +272,9 @@ type UserDashboardStats struct {
 	TodayTokens              int64   `json:"today_tokens"`                // today combined general tokens
 	TodayCost                float64 `json:"today_cost"`                  // today standard cost USD
 	TodayActualCost          float64 `json:"today_actual_cost"`           // today user charge USD
-
-	AverageDurationMs float64 `json:"average_duration_ms"` // reported mean duration milliseconds
-
-	Rpm int64 `json:"rpm"` // five minute average request rate
-	Tpm int64 `json:"tpm"` // five minute input output token rate
-
+	AverageDurationMs        float64 `json:"average_duration_ms"`         // reported mean duration milliseconds
+	Rpm                      int64   `json:"rpm"`                         // five minute average request rate
+	Tpm                      int64   `json:"tpm"`                         // five minute input output token rate
 	// ByPlatform groups visible usage by the platform stored on each row.
 	// Current provider or group configuration changes do not redefine this
 	// recorded reporting attribution.
@@ -404,6 +391,11 @@ type BatchAPIKeyUsageStats struct {
 	APIKeyID        int64   `json:"api_key_id"`        // reported key identifier
 	TodayActualCost float64 `json:"today_actual_cost"` // today user charge USD
 	TotalActualCost float64 `json:"total_actual_cost"` // selected range key charge USD
+	// TodayCacheHitRate and TotalCacheHitRate divide cached reads by all input-side
+	// tokens in their respective windows. Nil denotes no input sample; zero is a
+	// measured miss rate, and ratios are converted to percentages by clients.
+	TodayCacheHitRate *float64 `json:"today_cache_hit_rate"` // today's cache read share
+	TotalCacheHitRate *float64 `json:"total_cache_hit_rate"` // selected range cache share
 }
 
 // ProviderUsageHistory carries a provider's daily standard costs, provider

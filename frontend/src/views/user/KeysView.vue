@@ -265,6 +265,24 @@
                     }}
                   </span>
                 </div>
+                <div
+                  class="flex flex-wrap items-center justify-end gap-1.5 text-xs lg:justify-start"
+                  data-testid="key-cache-today"
+                >
+                  <span class="text-gray-500 dark:text-gray-400">{{ t('keys.cacheToday') }}:</span>
+                  <span class="font-medium tabular-nums">{{
+                    cacheShare(usageStats[row.id]?.today_cache_hit_rate)
+                  }}</span>
+                </div>
+                <div
+                  class="flex flex-wrap items-center justify-end gap-1.5 text-xs lg:justify-start"
+                  data-testid="key-cache-range"
+                >
+                  <span class="text-gray-500 dark:text-gray-400">{{ t('keys.cacheRange') }}:</span>
+                  <span class="font-medium tabular-nums">{{
+                    cacheShare(usageStats[row.id]?.total_cache_hit_rate)
+                  }}</span>
+                </div>
                 <!-- The batch endpoint reports total_actual_cost for the recent thirty days, so the label names that interval. -->
                 <div class="flex items-center justify-end gap-1.5 lg:justify-start">
                   <span class="text-gray-500 dark:text-gray-400">{{ t('keys.total') }}:</span>
@@ -675,6 +693,7 @@
             :aria-label="t('keys.groupLabel')"
             aria-describedby="key-group-hint"
             data-tour="key-form-group"
+            :panel-min-width="560"
           >
             <template #selected="{ option }">
               <GroupBadge
@@ -687,12 +706,15 @@
               <span v-else class="text-gray-400">{{ t('keys.selectGroup') }}</span>
             </template>
             <template #option="{ option, selected }">
-              <GroupOptionItem
+              <GroupMonitorCard
                 :name="(option as unknown as GroupOption).label"
-                :display-brand="(option as unknown as GroupOption).displayBrand"
-                :rate-multiplier="(option as unknown as GroupOption).rate"
-                :user-rate-multiplier="(option as unknown as GroupOption).userRate"
                 :description="(option as unknown as GroupOption).description"
+                :multiplier="
+                  (option as unknown as GroupOption).userRate ??
+                  (option as unknown as GroupOption).rate
+                "
+                :stats="groupMonitoring.byID.value.get(Number(option.value))"
+                :window-end="groupMonitoring.snapshot.value?.end"
                 :selected="selected"
               />
             </template>
@@ -1438,6 +1460,10 @@
       :selected-key="selectedKeyForGroup"
       :options="allGroupOptions"
       :position="dropdownPosition"
+      :monitoring="groupMonitoring.snapshot.value"
+      :monitoring-loading="groupMonitoring.loading.value"
+      :monitoring-failed="groupMonitoring.failed.value"
+      @refresh="groupMonitoring.refresh"
       @select="changeGroup"
     />
   </AppLayout>
@@ -1483,7 +1509,6 @@ import ModelRedirectHelp from '@/components/keys/ModelRedirectHelp.vue'
 import TfCliImportDialog from '@/components/keys/TfCliImportDialog.vue'
 import EndpointPopover from '@/components/keys/EndpointPopover.vue'
 import GroupBadge from '@/components/common/GroupBadge.vue'
-import GroupOptionItem from '@/components/common/GroupOptionItem.vue'
 import ScopeDropdown, { type DataScope } from '@/components/team/ScopeDropdown.vue'
 import type {
   ApiKey,
@@ -1508,6 +1533,8 @@ import { getFloatingPanelPosition } from '@/utils/floatingPanel'
 import { groupForKeyConfig } from '@/utils/clientConfig'
 import KeyCcSwitchImportModal from './keys/KeyCcSwitchImportModal.vue'
 import KeyGroupSelectorDropdown from './keys/KeyGroupSelectorDropdown.vue'
+import GroupMonitorCard from '@/components/common/GroupMonitorCard.vue'
+import { useGroupMonitoring } from '@/composables/useGroupMonitoring'
 import KeyRotatedSecretModal from './keys/KeyRotatedSecretModal.vue'
 import {
   buildKeyGroupOptions,
@@ -1670,6 +1697,14 @@ const submitting = ref(false)
 const now = ref(new Date())
 let resetTimer: ReturnType<typeof setInterval> | null = null
 const usageStats = ref<Record<string, BatchApiKeyUsageStats>>({})
+
+// cacheShare formats a measured fractional cache rate for the key usage column.
+// Missing and invalid values stay unavailable, while zero remains a measured miss.
+// Both windows use the server's token totals rather than averages of request rates.
+function cacheShare(value?: number | null): string {
+  return value == null || !Number.isFinite(value) ? '—' : `${(value * 100).toFixed(2)}%`
+}
+
 const userGroupRates = ref<Record<number, number>>({})
 
 // pagination stores the selected page and persisted page size alongside server totals;
@@ -1716,6 +1751,12 @@ const actionMenuPosition = ref<{
 } | null>(null)
 const copiedKeyId = ref<number | null>(null)
 const groupSelectorKeyId = ref<number | null>(null)
+// Load observations once per open selection scope; group authorization still comes
+// from the existing form catalog and cache rates retain their private account owner.
+const groupMonitoringEnabled = computed(
+  () => showCreateModal.value || showEditModal.value || groupSelectorKeyId.value !== null,
+)
+const groupMonitoring = useGroupMonitoring(groupMonitoringEnabled)
 // Public settings control team scope and import visibility; element refs support teleported
 // panels and per-key group-button positioning.
 const publicSettings = ref<PublicSettings | null>(null)
@@ -2577,7 +2618,7 @@ const openGroupSelector = (key: ApiKey) => {
       // Estimate a comfortable group-panel height before choosing its side, and allow the positioning helper to use near-full viewport width on narrow screens.
       const position = getFloatingPanelPosition(rect, window.innerWidth, window.innerHeight, {
         align: 'left',
-        maxWidth: 380,
+        maxWidth: 680,
         viewportPadding: 8,
         gap: 4,
         maxHeightRatio: 1,

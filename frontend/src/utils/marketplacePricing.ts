@@ -73,8 +73,10 @@ export function videoPricingEntries(pricing: MarketplaceModelPricing): VideoPric
  */
 export function pricingKind(
   pricing: MarketplaceModelPricing,
-): 'token' | 'image' | 'video' | 'unpriced' {
+): 'token' | 'image' | 'video' | 'per_request' | 'unpriced' {
   if (pricing.price_status !== 'priced') return 'unpriced'
+  if (pricing.pricing_mode === 'per_request' && isUnitPrice(pricing.price_per_request))
+    return 'per_request'
   if (pricing.pricing_mode === 'video' && videoPricingEntries(pricing).length > 0) return 'video'
   if (pricing.pricing_mode === 'image' && hasImagePricing(pricing)) return 'image'
   if (pricing.pricing_mode === 'token') return 'token'

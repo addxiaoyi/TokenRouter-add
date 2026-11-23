@@ -5,7 +5,7 @@
         v-if="open && position"
         :inert="!(open && position) || undefined"
         ref="panelRef"
-        class="dropdown animate-in fade-in slide-in-from-top-2 fixed z-teleport-dropdown w-max max-w-[calc(100vw-16px)] overflow-hidden py-0 duration-normal sm:min-w-[380px]"
+        class="dropdown animate-in fade-in slide-in-from-top-2 fixed z-teleport-dropdown w-[680px] max-w-[calc(100vw-16px)] overflow-hidden py-0 duration-normal"
         style="pointer-events: auto !important"
         :style="{
           top: position.top !== undefined ? position.top + 'px' : undefined,
@@ -16,28 +16,42 @@
         <div class="border-b border-gray-100 p-2 dark:border-dark-700">
           <SearchInput v-model="searchQuery" :placeholder="t('keys.searchGroup')" @click.stop />
         </div>
-        <div class="max-h-80 overflow-y-auto p-1.5">
+        <div v-if="monitoringLoading" role="status" class="px-4 py-2 text-xs text-gray-500">{{
+          t('common.loading')
+        }}</div>
+        <div
+          v-if="monitoringFailed"
+          role="alert"
+          class="flex items-center justify-between gap-2 px-4 py-2 text-xs text-red-600"
+        >
+          <span>{{ t('monitoring.refreshFailed') }}</span
+          ><button type="button" class="btn btn-secondary" @click.stop="emit('refresh')">{{
+            t('common.retry')
+          }}</button>
+        </div>
+        <div class="grid max-h-[60vh] grid-cols-1 gap-3 overflow-y-auto p-3 sm:grid-cols-2">
           <button
             v-for="option in filteredOptions"
             :key="option.value ?? 'null'"
             type="button"
             @click="selectedKey && emit('select', selectedKey, option.value)"
             :class="[
-              'flex w-full items-center justify-between rounded-control px-3 py-2.5 text-sm transition-colors',
-              'border-b border-gray-100 last:border-0 dark:border-dark-700',
+              'w-full rounded-surface text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500',
+              '',
               isSelectedGroup(option.value)
                 ? 'bg-primary-50 dark:bg-primary-500/8 dark:text-primary-500'
                 : 'hover:bg-gray-100 dark:hover:bg-dark-700',
             ]"
             :title="option.description || undefined"
           >
-            <GroupOptionItem
+            <GroupMonitorCard
               :name="option.label"
-              :display-brand="option.displayBrand"
-              :rate-multiplier="option.rate"
-              :user-rate-multiplier="option.userRate"
+              :multiplier="option.userRate ?? option.rate"
               :description="option.description"
+              :stats="monitoring?.groups.find((group) => group.id === option.value)"
+              :window-end="monitoring?.end"
               :selected="isSelectedGroup(option.value)"
+              class="w-full"
             />
           </button>
           <div
@@ -55,7 +69,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import GroupOptionItem from '@/components/common/GroupOptionItem.vue'
+import GroupMonitorCard from '@/components/common/GroupMonitorCard.vue'
+import type { MonitoringSnapshot } from '@/api/monitoring'
 import MotionTransition from '@/components/common/MotionTransition.vue'
 import SearchInput from '@/components/common/SearchInput.vue'
 import type { ApiKey } from '@/api/keys.types'
@@ -71,6 +86,9 @@ const props = defineProps<{
   open: boolean // Whether a key row currently owns the open selector.
   selectedKey: ApiKey | null // Target API key row being reassigned.
   options: KeyGroupSelectOption[] // Available routing group choices.
+  monitoring?: MonitoringSnapshot | null // Authorized group observation snapshot.
+  monitoringLoading?: boolean // Observation request in progress.
+  monitoringFailed?: boolean // Last observation request failed.
   position: {
     top?: number // Optional downward anchor offset in viewport pixels.
     bottom?: number // Optional upward anchor offset in viewport pixels.
@@ -79,6 +97,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  refresh: [] // Retry the current group observation window.
   select: [key: ApiKey, groupId: number | null] // Persists a newly chosen group for selectedKey.
 }>()
 

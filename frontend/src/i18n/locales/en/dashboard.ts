@@ -77,6 +77,8 @@ export default {
   },
   // API Keys
   keys: {
+    cacheToday: 'Cache hit (today)',
+    cacheRange: 'Cache hit (30 days)',
     title: 'API Keys',
     description: 'Manage your API keys and access tokens',
     searchPlaceholder: 'Search name or key...',

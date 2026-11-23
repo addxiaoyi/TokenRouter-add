@@ -126,3 +126,34 @@ describe('buildModelIndex', () => {
     expect(index[0].searchTerms).toEqual(['vision', 'fast', 'cheap'])
   })
 })
+
+// Priced zero-valued token fields are omitted by the public Go DTO serializer.
+// The model summary must restore those declared zero rates while preserving per-request billing identity.
+it('restores omitted priced zeros and preserves request billing units', () => {
+  const rows = buildModelIndex([
+    group(1, [
+      {
+        id: 'free',
+        display_name: 'Free',
+        pricing: { pricing_mode: 'token', price_status: 'priced' },
+      },
+      {
+        id: 'request',
+        display_name: 'Request',
+        pricing: { pricing_mode: 'per_request', price_status: 'priced', price_per_request: 0.1 },
+      },
+    ]),
+  ])
+  expect(rows[0].price).toEqual({ kind: 'token', input: 0, output: 0, varies: false })
+  expect(rows[1].price).toEqual({ kind: 'per_request', amount: 0.1, varies: false })
+})
+
+// Two groups quote identical input rates but different output rates for one model.
+// The summary must mark variation so browsing does not imply a single fixed quote.
+it('marks output-only token price variation', () => {
+  const entry = buildModelIndex([
+    group(1, [tokenModel('output-varies', 1, 2)]),
+    group(2, [tokenModel('output-varies', 1, 3)]),
+  ])[0]
+  expect(entry.price).toMatchObject({ kind: 'token', varies: true })
+})

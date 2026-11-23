@@ -31,7 +31,6 @@ import (
 // individual endpoint-detail failures. The chosen SQL executor determines
 // concurrent versus serial dispatch, and duration averages count either all rows
 // or observed values at the owning entry point.
-
 // UsageStats contains request, token, cost, timing, and endpoint summary values.
 type UsageStats = usage.UsageStats
 
@@ -111,7 +110,6 @@ func (r *Store) GetUserStatsAggregated(ctx context.Context, userID int64, startT
 		FROM usage_logs
 		WHERE user_id = $1 AND created_at >= $2 AND created_at < $3
 	`
-
 	var stats usage.UsageStats
 	if err := scanSingleRow(
 		ctx,
@@ -153,7 +151,6 @@ func (r *Store) GetAPIKeyStatsAggregated(ctx context.Context, apiKeyID int64, st
 		FROM usage_logs
 		WHERE api_key_id = $1 AND created_at >= $2 AND created_at < $3
 	`
-
 	var stats usage.UsageStats
 	if err := scanSingleRow(
 		ctx,
@@ -195,7 +192,6 @@ func (r *Store) GetProviderStatsAggregated(ctx context.Context, providerID int64
 		FROM usage_logs
 		WHERE provider_id = $1 AND created_at >= $2 AND created_at < $3
 	`
-
 	var stats usage.UsageStats
 	if err := scanSingleRow(
 		ctx,
@@ -236,8 +232,8 @@ func (r *Store) GetModelStatsAggregated(ctx context.Context, modelName string, s
 			COALESCE(AVG(COALESCE(duration_ms, 0)), 0) as avg_duration_ms
 		FROM usage_logs
 		WHERE %s = $1 AND created_at >= $2 AND created_at < $3
-	`, rawUsageLogModelColumn)
-
+	`,
+		rawUsageLogModelColumn)
 	var stats usage.UsageStats
 	if err := scanSingleRow(
 		ctx,
@@ -282,7 +278,6 @@ func (r *Store) GetDailyStatsAggregated(ctx context.Context, userID int64, start
 		GROUP BY 1
 		ORDER BY 1
 	`
-
 	rows, err := r.sql.QueryContext(ctx, query, userID, startTime, endTime, tzName)
 	if err != nil {
 		return nil, err
@@ -295,7 +290,6 @@ func (r *Store) GetDailyStatsAggregated(ctx context.Context, userID int64, start
 			result = nil
 		}
 	}()
-
 	result = make([]map[string]any, 0)
 	for rows.Next() {
 		var (
@@ -332,11 +326,9 @@ func (r *Store) GetDailyStatsAggregated(ctx context.Context, userID int64, start
 			"average_duration_ms": avgDurationMs,
 		})
 	}
-
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
-
 	return result, nil
 }
 
@@ -360,7 +352,6 @@ func (r *Store) resolveUsageStatsTimezone() string {
 // and cache-inclusive tokens.
 func (r *Store) GetProviderTodayStats(ctx context.Context, providerID int64) (*usage.ProviderStats, error) {
 	today := r.calendar.Today()
-
 	query := `
 		SELECT
 			COUNT(*) as requests,
@@ -371,7 +362,6 @@ func (r *Store) GetProviderTodayStats(ctx context.Context, providerID int64) (*u
 		FROM usage_logs
 		WHERE provider_id = $1 AND created_at >= $2
 	`
-
 	stats := &usage.ProviderStats{}
 	if err := scanSingleRow(
 		ctx,
@@ -404,7 +394,6 @@ func (r *Store) GetProviderWindowStats(ctx context.Context, providerID int64, st
 		FROM usage_logs
 		WHERE provider_id = $1 AND created_at >= $2
 	`
-
 	stats := &usage.ProviderStats{}
 	if err := scanSingleRow(
 		ctx,
@@ -430,7 +419,6 @@ func (r *Store) GetProviderWindowStatsBatch(ctx context.Context, providerIDs []i
 	if len(providerIDs) == 0 {
 		return result, nil
 	}
-
 	query := `
 		SELECT
 			provider_id,
@@ -450,7 +438,6 @@ func (r *Store) GetProviderWindowStatsBatch(ctx context.Context, providerIDs []i
 	// Release batch rows after scanning or an early return. Close errors are
 	// ignored here, while query, scan, and iteration failures reject the result.
 	defer func() { _ = rows.Close() }()
-
 	for rows.Next() {
 		var providerID int64
 		stats := &usage.ProviderStats{}
@@ -469,7 +456,6 @@ func (r *Store) GetProviderWindowStatsBatch(ctx context.Context, providerIDs []i
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-
 	for _, providerID := range providerIDs {
 		if _, ok := result[providerID]; !ok {
 			result[providerID] = &usage.ProviderStats{}
@@ -493,7 +479,6 @@ func (r *Store) GetGeminiUsageTotalsBatch(ctx context.Context, providerIDs []int
 	if len(providerIDs) == 0 {
 		return result, nil
 	}
-
 	query := `
 		SELECT
 			provider_id,
@@ -514,7 +499,6 @@ func (r *Store) GetGeminiUsageTotalsBatch(ctx context.Context, providerIDs []int
 	// Release batch rows after scanning or an early return. Close errors are
 	// ignored here, while query, scan, and iteration failures reject the result.
 	defer func() { _ = rows.Close() }()
-
 	for rows.Next() {
 		var providerID int64
 		var totals provider.GeminiUsageTotals
@@ -534,7 +518,6 @@ func (r *Store) GetGeminiUsageTotalsBatch(ctx context.Context, providerIDs []int
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-
 	for _, providerID := range providerIDs {
 		if _, ok := result[providerID]; !ok {
 			result[providerID] = provider.GeminiUsageTotals{}
@@ -582,7 +565,6 @@ func (r *Store) GetBatchUserUsageStats(ctx context.Context, userIDs []int64, sta
 	if len(normalizedUserIDs) == 0 {
 		return result, nil
 	}
-
 	if startTime.IsZero() {
 		startTime = time.Now().AddDate(0, 0, -30)
 	}
@@ -596,11 +578,9 @@ func (r *Store) GetBatchUserUsageStats(ctx context.Context, userIDs []int64, sta
 	} else if err != nil {
 		r.logUsageAnalyticsFallback("batch_user_usage", err)
 	}
-
 	for _, id := range normalizedUserIDs {
 		result[id] = &BatchUserUsageStats{UserID: id}
 	}
-
 	// Grouping keeps recorded platform attribution stable after configuration
 	// changes. Accumulate each actor's row amounts before adding nonempty labels to
 	// its breakdown.
@@ -656,7 +636,6 @@ func (r *Store) GetBatchUserUsageStats(ctx context.Context, userIDs []int64, sta
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-
 	return result, nil
 }
 
@@ -669,13 +648,15 @@ func (r *Store) GetBatchUserUsageStats(ctx context.Context, userIDs []int64, sta
 // range and Calendar-today values. Today's raw predicate has no upper bound, so
 // future rows remain included independently of endTime. Requested keys with no
 // rows retain zero fields, and raw query failures discard the batch.
+// Cache rates use each window's summed cache reads divided by ordinary input,
+// cache creation, and cache reads together. SQL NULLIF retains a missing input
+// denominator as nil, while measured cache misses remain a numeric zero.
 func (r *Store) GetBatchAPIKeyUsageStats(ctx context.Context, apiKeyIDs []int64, startTime, endTime time.Time) (map[int64]*BatchAPIKeyUsageStats, error) {
 	result := make(map[int64]*BatchAPIKeyUsageStats)
 	normalizedAPIKeyIDs := normalizePositiveInt64IDs(apiKeyIDs)
 	if len(normalizedAPIKeyIDs) == 0 {
 		return result, nil
 	}
-
 	if startTime.IsZero() {
 		startTime = time.Now().AddDate(0, 0, -30)
 	}
@@ -690,16 +671,18 @@ func (r *Store) GetBatchAPIKeyUsageStats(ctx context.Context, apiKeyIDs []int64,
 	} else if err != nil {
 		r.logUsageAnalyticsFallback("batch_api_key_usage", err)
 	}
-
 	for _, id := range normalizedAPIKeyIDs {
 		result[id] = &BatchAPIKeyUsageStats{APIKeyID: id}
 	}
-
 	query := `
 		SELECT
 			api_key_id,
 			COALESCE(SUM(actual_cost) FILTER (WHERE created_at >= $2 AND created_at < $3), 0) as total_cost,
-			COALESCE(SUM(actual_cost) FILTER (WHERE created_at >= $4), 0) as today_cost
+			COALESCE(SUM(actual_cost) FILTER (WHERE created_at >= $4), 0) as today_cost,
+            (SUM(cache_read_tokens) FILTER (WHERE created_at >= $2 AND created_at < $3))::double precision
+              / NULLIF(SUM(COALESCE(input_tokens,0) + COALESCE(cache_creation_tokens,0) + COALESCE(cache_read_tokens,0)) FILTER (WHERE created_at >= $2 AND created_at < $3),0) AS total_cache_hit_rate,
+            (SUM(cache_read_tokens) FILTER (WHERE created_at >= $4))::double precision
+              / NULLIF(SUM(COALESCE(input_tokens,0) + COALESCE(cache_creation_tokens,0) + COALESCE(cache_read_tokens,0)) FILTER (WHERE created_at >= $4),0) AS today_cache_hit_rate
 		FROM usage_logs
 		WHERE api_key_id = ANY($1)
 		  AND created_at >= LEAST($2, $4)
@@ -714,7 +697,8 @@ func (r *Store) GetBatchAPIKeyUsageStats(ctx context.Context, apiKeyIDs []int64,
 		var apiKeyID int64
 		var total float64
 		var todayTotal float64
-		if err := rows.Scan(&apiKeyID, &total, &todayTotal); err != nil {
+		var rangeRate, todayRate *float64
+		if err := rows.Scan(&apiKeyID, &total, &todayTotal, &rangeRate, &todayRate); err != nil {
 			// A scan failure leaves a partial batch unusable. Release its result rows
 			// before returning so the caller cannot consume the accumulated prefix.
 			_ = rows.Close()
@@ -723,6 +707,8 @@ func (r *Store) GetBatchAPIKeyUsageStats(ctx context.Context, apiKeyIDs []int64,
 		if stats, ok := result[apiKeyID]; ok {
 			stats.TotalActualCost = total
 			stats.TodayActualCost = todayTotal
+			stats.TotalCacheHitRate = rangeRate
+			stats.TodayCacheHitRate = todayRate
 		}
 	}
 	// Close the completed batch before returning it. A cleanup failure is an error
@@ -733,7 +719,6 @@ func (r *Store) GetBatchAPIKeyUsageStats(ctx context.Context, apiKeyIDs []int64,
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-
 	return result, nil
 }
 
@@ -771,7 +756,6 @@ func (r *Store) GetGlobalStats(ctx context.Context, startTime, endTime time.Time
 		FROM usage_logs
 		WHERE created_at >= $1 AND created_at < $2
 	`
-
 	stats := &UsageStats{}
 	if err := scanSingleRow(
 		ctx,
@@ -824,7 +808,6 @@ func (r *Store) GetUserStatsWithFilters(ctx context.Context, filters UsageLogFil
 func (r *Store) getStatsWithFilters(ctx context.Context, filters UsageLogFilters, includeRawEndpointDetails bool) (*UsageStats, error) {
 	conditions := make([]string, 0, 9)
 	args := make([]any, 0, 9)
-
 	source, scopeCondition, args, scopeErr := r.buildUsageLogScopeSource(ctx, args, filters.UserID, filters.IncludeOwnedTeam, "")
 	if scopeErr != nil {
 		return nil, scopeErr
@@ -872,7 +855,6 @@ func (r *Store) getStatsWithFilters(ctx context.Context, filters UsageLogFilters
 		conditions = append(conditions, fmt.Sprintf("created_at < $%d", len(args)+1))
 		args = append(args, *filters.EndTime)
 	}
-
 	query := fmt.Sprintf(`
 		SELECT
 			COUNT(*) as total_requests,
@@ -888,8 +870,8 @@ func (r *Store) getStatsWithFilters(ctx context.Context, filters UsageLogFilters
 			COUNT(*) FILTER (WHERE system_usage->>'cost_state' IN ('unknown','partial'))
 		FROM %s
 		%s
-	`, source, buildWhere(conditions))
-
+	`,
+		source, buildWhere(conditions))
 	stats := &UsageStats{}
 	var totalProviderCost float64
 	// An unavailable or failed analytics summary leaves the complete raw query to
@@ -902,7 +884,6 @@ func (r *Store) getStatsWithFilters(ctx context.Context, filters UsageLogFilters
 	} else if aggregateErr != nil {
 		r.logUsageAnalyticsFallback("usage_stats", aggregateErr)
 	}
-
 	start := time.Unix(0, 0).UTC()
 	if filters.StartTime != nil {
 		start = *filters.StartTime
@@ -911,9 +892,7 @@ func (r *Store) getStatsWithFilters(ctx context.Context, filters UsageLogFilters
 	if filters.EndTime != nil {
 		end = *filters.EndTime
 	}
-
 	var endpoints, upstreamEndpoints, endpointPaths []EndpointStat
-
 	// TotalProviderCost marks a completed analytics summary. If absent, raw SQL
 	// fills the summary, whose failure aborts the response rather than returning
 	// details alone.
@@ -984,7 +963,6 @@ func (r *Store) getStatsWithFilters(ctx context.Context, filters UsageLogFilters
 		}
 		endpointPaths = res
 	}
-
 	if r.db != nil {
 		// Summary and detail callbacks write separate fields through pool connections;
 		// join every member before the selected lists enter the response.
@@ -1010,13 +988,11 @@ func (r *Store) getStatsWithFilters(ctx context.Context, filters UsageLogFilters
 			runPaths(ctx)
 		}
 	}
-
 	stats.TotalProviderCost = &totalProviderCost
 	stats.TotalTokens = stats.TotalInputTokens + stats.TotalOutputTokens + stats.TotalCacheTokens
 	stats.Endpoints = endpoints
 	stats.UpstreamEndpoints = upstreamEndpoints
 	stats.EndpointPaths = endpointPaths
-
 	return stats, nil
 }
 
@@ -1033,7 +1009,6 @@ func (r *Store) getStatsWithFilters(ctx context.Context, filters UsageLogFilters
 // response.
 func (r *Store) getEndpointStatsByColumnWithFilters(ctx context.Context, endpointColumn string, startTime, endTime time.Time, filters UsageLogFilters) (results []EndpointStat, err error) {
 	requestID := strings.TrimSpace(filters.RequestID)
-
 	if endpointColumn == "inbound_endpoint" {
 		analyticsFilters := filters
 		analyticsFilters.RequestID = requestID
@@ -1061,13 +1036,12 @@ func (r *Store) getEndpointStatsByColumnWithFilters(ctx context.Context, endpoin
 			COALESCE(SUM(actual_cost), 0) as actual_cost
 		FROM %s
 		WHERE created_at >= $1 AND created_at < $2
-	`, endpointColumn, source)
-
+	`,
+		endpointColumn, source)
 	if requestID != "" {
 		query += " AND " + usageRequestIDCondition("", len(args)+1)
 		args = append(args, requestID)
 	}
-
 	if scopeCondition != "" {
 		query += " AND " + scopeCondition
 	}
@@ -1104,7 +1078,6 @@ func (r *Store) getEndpointStatsByColumnWithFilters(ctx context.Context, endpoin
 	}
 	query, args = appendUsageLogBillingModeQueryFilter(query, args, filters.BillingMode, "")
 	query += " GROUP BY endpoint ORDER BY requests DESC"
-
 	rows, err := r.sql.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -1117,7 +1090,6 @@ func (r *Store) getEndpointStatsByColumnWithFilters(ctx context.Context, endpoin
 			results = nil
 		}
 	}()
-
 	results = make([]EndpointStat, 0)
 	for rows.Next() {
 		var row EndpointStat
@@ -1144,7 +1116,6 @@ func (r *Store) getEndpointStatsByColumnWithFilters(ctx context.Context, endpoin
 // iteration, or successful-path close failures discard the result.
 func (r *Store) getEndpointPathStatsWithFilters(ctx context.Context, startTime, endTime time.Time, filters UsageLogFilters) (results []EndpointStat, err error) {
 	requestID := strings.TrimSpace(filters.RequestID)
-
 	// Path labels combine inbound and upstream evidence, while actual_cost keeps
 	// the user-charge measure used by the separate endpoint groupings.
 	args := []any{startTime, endTime}
@@ -1165,13 +1136,12 @@ func (r *Store) getEndpointPathStatsWithFilters(ctx context.Context, startTime, 
 			COALESCE(SUM(actual_cost), 0) as actual_cost
 		FROM %s
 		WHERE created_at >= $1 AND created_at < $2
-	`, source)
-
+	`,
+		source)
 	if requestID != "" {
 		query += " AND " + usageRequestIDCondition("", len(args)+1)
 		args = append(args, requestID)
 	}
-
 	if scopeCondition != "" {
 		query += " AND " + scopeCondition
 	}
@@ -1208,7 +1178,6 @@ func (r *Store) getEndpointPathStatsWithFilters(ctx context.Context, startTime, 
 	}
 	query, args = appendUsageLogBillingModeQueryFilter(query, args, filters.BillingMode, "")
 	query += " GROUP BY endpoint ORDER BY requests DESC"
-
 	rows, err := r.sql.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -1221,7 +1190,6 @@ func (r *Store) getEndpointPathStatsWithFilters(ctx context.Context, startTime, 
 			results = nil
 		}
 	}()
-
 	results = make([]EndpointStat, 0)
 	for rows.Next() {
 		var row EndpointStat
@@ -1289,17 +1257,14 @@ func (r *Store) GetProviderUsageStats(ctx context.Context, providerID int64, sta
 	if daysCount <= 0 {
 		daysCount = 30
 	}
-
 	data, err := r.readProviderReport(ctx, providerID, startTime, endTime)
 	if err != nil {
 		return nil, err
 	}
 	history := data.history
-
 	var totalProviderCost, totalUserCost, totalStandardCost float64
 	var totalRequests, totalTokens int64
 	var highestCostDay, highestRequestDay *ProviderUsageHistory
-
 	for i := range history {
 		h := &history[i]
 		totalProviderCost += h.ActualCost
@@ -1307,7 +1272,6 @@ func (r *Store) GetProviderUsageStats(ctx context.Context, providerID int64, sta
 		totalStandardCost += h.Cost
 		totalRequests += h.Requests
 		totalTokens += h.Tokens
-
 		if highestCostDay == nil || h.ActualCost > highestCostDay.ActualCost {
 			highestCostDay = h
 		}
@@ -1315,19 +1279,16 @@ func (r *Store) GetProviderUsageStats(ctx context.Context, providerID int64, sta
 			highestRequestDay = h
 		}
 	}
-
 	actualDaysUsed := len(history)
 	// Empty history uses one as the denominator so zero totals produce defined
 	// daily averages while the returned history itself remains empty.
 	if actualDaysUsed == 0 {
 		actualDaysUsed = 1
 	}
-
 	var avgDuration float64
 	if data.durationCount > 0 {
 		avgDuration = float64(data.durationSum) / float64(data.durationCount)
 	}
-
 	summary := ProviderUsageSummary{
 		IncompleteCostRequests: data.incompleteCostRequests,
 		Days:                   daysCount,
@@ -1343,7 +1304,6 @@ func (r *Store) GetProviderUsageStats(ctx context.Context, providerID int64, sta
 		AvgDailyTokens:         float64(totalTokens) / float64(actualDaysUsed),
 		AvgDurationMs:          avgDuration,
 	}
-
 	todayStr := r.calendar.Now().Format("2006-01-02")
 	for i := range history {
 		if history[i].Date == todayStr {
@@ -1363,7 +1323,6 @@ func (r *Store) GetProviderUsageStats(ctx context.Context, providerID int64, sta
 			break
 		}
 	}
-
 	if highestCostDay != nil {
 		summary.HighestCostDay = &struct {
 			Date     string  `json:"date"`      // report date label
@@ -1379,7 +1338,6 @@ func (r *Store) GetProviderUsageStats(ctx context.Context, providerID int64, sta
 			Requests: highestCostDay.Requests,
 		}
 	}
-
 	if highestRequestDay != nil {
 		summary.HighestRequestDay = &struct {
 			Date     string  `json:"date"`      // report date label
@@ -1395,7 +1353,6 @@ func (r *Store) GetProviderUsageStats(ctx context.Context, providerID int64, sta
 			UserCost: highestRequestDay.UserCost,
 		}
 	}
-
 	resp = &ProviderUsageStatsResponse{
 		History:           history,
 		Summary:           summary,

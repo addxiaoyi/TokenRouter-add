@@ -174,6 +174,9 @@ interface Props {
   modelValue: string | number | boolean | null | undefined
   options: SelectOption[] | Array<Record<string, unknown>> // Available selection option records.
   placeholder?: string // Empty field placeholder text.
+  // panelMinWidth reserves space for rich options, bounded by viewport padding.
+  // Omission retains ordinary menus sized from their trigger and rendered content.
+  panelMinWidth?: number
   disabled?: boolean // Disables user control interaction.
   error?: boolean // Visible field error feedback.
   // Enables search or chooses auto, which displays search when the options collection
@@ -255,7 +258,10 @@ const dropdownStyle = computed(() => {
   // Reserve sixteen CSS pixels beside the viewport edges.
   const viewportMargin = 16
   const maxDropdownWidth = Math.max(200, window.innerWidth - viewportMargin * 2)
-  const estimatedWidth = Math.min(Math.max(rect.width, 200), maxDropdownWidth)
+  const estimatedWidth = Math.min(
+    Math.max(rect.width, props.panelMinWidth ?? 200),
+    maxDropdownWidth,
+  )
   // Before the teleported menu has a measured width, clamp its estimated bounds so the
   // first rendered position already accounts for viewport edges.
   const fallbackLeft = clampDropdownLeft(rect.left, estimatedWidth)
@@ -264,7 +270,7 @@ const dropdownStyle = computed(() => {
       dropdownPosition.value === 'top' ? 'var(--motion-shift)' : 'calc(-1 * var(--motion-shift))',
     position: 'fixed',
     left: `${dropdownLeft.value ?? fallbackLeft}px`,
-    minWidth: `${rect.width}px`,
+    minWidth: `${Math.min(Math.max(rect.width, props.panelMinWidth ?? rect.width), maxDropdownWidth)}px`,
     maxWidth: `${maxDropdownWidth}px`,
     zIndex: String(Z_INDEX.TELEPORT_DROPDOWN),
   }
