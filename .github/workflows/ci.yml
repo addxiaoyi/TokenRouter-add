@@ -106,6 +106,9 @@ jobs:
         with:
           group: test
       - run: make test-go
+      - name: Check request shutdown and lease cancellation races
+        working-directory: backend
+        run: go test -race ./internal/app ./internal/app/lifecycle ./internal/pkg/requestcontext ./internal/apikey -run 'TestGatewayRequest|TestRequests|TestDetach|TestNestedAbort|TestRequestLease' -count=1
       - if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/cache/save@v5
         with:
@@ -189,7 +192,8 @@ jobs:
           key: ${{ steps.go.outputs.cache-key }}
 
   scripts:
-    runs-on: macos-15
+    # Keep system Bash coverage on Intel while the arm64 pool has limited capacity.
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v6
       - run: make test-scripts

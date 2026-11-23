@@ -103,7 +103,7 @@ SIGINT、SIGTERM、监听失败和 Linux 手动重启共用同一关闭流程。
 后台清理顺序：
 
 1. 关闭额外监听、Live 本地观察和被 hijack 的连接（`OpenAILiveObservers` 阶段 5，Responses WS 设置刷新阶段 9，`OpenAIWSConnections` 阶段 10）。
-2. 等待所有 HTTP handler 返回（请求跟踪保留 `Flush` 和 `Hijack`；客户端断开后继续统计用量的 handler 完成后才算结束）。
+2. 关闭请求准入，取消仍在执行的请求专属服务端信号，再等待所有 HTTP handler 返回。该信号传递给脱离客户端取消的上游调用及嵌套 Key 租约；普通客户端断线仍允许用量收尾。请求跟踪保留 `Flush` 和 `Hijack`，清理完成后才释放计数。
 3. 停止周期性生产者和任务拉取。
 4. 逐层排空用量、缓存写入、延迟写回、通知和审计（`lifecycle.Tasks` 统一等待派生副作用，早于邮件和共享存储关闭）。
 5. 关闭订阅、时间轮、空闲 HTTP 连接、Redis、Ent/SQL 和日志文件（lumberjack 文件句柄最后关闭，其内部维护循环随进程退出）。

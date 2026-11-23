@@ -20,6 +20,9 @@ import (
 // reported after that snapshot. Request waiting seals admission before
 // WaitGroup.Wait begins, then waits for all counted handler returns within the
 // caller's context.
+// The supplied context factory provides a request-owned abort callback. Request
+// draining invokes it before waiting so applications can cancel detached upstream
+// work and complete handler cleanup before queues or storage are stopped.
 
 // Requests counts handler lifetimes and tracks connections needing hijack shutdown.
 type Requests struct {
@@ -30,6 +33,10 @@ type Requests struct {
 	sealed bool           // new handlers rejected
 	wg     sync.WaitGroup // admitted handler lifetimes
 	done   chan struct{}  // handler group completion
+	// aborts retains server-owned request cancellation until each handler finishes.
+	// Wait snapshots it while sealing admission, then cancels outside mu so callback
+	// cleanup can release request accounting without holding the admission lock.
+	aborts map[*http.Request]context.CancelFunc // active request abort callbacks
 	// hijacked and closingHijacks share mu across ConnState and shutdown. The
 	// close snapshot sets closingHijacks first, so late hijacks receive another
 	// close attempt; handler return or StateClosed removes tracked entries.
@@ -48,11 +55,16 @@ type requestConnectionKey struct{}
 // The manager receives a hijacked-connection close hook before its
 // request-wait hook. Closing marks the snapshot phase before copying
 // connections, allowing later hijacks to be closed by ConnState as well. The
-// handler releases its count after cleanup. Call during construction before
+// request-wait hook invokes each request's abort callback, then waits for handler
+// cleanup. newContext must return a nonnil context and idempotent cancel callback;
+// applications select whether the callback also reaches detached work. Call before
 // serving HTTP and before manager startup or shutdown; ResponseWriter itself
 // remains unwrapped.
-func TrackRequests(server *http.Server, manager *Manager) {
-	r := &Requests{hijacked: make(map[net.Conn]struct{})}
+func TrackRequests(server *http.Server, manager *Manager, newContext func(context.Context) (context.Context, context.CancelFunc)) {
+	r := &Requests{
+		hijacked: make(map[net.Conn]struct{}),
+		aborts:   make(map[*http.Request]context.CancelFunc),
+	}
 	previousContext := server.ConnContext
 	server.ConnContext = func(ctx context.Context, conn net.Conn) context.Context {
 		if previousContext != nil {
@@ -95,16 +107,21 @@ func TrackRequests(server *http.Server, manager *Manager) {
 			http.Error(w, "server is shutting down", http.StatusServiceUnavailable)
 			return
 		}
+		ctx, abort := newContext(req.Context())
+		req = req.WithContext(ctx)
+		r.aborts[req] = abort
 		r.wg.Add(1)
 		r.mu.Unlock()
 		// Remove the connection after handler cleanup, then release its request
 		// count so the wait barrier covers the handler's full return path.
 		defer func() {
+			abort()
+			r.mu.Lock()
+			delete(r.aborts, req)
 			if conn, ok := req.Context().Value(requestConnectionKey{}).(net.Conn); ok {
-				r.mu.Lock()
 				delete(r.hijacked, conn)
-				r.mu.Unlock()
 			}
+			r.mu.Unlock()
 			r.wg.Done()
 		}()
 		next.ServeHTTP(w, req)
@@ -129,27 +146,37 @@ func TrackRequests(server *http.Server, manager *Manager) {
 	manager.Register(Hook{Name: "HTTPRequests", StartOrder: 985, StopOrder: 15, Stop: r.Wait})
 }
 
-// Wait seals request admission and waits for the counted handlers to return,
-// or returns ctx's error. Call after stopping the listener so handler shutdown
-// and cleanup can proceed. A timeout leaves the shared completion wait
+// Wait seals request admission, aborts server-owned upstream work, and waits for
+// the counted handlers to return, or returns ctx's error. Call after stopping
+// the listener and its graceful drain. A timeout leaves the shared completion wait
 // running, and later calls can wait again.
 //
 // The admission mutex covers sealing and creation of done before the WaitGroup
 // waiter starts, preventing new handler registrations from racing a zero-count
 // Wait. The completion channel closes after every admitted handler runs its
 // deferred release. Subsequent callers reuse that same signal rather than
-// creating another request group.
+// creating another request group. Cancellation occurs outside the mutex and
+// leaves accounting active until handler cleanup has actually returned.
 func (r *Requests) Wait(ctx context.Context) error {
+	var aborts []context.CancelFunc
 	r.mu.Lock()
 	if r.done == nil {
 		// Seal new handler registration before starting the WaitGroup waiter.
 		// Its shared completion signal stays usable after one caller's timeout.
 		r.sealed = true
+		for _, abort := range r.aborts {
+			aborts = append(aborts, abort)
+		}
 		r.done = make(chan struct{})
 		go func() { r.wg.Wait(); close(r.done) }()
 	}
 	done := r.done
 	r.mu.Unlock()
+	// Detached calls intentionally ignore client cancellation. Abort their server
+	// signals after sealing admission so they can finish before shared storage closes.
+	for _, abort := range aborts {
+		abort()
+	}
 	select {
 	case <-done:
 		return nil

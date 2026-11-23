@@ -9,6 +9,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// context_test.go checks the cancellation boundary between clients and servers.
+// Deterministic contexts verify that ordinary disconnects preserve detached work,
+// while nested server aborts reach their descendants without canceling sibling
+// requests or changing the retained request values.
+
 // TestDetachSeparatesCancellation advances a parent deadline inside a synctest
 // bubble while retaining detached request values. Parent expiry must leave
 // detached work and callbacks live, and server abort must cancel nested
@@ -59,4 +64,29 @@ func TestDetachWithoutAbort(t *testing.T) {
 	require.NoError(t, detached.Err())
 	require.NoError(t, Detach(nil).Err()) //nolint:staticcheck // Exercise the supported nil input.
 	require.True(t, AfterAbort(ctx, func() { t.Fatal("unexpected abort") })())
+}
+
+// TestNestedAbortPreservesServerOwnership creates independent lease scopes under
+// one server request. Lease abort must spare its sibling, while server shutdown
+// must cancel every remaining descendant after the client has already disconnected.
+func TestNestedAbortPreservesServerOwnership(t *testing.T) {
+	client, disconnect := context.WithCancel(t.Context())
+	defer disconnect()
+	server, shutdown := WithAbort(client)
+	defer shutdown()
+	first, releaseFirst := WithAbort(server)
+	defer releaseFirst()
+	second, releaseSecond := WithAbort(server)
+	defer releaseSecond()
+	firstWork, secondWork := Detach(first), Detach(second)
+	disconnect()
+	require.NoError(t, firstWork.Err())
+	require.NoError(t, secondWork.Err())
+	releaseFirst()
+	require.ErrorIs(t, firstWork.Err(), context.Canceled)
+	require.NoError(t, secondWork.Err())
+	require.NoError(t, Detach(server).Err())
+	shutdown()
+	require.ErrorIs(t, secondWork.Err(), context.Canceled)
+	require.ErrorIs(t, context.Cause(secondWork), context.Canceled)
 }

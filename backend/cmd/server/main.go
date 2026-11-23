@@ -196,7 +196,7 @@ func runSetupServer(ctx context.Context, restarter *lifecycle.Restarter) (err er
 		Protocols:   protocols,
 	}
 
-	lifecycle.TrackRequests(server, manager)
+	lifecycle.TrackRequests(server, manager, context.WithCancel)
 	return lifecycle.Serve(ctx, server)
 }
 

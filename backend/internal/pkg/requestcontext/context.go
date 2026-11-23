@@ -14,7 +14,9 @@ import "context"
 // callbacks against the same stored signal. Detached wrappers obtain Done and
 // Err from that signal while their embedded context supplies values and an
 // absent deadline. Callers own the abort function and decide when server-side
-// work should stop; repeated detachment retains that signal.
+// work should stop; repeated detachment retains that signal. Nested abort scopes
+// inherit an existing server signal, so key-lease cancellation and application
+// shutdown both reach work even after its HTTP client has disconnected.
 
 // abortKey identifies the server-controlled cancellation signal carried in
 // context values.
@@ -31,8 +33,8 @@ type detachedContext struct {
 
 // WithAbort returns a child request context and a server-controlled abort
 // function. The child observes the parent's cancellation and deadlines, while
-// the stored signal is created from Background and remains live when that
-// parent ends.
+// the stored signal inherits any existing server signal or starts at Background.
+// Ordinary parent cancellation leaves the stored signal live.
 //
 // Detach uses the stored signal to let upstream work survive client
 // disconnection. The caller invokes abort when server-owned work should end and
@@ -40,7 +42,11 @@ type detachedContext struct {
 // before the request child so callbacks and detached users observe the same
 // server stop.
 func WithAbort(ctx context.Context) (context.Context, context.CancelFunc) {
-	signal, abort := context.WithCancel(context.Background())
+	parent, ok := ctx.Value(abortKey{}).(context.Context)
+	if !ok {
+		parent = context.Background()
+	}
+	signal, abort := context.WithCancel(parent)
 	request, cancel := context.WithCancel(context.WithValue(ctx, abortKey{}, signal))
 	return request, func() {
 		// Publish the server stop first so detached operations and abort callbacks

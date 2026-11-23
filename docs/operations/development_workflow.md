@@ -299,11 +299,11 @@ Testcontainers 的启动函数可能同时返回已创建的容器和错误。�
 | --- | --- |
 | go-lint | `make lint-go`、`make test-tools`、`make fmt-go-check` |
 | plugin-sdk | 独立 Go SDK 的 lint、测试和 proto 重生成检查，Web SDK 的格式、类型、构建测试及最小 Vue SFC 消费夹具 |
-| go-test | `make test-go` |
+| go-test | `make test-go`，以及请求关闭和 Key 租约取消的定向 race 回归 |
 | go-integration | 安装 PostgreSQL 18 客户端，再执行 `make test-integration` |
 | frontend | `make lint-frontend`、`make test-frontend` |
 | build | `make build`、`make test-embed` |
-| scripts | 在 macOS 上执行 `make test-scripts`，覆盖系统自带的 Bash 3.2 |
+| scripts | 在 macOS Intel 上执行 `make test-scripts`，覆盖系统自带的 Bash 3.2 |
 | installer | `make test-installer`，Linux 安装器依赖 Bash 4+ 和 `sha256sum` |
 
 workflow 设置 `GOFLAGS=-count=1`，每次重新执行 Go 测试。同一分支推送新提交时，还在运行的旧检查会被取消。失败原因看对应 job 的日志，`go test` 在输出末尾列出失败的测试和断言。

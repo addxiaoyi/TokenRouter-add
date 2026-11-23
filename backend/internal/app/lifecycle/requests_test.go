@@ -12,11 +12,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// requests_test.go verifies handler draining and server-owned cancellation.
 // HTTP shutdown does not wait for every application handler tail, and hijacked
 // connections need separate closure. Live-server fixtures keep handlers active
 // behind release signals, exposing ResponseWriter interfaces and observing
 // manager completion only after tail or connection cleanup has finished.
-
 // TestRequestsWaitIncludesHandlerTail keeps a flushed HTTP handler active
 // after listener cancellation. Request waiting must stay pending until the
 // handler is released, while the passed-through writer retains its Flush
@@ -44,7 +44,7 @@ func TestRequestsWaitIncludesHandlerTail(t *testing.T) {
 		return context.Background()
 	}}
 	manager := New()
-	TrackRequests(server, manager)
+	TrackRequests(server, manager, context.WithCancel)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	served := make(chan error, 1)
@@ -110,7 +110,7 @@ func TestRequestsCloseHijackedConnectionsBeforeWaiting(t *testing.T) {
 		return context.Background()
 	}}
 	manager := New()
-	TrackRequests(server, manager)
+	TrackRequests(server, manager, context.WithCancel)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	served := make(chan error, 1)
@@ -140,7 +140,7 @@ func TestRequestsCloseHijackedConnectionsBeforeWaiting(t *testing.T) {
 func TestRequestsCloseLateHijack(t *testing.T) {
 	manager := New()
 	server := &http.Server{}
-	TrackRequests(server, manager)
+	TrackRequests(server, manager, context.WithCancel)
 	require.NoError(t, manager.Stop(context.Background()))
 	serverSide, clientSide := net.Pipe()
 	// Both pipe endpoints belong to this fixture. Attempt their closure on

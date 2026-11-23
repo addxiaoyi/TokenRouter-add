@@ -10,6 +10,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/infra/telemetry/logging"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
+	"github.com/TokenFlux/TokenRouter/internal/pkg/requestcontext"
 )
 
 // application.go constructs the application and coordinates startup, HTTP
@@ -90,7 +91,8 @@ func Initialize(ctx context.Context, cfg *config.Config, buildInfo BuildInfo, re
 // provideApplication attaches HTTP request tracking and registers Ops
 // WebSocket shutdown using the supplied manager. Its runtimeReady dependency
 // makes Wire resolve prior registrations first. Call before manager startup or
-// shutdown and before HTTP serving.
+// shutdown and before HTTP serving. Request contexts carry a server-abort signal
+// so detached upstream calls observe application shutdown after graceful HTTP drain.
 func provideApplication(
 	server *http.Server,
 	manager *lifecycle.Manager,
@@ -98,7 +100,7 @@ func provideApplication(
 	opsService *ops.OpsService,
 	_ *ops.ErrorLogQueue,
 ) *Application {
-	lifecycle.TrackRequests(server, manager)
+	lifecycle.TrackRequests(server, manager, requestcontext.WithAbort)
 	manager.Register(lifecycle.Hook{
 		Name:       "OpsWSRuntime",
 		StartOrder: 983,
