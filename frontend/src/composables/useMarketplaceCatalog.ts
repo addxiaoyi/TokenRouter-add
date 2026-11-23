@@ -208,6 +208,7 @@ export function useMarketplaceCatalog() {
   return {
     groups,
     orderedGroups,
+    filteredGroups,
     allModels,
     loading,
     error,

@@ -81,6 +81,12 @@ function mountCatalog() {
       stubs: {
         AppLayout: { template: '<main><slot /></main>' },
         AppHeader: true,
+        Select: {
+          props: ['modelValue', 'options'],
+          emits: ['update:modelValue'],
+          template:
+            '<select :value="modelValue" @change="$emit(\'update:modelValue\', options.find(option => String(option.value) === $event.target.value).value)"><option v-for="option in options" :key="option.value" :value="option.value">{{option.label}}</option></select>',
+        },
         Icon: true,
         ProviderIcon: true,
         BaseDialog: {
@@ -116,6 +122,35 @@ beforeEach(() => {
 })
 
 describe('model catalog', () => {
+  // The lowest priced offer can appear after the first group in catalog order.
+  // Opening details must preserve that displayed offer before the user selects another route.
+  it('opens the displayed starting quote when a later group is cheaper', async () => {
+    const offers = groups()
+    offers[1]!.models[0]!.pricing.input_price_per_token = 0.0000005
+    fixture.available.mockResolvedValue(offers)
+    const view = mountCatalog()
+    await flushPromises()
+    await view.get('[data-model-id="shared"] .catalog-detail-button').trigger('click')
+    expect(view.get('[data-testid="offer-price"]').text()).toBe('5e-7')
+    view.unmount()
+  })
+
+  // Persistent group choices filter original offers before model summaries are built.
+  // The selected route must supply both displayed prices and the detail dialog's initial offer.
+  it('selects a sidebar group and keeps its original quote in details', async () => {
+    const view = mountCatalog()
+    await flushPromises()
+    const group = view
+      .findAll('.reference-group-list button')
+      .find((button) => button.text().includes('Group 2'))!
+    await group.trigger('click')
+    expect(group.attributes('aria-pressed')).toBe('true')
+    expect(view.get('[data-model-id="shared"]').text()).toContain('2.00 USD')
+    await view.get('[data-model-id="shared"] .catalog-detail-button').trigger('click')
+    expect(view.get('[data-testid="offer-price"]').text()).toBe('0.000002')
+    view.unmount()
+  })
+
   // Repeated model identities share a browsing row while their original routing quotes remain distinct.
   // Switching the offer inside details must use that group's price without changing the catalog summary.
   it('merges models and preserves every group-specific quote', async () => {

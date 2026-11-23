@@ -5,6 +5,34 @@
 
 export default {
   marketplace: {
+    referenceEnabledModels: 'Enabled models',
+    referenceBillingTitle: 'Understanding pricing',
+    referenceBillingHint: 'Token quotes cover input, cache creation, cache reads, and output.',
+    referenceBillingDetails: 'View explanation',
+    referenceBillingExplanation:
+      'Actual charges depend on token usage, routing group, context, service tier, and time rules. Image, video, and request prices retain their own units; details show every original group quote.',
+    referenceFilterHint: 'Select a group to browse its models and quotes.',
+    referenceAllGroups: 'All · starting quotes',
+    referenceMoreFilters: 'Brand and billing type',
+    referenceCompareGroups: 'Compare group monitoring',
+    referenceSearch: 'Search models',
+    referenceQuotedPrice: 'Reference quote',
+    referenceReasoning: 'Reasoning',
+    referenceTools: 'Tools',
+    referenceStructured: 'Structured output',
+    referenceContext: '{count} context',
+    referenceNoDescription: 'Model capability details are unavailable.',
+    referenceGroupNote: 'Group note: ',
+    referenceCacheRead: 'Cache read',
+    referenceGroupLatency: 'Group latency',
+    referenceGroupStatus: 'Group status',
+    referenceBilling: {
+      token: 'Token billing',
+      image: 'Image billing',
+      video: 'Video billing',
+      per_request: 'Per request',
+      unpriced: 'Unpriced',
+    },
     catalogLoadFailed: 'Could not load the model catalog. Try again.',
     catalogDescription:
       '{count} models · {groups} available groups. Compare capabilities and quoted prices.',

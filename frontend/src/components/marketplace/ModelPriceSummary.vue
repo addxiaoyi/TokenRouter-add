@@ -16,6 +16,8 @@ const props = withDefaults(
   defineProps<{
     price: ModelPriceSummary // Indexed comparable quote summary.
     tokenUnit?: 'M' | 'K' // Displayed token scale preference.
+    inline?: boolean // Compact comparison-row presentation.
+    cacheRead?: number // Original quoted cache-read token price.
   }>(),
   { tokenUnit: 'M' },
 )
@@ -35,7 +37,28 @@ function amount(value: number | null, scale = 1): string {
 </script>
 
 <template>
-  <div v-if="price.kind === 'unpriced'" class="text-sm text-gray-500 dark:text-dark-300">{{
+  <div v-if="inline && price.kind !== 'unpriced'" class="price-inline">
+    <template v-if="price.kind === 'token'">
+      <span
+        >{{ t('marketplace.input') }} <strong>{{ amount(price.input, tokenScale) }}</strong
+        >/1{{ tokenUnit }}</span
+      >
+      <span
+        >{{ t('marketplace.output') }} <strong>{{ amount(price.output, tokenScale) }}</strong
+        >/1{{ tokenUnit }}</span
+      >
+      <span v-if="cacheRead != null"
+        >{{ t('marketplace.referenceCacheRead') }}
+        <strong>{{ amount(cacheRead, tokenScale) }}</strong
+        >/1{{ tokenUnit }}</span
+      >
+    </template>
+    <span v-else
+      ><strong>{{ amount(price.amount) }}</strong
+      >{{ t(`marketplace.catalogUnit.${price.kind}`) }}</span
+    >
+  </div>
+  <div v-else-if="price.kind === 'unpriced'" class="text-sm text-gray-500 dark:text-dark-300">{{
     t('marketplace.pricingUnavailable')
   }}</div>
   <div v-else class="space-y-2">
@@ -62,3 +85,14 @@ function amount(value: number | null, scale = 1): string {
     <p v-else class="text-sm font-semibold tabular-nums">{{ amount(price.amount) }}</p>
   </div>
 </template>
+
+<style scoped>
+/* Compact rows keep billing amounts and their units adjacent while allowing
+   long currencies and token scales to reflow inside narrow comparison cards. */
+.price-inline {
+  @apply flex flex-wrap gap-x-3 gap-y-1 text-sm leading-6 text-gray-500 dark:text-dark-300;
+}
+.price-inline strong {
+  @apply font-mono text-gray-950 dark:text-white;
+}
+</style>
