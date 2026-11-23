@@ -1,3 +1,4 @@
+import monitoring from './monitoring'
 import landing from './landing'
 import common from './common'
 import dashboard from './dashboard'
@@ -14,6 +15,7 @@ import plugins from './plugins'
 // determines the value retained if domain modules define the same key.
 
 export default {
+  monitoring,
   plugins,
   requests,
   legal: {

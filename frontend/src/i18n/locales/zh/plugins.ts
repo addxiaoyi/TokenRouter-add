@@ -4,6 +4,12 @@
 // and accepted manifest descriptions.
 
 export default {
+  verification: '身份认证',
+  personalVerification: '实名认证',
+  enterpriseVerification: '企业认证',
+  bindings: 'QQ / TG 绑定',
+  qqBinding: 'QQ 绑定',
+  tgBinding: 'TG 绑定',
   fields: {
     secretSaved: '已保存，不修改则保留',
     secretHint: '输入新值可替换已保存的密钥。',

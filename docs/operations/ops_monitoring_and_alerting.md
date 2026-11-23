@@ -56,3 +56,11 @@
 - 维护命令与替换：下载校验、二进制替换与系统操作锁归 `ops/maintenance`，进程退出统一由 `app/lifecycle` 执行。`cleanup-ingress-reject-logs` 使用精简引导清理 `ingress-reject-v1` 分析事件，默认 dry-run，支持 `--before`、`--batch-size`、`--execute`。
 
 相关文档：[可观测性与数据生命周期](observability_and_data_lifecycle.md)、[使用记录与运维预聚合](pre_aggregation.md)、[提供商维护](provider_maintenance.md)。
+
+<a id="user_service_monitoring"></a>
+## 用户服务监控
+
+1. `/monitoring` 每次读取当前账号授权，只汇总已配置提供商的公开分组及显式授权的专属分组。管理员访问也遵守用户分组边界。
+2. 24、72、168 小时窗口统计成功使用记录和最终客户端错误，排除计数请求。重试恢复的上游错误不计入最终失败。
+3. 每组缓存命中率使用累计缓存读取 tokens 除以普通输入、缓存写入、缓存读取 tokens 总和。API 返回 0 到 1 的比率；没有输入 tokens 时返回 `null`，界面显示无样本。
+4. 返回数据只有分组、计数、聚合延迟、缓存 tokens 和公开模型名；不返回提供商、用户身份、请求内容或内部错误。分组无流量时仍可见，查询错误返回失败。

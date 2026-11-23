@@ -4,6 +4,12 @@
 // and accepted manifest descriptions.
 
 export default {
+  verification: 'Identity verification',
+  personalVerification: 'Personal verification',
+  enterpriseVerification: 'Enterprise verification',
+  bindings: 'QQ / TG bindings',
+  qqBinding: 'QQ binding',
+  tgBinding: 'TG binding',
   fields: {
     secretSaved: 'Saved; leave unchanged to keep',
     secretHint: 'Enter a new value to replace the saved secret.',

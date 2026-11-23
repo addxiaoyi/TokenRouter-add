@@ -4,6 +4,7 @@ import type { IconName } from '@/components/icons/registry'
 import { useAdminSettingsStore, useAppStore } from '@/stores'
 import { usePluginsStore } from '@/stores/plugins'
 import type { PluginAudience } from '@/api/plugins.types'
+import { accountPageForRoute } from '@/utils/pluginAccountPages'
 
 // navigationItems.ts builds the role-specific console destinations shared by the sidebar
 // and the global search palette. Both surfaces must offer the same pages, so the
@@ -61,8 +62,14 @@ export function useNavigationItems(): NavigationItems {
   /** pluginNavItems projects accepted menus into the existing sanitized sidebar renderer.
    * Audience filtering preserves administrator and personal sections. Ordering uses the
    * declared priority, plugin ID, then declaration order without mutating store descriptions.
+   * Personal verification and binding contributions resolve to their combined account
+   * destination, whose first accepted menu supplies its icon and position. Deduplication
+   * happens after sorting so installed menu priorities still determine ordering.
+   * Administrator contributions retain their exact routes and labels rather than sharing
+   * a personal account page or its user-only capabilities.
    */
   function pluginNavItems(audience: PluginAudience): NavItem[] {
+    const seen = new Set<string>()
     return pluginsStore.plugins
       .flatMap((plugin) =>
         plugin.menus.map((menu, index) => ({ pluginId: plugin.id, menu, index })),
@@ -74,12 +81,22 @@ export function useNavigationItems(): NavigationItems {
           a.pluginId.localeCompare(b.pluginId, 'en') ||
           a.index - b.index,
       )
-      .map(({ menu }) => ({
-        path: menu.route,
-        label: menu.label,
-        icon: null,
-        iconSvg: menu.icon_svg,
-      }))
+      .flatMap(({ menu }) => {
+        // Legacy personal links converge on one account destination; keeping the first
+        // sorted declaration prevents duplicate sidebar and search entries for its tabs.
+        const grouped = audience === 'user' ? accountPageForRoute(menu.route) : undefined
+        const path = grouped?.page.path ?? menu.route
+        if (seen.has(path)) return []
+        seen.add(path)
+        return [
+          {
+            path,
+            label: grouped ? t(grouped.page.titleKey) : menu.label,
+            icon: null,
+            iconSvg: menu.icon_svg,
+          },
+        ]
+      })
   }
 
   // accountNavItems builds the personal account destinations shown to ordinary users and
@@ -88,6 +105,7 @@ export function useNavigationItems(): NavigationItems {
   const accountNavItems = computed((): NavItem[] => {
     const items: NavItem[] = [
       { path: '/dashboard', label: t('nav.dashboard'), icon: 'dashboard' as const },
+      { path: '/monitoring', label: t('monitoring.title'), icon: 'monitor' as const },
       { path: '/models', label: t('nav.modelMarketplace'), icon: 'modelMarketplace' as const },
       {
         path: '/usage-ranking',
@@ -142,7 +160,11 @@ export function useNavigationItems(): NavigationItems {
       })),
       ...pluginNavItems('user'),
     ]
-    const visibleItems = items.filter((item) => item.featureFlag?.() !== false)
+    // Model-quality history remains addressable, while account navigation omits the
+    // retired entry consistently from both the sidebar and global search catalog.
+    const visibleItems = items.filter(
+      (item) => item.path !== '/model-quality' && item.featureFlag?.() !== false,
+    )
     return visibleItems
   })
 

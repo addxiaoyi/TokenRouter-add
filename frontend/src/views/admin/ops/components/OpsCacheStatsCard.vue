@@ -82,7 +82,7 @@ const timeRange = ref<OpsTokenStatsTimeRange>('30d')
 // Derived values expose the overall totals and group rows, using an absent
 // response as an empty result for the first render.
 const overall = computed(() => response.value?.overall ?? null)
-const groups = computed(() => response.value?.groups ?? [])
+const cacheGroups = computed(() => response.value?.groups ?? [])
 
 // Selector choices map translated time windows and group identities to request
 // parameters.
@@ -276,13 +276,13 @@ watch(
       </div>
 
       <div
-        v-if="groups.length > 0 || loading"
+        v-if="cacheGroups.length > 0 || loading"
         class="overflow-hidden rounded-surface border border-gray-200 dark:border-dark-700"
       >
         <div class="max-h-panel overflow-auto">
           <div v-if="!isDesktopViewport" class="divide-y divide-gray-100 dark:divide-dark-800">
             <div
-              v-if="loading && !groups.length"
+              v-if="loading && !cacheGroups.length"
               role="status"
               :aria-label="t('common.loading')"
               aria-busy="true"
@@ -307,7 +307,7 @@ watch(
                 </div>
               </div>
             </div>
-            <div v-else v-for="row in groups" :key="row.group_id" class="space-y-2 p-3">
+            <div v-else v-for="row in cacheGroups" :key="row.group_id" class="space-y-2 p-3">
               <div class="break-all text-xs font-medium text-gray-900 dark:text-gray-100">
                 {{ groupLabel(row) }}
               </div>
@@ -379,13 +379,13 @@ watch(
               </tr>
             </thead>
             <TableSkeletonBody
-              v-if="loading && !groups.length"
+              v-if="loading && !cacheGroups.length"
               :columns="6"
               cell-class="px-2 py-2"
             />
             <tbody v-else>
               <tr
-                v-for="row in groups"
+                v-for="row in cacheGroups"
                 :key="row.group_id"
                 class="border-b border-gray-100 text-gray-700 last:border-b-0 dark:border-dark-800 dark:text-gray-200"
               >

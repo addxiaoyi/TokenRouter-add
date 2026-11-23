@@ -9,7 +9,7 @@ package app
 import (
 	"context"
 	"github.com/TokenFlux/TokenRouter/internal/apikey"
-	postgres7 "github.com/TokenFlux/TokenRouter/internal/apikey/postgres"
+	postgres5 "github.com/TokenFlux/TokenRouter/internal/apikey/postgres"
 	"github.com/TokenFlux/TokenRouter/internal/apikey/rediscache"
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
 	postgres13 "github.com/TokenFlux/TokenRouter/internal/batchimage/postgres"
@@ -17,7 +17,7 @@ import (
 	postgres3 "github.com/TokenFlux/TokenRouter/internal/billing/postgres"
 	rediscache2 "github.com/TokenFlux/TokenRouter/internal/billing/rediscache"
 	"github.com/TokenFlux/TokenRouter/internal/config"
-	postgres6 "github.com/TokenFlux/TokenRouter/internal/creative/postgres"
+	postgres7 "github.com/TokenFlux/TokenRouter/internal/creative/postgres"
 	httpapi5 "github.com/TokenFlux/TokenRouter/internal/egress/httpapi"
 	postgres8 "github.com/TokenFlux/TokenRouter/internal/egress/postgres"
 	provider2 "github.com/TokenFlux/TokenRouter/internal/egress/provider"
@@ -52,7 +52,7 @@ import (
 	httpapi9 "github.com/TokenFlux/TokenRouter/internal/server/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/site"
 	httpapi2 "github.com/TokenFlux/TokenRouter/internal/site/httpapi"
-	postgres5 "github.com/TokenFlux/TokenRouter/internal/site/postgres"
+	postgres6 "github.com/TokenFlux/TokenRouter/internal/site/postgres"
 	httpapi3 "github.com/TokenFlux/TokenRouter/internal/team/httpapi"
 	rediscache5 "github.com/TokenFlux/TokenRouter/internal/team/rediscache"
 	"github.com/TokenFlux/TokenRouter/internal/upstream/anthropic"
@@ -150,8 +150,8 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	appIdentityAuthSettings := provideIdentityAuthSettings(runtimeSettings, grantSettings, displaySettings, oAuthSettings, promotionRuntimeSettings)
 	emailCache := provideEmailCache(redisClient)
 	emailChallenges := provideEmailChallenges(emailCache, mailer)
-	smsCache := provideSMSCache(redisClient)
-	smsChallenges := provideSMSChallenges(smsCache, runtimeSettings)
+	smsCodeCache := provideSMSCache(redisClient)
+	smsChallenges := provideSMSChallenges(smsCodeCache, runtimeSettings)
 	turnstileVerifier := provider.NewTurnstileVerifier()
 	turnstileService := provideTurnstile(runtimeSettings, turnstileVerifier)
 	tencentCaptchaVerifier := provider.NewTencentCaptchaVerifier()
@@ -188,15 +188,22 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	runtime := providePaymentRuntime(client, registry, defaultLoadBalancer, redeemService, subscriptionService, affiliateService, notificationEmailService, instanceStore, groupStore, userStore, configService, encryptionKey, oAuthSettings, tasks, calendar, cfg)
 	appIdentityHTTP := provideIdentityHTTP(appIdentityAuthGraph, userService, cfg, appIdentityAuthSettings, backendMode, publicService, promoService, redeemService, totpService, userAttributeService, tasks, runtime)
 	appAuthRouteMount := provideAuthRouteMount(marketplaceHandler, publicHandler, handler, passkeyHandler, appIdentityHTTP)
+	opsRepository := provideOpsRepository(db)
+	opsOptions := provideOpsOptions(cfg)
+	opsSystemLogSink := provideSystemLogSink(opsRepository)
+	authCacheInvalidationOutboxRepository := postgres5.NewAuthCacheInvalidationOutboxRepository(db)
+	authCacheInvalidationWorker := apikey.ProvideAuthCacheInvalidationWorker(authCacheInvalidationOutboxRepository, apiKeyCache, apiKeyService)
+	opsService := provideOpsService(opsRepository, store, opsOptions, providerStore, userStore, concurrencyService, opsSystemLogSink, quotaSettingsCache, authCacheInvalidationWorker, apiKeyService, preAggregationSettingsService)
+	userMonitoringHandler := provideUserMonitoringHTTP(db, userStore, groupStore, opsService)
 	userHandler := providePromotionUserHTTP(affiliateService)
 	subscriptionHandler := httpapi.NewSubscriptionHandler(subscriptionService)
-	announcementRepository := postgres5.NewAnnouncementRepository(client)
-	announcementReadRepository := postgres5.NewAnnouncementReadRepository(client)
+	announcementRepository := postgres6.NewAnnouncementRepository(client)
+	announcementReadRepository := postgres6.NewAnnouncementReadRepository(client)
 	userReader := provideAnnouncementUsers(userStore)
 	subscriptionReader := provideAnnouncementSubscriptions(subscriptionStore)
 	announcementService := site.NewAnnouncementService(announcementRepository, announcementReadRepository, userReader, subscriptionReader)
 	announcementHandler := httpapi2.NewAnnouncementHandler(announcementService)
-	creativeRunRepository := postgres6.NewCreativeRunRepository(client)
+	creativeRunRepository := postgres7.NewCreativeRunRepository(client)
 	creativeRunQueue := provideCreativeQueue(redisClient, cfg)
 	creativeTransientStore := provideCreativeTransientStore(redisClient, cfg)
 	settlementStore := provideSettlementStore(db, calendar)
@@ -209,7 +216,7 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	riskDelivery := provideRiskDelivery(mailer, notificationEmailService)
 	contentModerationService := provideModerationCore(store, contentModerationRepository, contentModerationHashCache, groupStore, riskStatusCommands, proxyStore, apiKeyService, riskDelivery, tasks)
 	creativeRuntimeSettings := provideCreativeRuntimeSettings(store)
-	creativeRunOutboxRepository := postgres6.NewCreativeRunOutboxRepository(db)
+	creativeRunOutboxRepository := postgres7.NewCreativeRunOutboxRepository(db)
 	public := provideCreativePublic(service, creativeRunRepository, keyStore, userStore, providerStore, groupStore, groupRateStore, creativeRunQueue, creativeTransientStore, funds, settlementStore, usageLogRepository, priceResolver, pricingConfigService, contentModerationService, apiKeyAuthCacheInvalidator, creativeRuntimeSettings, cfg, creativeRunOutboxRepository, modelAttributeService)
 	appTaskRequestActivity := provideTaskActivity(manager)
 	creativeHandler := provideCreativeHTTP(public, appTaskRequestActivity)
@@ -217,12 +224,6 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	redeemHandler := httpapi.NewRedeemHandler(redeemService)
 	usageService := provideUsageService(postgresStore)
 	keyReader := provideUsageKeys(apiKeyService)
-	opsRepository := provideOpsRepository(db)
-	opsOptions := provideOpsOptions(cfg)
-	opsSystemLogSink := provideSystemLogSink(opsRepository)
-	authCacheInvalidationOutboxRepository := postgres7.NewAuthCacheInvalidationOutboxRepository(db)
-	authCacheInvalidationWorker := apikey.ProvideAuthCacheInvalidationWorker(authCacheInvalidationOutboxRepository, apiKeyCache, apiKeyService)
-	opsService := provideOpsService(opsRepository, store, opsOptions, providerStore, userStore, concurrencyService, opsSystemLogSink, quotaSettingsCache, authCacheInvalidationWorker, apiKeyService, preAggregationSettingsService)
 	usageRuntimeSettings := provideUsageSettings(store)
 	usageExportRepository := provideUsageExportRepository(client, db)
 	usageExportArtifactStore, err := provideUsageExportArtifactStore(cfg, manager)
@@ -237,7 +238,7 @@ func initializeApplication(ctx context.Context, cfg *config.Config, info BuildIn
 	httpapiUserHandler := httpapi3.NewUserHandler(teamService, calendar)
 	totpHandler := httpapi4.NewTotpHandler(totpService)
 	userHandler2 := providePanelUserHTTP(userService, appIdentityAuthGraph, mailer, emailCache, emailChallenges)
-	appUserRouteMount := provideUserRouteMount(marketplaceHandler, userHandler, subscriptionHandler, announcementHandler, creativeHandler, passkeyHandler, apiKeyHandler, redeemHandler, usageHandler, httpapiUserHandler, totpHandler, userHandler2)
+	appUserRouteMount := provideUserRouteMount(userMonitoringHandler, marketplaceHandler, userHandler, subscriptionHandler, announcementHandler, creativeHandler, passkeyHandler, apiKeyHandler, redeemHandler, usageHandler, httpapiUserHandler, totpHandler, userHandler2)
 	tlsFingerprintProfileRepository := postgres8.NewTLSFingerprintProfileRepository(client)
 	tlsFingerprintProfileCache := rediscache6.NewTLSFingerprintProfileCache(redisClient)
 	tlsFingerprintProfileService := provideEgressProfiles(tlsFingerprintProfileRepository, tlsFingerprintProfileCache)
