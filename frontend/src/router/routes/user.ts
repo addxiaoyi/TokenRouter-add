@@ -1,4 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router'
+import { accountPages } from '@/utils/pluginAccountPages'
 
 // user.ts declares account pages, payment flows, and custom pages with lazy component loaders.
 // Route metadata supplies titles and access flags to the shared guards and
@@ -6,6 +7,29 @@ import type { RouteRecordRaw } from 'vue-router'
 
 // userRoutes supplies the ordered records for this navigation area to the application router.
 export const userRoutes: RouteRecordRaw[] = [
+  ...accountPages.map((page): RouteRecordRaw => ({
+    path: page.path,
+    component: () => import('@/views/plugin/PluginAccountView.vue'),
+    meta: { requiresAuth: true, requiresAdmin: false, titleKey: page.titleKey },
+  })),
+  ...accountPages.flatMap((page) =>
+    page.panels.map((panel): RouteRecordRaw => ({
+      path: `/ext/${panel.pluginId}${panel.subpath ? `/${panel.subpath}` : ''}`,
+      redirect: { path: page.path, query: { tab: panel.id } },
+      meta: { requiresAuth: true, requiresAdmin: false },
+    })),
+  ),
+  {
+    path: '/monitoring',
+    name: 'ServiceMonitoring',
+    component: () => import('@/views/user/ServiceMonitoringView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      titleKey: 'monitoring.title',
+      descriptionKey: 'monitoring.description',
+    },
+  },
   {
     path: '/ext/:pluginId/:subpath(.*)*',
     name: 'PluginPage',
