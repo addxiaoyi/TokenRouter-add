@@ -185,10 +185,10 @@ function bucketTitle(time: number, rate: number | null): string {
 </template>
 
 <style scoped>
-/* Group cards use shared surfaces and status colors; selection retains the exact
-   primary token so routing choices match other account controls in both themes. */
+/* Transparent cards expose the parent backdrop in monitoring and group selection.
+   Borders and status colors preserve grouping without covering that surface. */
 .group-monitor-card {
-  @apply flex h-full min-w-0 flex-col border border-gray-200 bg-white p-5 text-left dark:border-dark-600 dark:bg-dark-900;
+  @apply flex h-full min-w-0 flex-col border border-gray-200 bg-transparent p-5 text-left dark:border-dark-600;
   container-type: inline-size;
 }
 .group-monitor-selected {
@@ -228,7 +228,7 @@ function bucketTitle(time: number, rate: number | null): string {
   @apply mt-4 grid grid-cols-3 gap-2;
 }
 .group-monitor-timings > div {
-  @apply min-w-0 bg-gray-50 p-3 dark:bg-dark-800;
+  @apply min-w-0 border border-gray-200 bg-transparent p-3 dark:border-dark-600;
 }
 dt {
   @apply text-xs text-gray-500 dark:text-dark-300;
@@ -237,7 +237,7 @@ dd {
   @apply mt-1 break-words font-mono text-base font-semibold tabular-nums text-gray-900 dark:text-white;
 }
 .group-monitor-availability {
-  @apply mt-4 bg-gray-50 p-4 dark:bg-dark-800;
+  @apply mt-4 border border-gray-200 bg-transparent p-4 dark:border-dark-600;
 }
 .group-monitor-rate {
   @apply font-mono text-3xl font-semibold tabular-nums;

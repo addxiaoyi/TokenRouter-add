@@ -369,10 +369,10 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-/* A flat comparison surface keeps status bars and measured rates aligned while
-   the existing application shell retains account navigation and theme tokens. */
+/* Transparent page surfaces reveal the application's shared backdrop; controls
+   keep their own focus and selection states for reading the monitoring filters. */
 .monitoring-layout :deep(.app-main) {
-  @apply bg-white dark:bg-dark-900;
+  @apply bg-transparent;
 }
 .monitoring-page {
   @apply w-full min-w-0;
@@ -418,6 +418,7 @@ onBeforeUnmount(() => {
   @apply w-40;
 }
 .monitoring-select :deep(.input) {
+  @apply bg-transparent;
   border-radius: 0;
 }
 .monitoring-text-button {
