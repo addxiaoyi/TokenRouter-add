@@ -35,8 +35,8 @@ import (
 // production SQL shape for comparison.
 
 // TestResponseModelBatchRoundTrip inserts absent and present model declarations
-// with nullable mismatch and cache-write anomaly diagnostics through batch SQL.
-// It checks diagnostic readback, best-effort/direct paths, and successful repeat execution.
+// with nullable mismatch, cache-write anomaly, and cost confirmation evidence.
+// It compares readback with the input records across all three insert paths.
 func TestResponseModelBatchRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	// Result-aware batch SQL uses the shared pool, so registered truncation owns
@@ -49,6 +49,7 @@ func TestResponseModelBatchRoundTrip(t *testing.T) {
 	repo := &Store{}
 	keys := []string{}
 	prepared := map[string]usageLogInsertPrepared{}
+	inputs := map[string]*usage.UsageLog{}
 	for _, kind := range []string{"unknown", "same", "different"} {
 		log := &usage.UsageLog{UserID: user.ID, APIKeyID: key.ID, ProviderID: upstream.ID, RequestID: suffix + kind, Model: "sent", CreatedAt: time.Now()}
 		if kind != "unknown" {
@@ -56,6 +57,7 @@ func TestResponseModelBatchRoundTrip(t *testing.T) {
 			mismatch := kind == "different"
 			log.UpstreamResponseModel = &value
 			log.UpstreamModelMismatch = &mismatch
+			log.ProviderCostConfirmed = new(!mismatch)
 			if mismatch {
 				log.CacheWriteAnomaly = &billing.CacheWriteAnomaly{
 					Kind:          "partial_breakdown",
@@ -67,6 +69,7 @@ func TestResponseModelBatchRoundTrip(t *testing.T) {
 		batchKey := usageLogBatchKey(log.RequestID, log.APIKeyID)
 		keys = append(keys, batchKey)
 		prepared[batchKey] = prepareUsageLogInsert(log)
+		inputs[batchKey] = log
 	}
 	_, states, _, err := repo.batchInsertUsageLogs(integrationDB, keys, prepared)
 	require.NoError(t, err)
@@ -74,18 +77,11 @@ func TestResponseModelBatchRoundTrip(t *testing.T) {
 		state := states[key]
 		log, err := scanUsageLog(integrationDB.QueryRowContext(ctx, "SELECT "+usageLogSelectColumns+" FROM usage_logs WHERE id=$1", state.ID))
 		require.NoError(t, err)
-		want := prepared[key].args
-		require.Equal(t, want[len(want)-6], nullString(log.UpstreamResponseModel))
-		require.Equal(t, want[len(want)-5], log.UpstreamModelMismatch)
-		if log.UpstreamModelMismatch != nil && *log.UpstreamModelMismatch {
-			require.Equal(t, &billing.CacheWriteAnomaly{
-				Kind:          "partial_breakdown",
-				ReportedTotal: 311,
-				Reported5m:    211,
-			}, log.CacheWriteAnomaly)
-		} else {
-			require.Nil(t, log.CacheWriteAnomaly)
-		}
+		want := inputs[key]
+		require.Equal(t, want.UpstreamResponseModel, log.UpstreamResponseModel)
+		require.Equal(t, want.UpstreamModelMismatch, log.UpstreamModelMismatch)
+		require.Equal(t, want.ProviderCostConfirmed, log.ProviderCostConfirmed)
+		require.Equal(t, want.CacheWriteAnomaly, log.CacheWriteAnomaly)
 	}
 	// Execute the acknowledgement-only and direct shapes with populated response
 	// evidence, then compare their raw readback to the same supplied diagnostics.
@@ -98,6 +94,7 @@ func TestResponseModelBatchRoundTrip(t *testing.T) {
 			Reported1h:    10,
 		}
 		log := &usage.UsageLog{UserID: user.ID, APIKeyID: key.ID, ProviderID: upstream.ID, RequestID: suffix + path, Model: "sent", CreatedAt: time.Now(), UpstreamResponseModel: &model, UpstreamModelMismatch: &mismatch, CacheWriteAnomaly: anomaly}
+		log.ProviderCostConfirmed = new(path == "best-effort")
 		value := prepareUsageLogInsert(log)
 		if path == "best-effort" {
 			query, args := buildUsageLogBestEffortInsertQuery([]usageLogInsertPrepared{value})
@@ -110,6 +107,7 @@ func TestResponseModelBatchRoundTrip(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, log.UpstreamResponseModel, loaded.UpstreamResponseModel)
 		require.Equal(t, log.UpstreamModelMismatch, loaded.UpstreamModelMismatch)
+		require.Equal(t, log.ProviderCostConfirmed, loaded.ProviderCostConfirmed)
 		require.Equal(t, anomaly, loaded.CacheWriteAnomaly)
 	}
 	// Reexecute the same prepared identities after readback. Conflict suppression
