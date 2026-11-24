@@ -1,6 +1,7 @@
 <template>
   <AppLayout>
     <div class="w-full min-w-0 space-y-4">
+      <ProfitReminder show-providers />
       <form @submit.prevent="saveAllSettings" class="space-y-4" novalidate>
         <div class="settings-tabs-sticky">
           <div
@@ -285,6 +286,7 @@ import {
 } from '@/composables/useSettingsSaveRegistry'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import ProfitReminder from '@/components/admin/ProfitReminder.vue'
 import Icon from '@/components/icons/Icon.vue'
 import ProviderIcon from '@/components/common/ProviderIcon.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'

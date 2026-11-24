@@ -5,9 +5,36 @@
     role="status"
   >
     <p class="text-sm">{{ t('admin.profit.reminder', { count: missing }) }}</p>
-    <RouterLink to="/admin/profit" class="btn btn-secondary btn-sm">{{
-      t('admin.profit.confirm')
-    }}</RouterLink>
+    <RouterLink
+      :to="{ path: '/admin/profit', query: { rates: 'missing' } }"
+      class="btn btn-secondary btn-sm"
+      >{{ t('admin.profit.confirm') }}</RouterLink
+    >
+    <details v-if="showProviders" class="basis-full text-sm">
+      <summary class="cursor-pointer">{{ t('admin.profit.providers') }}</summary>
+      <ul class="mt-3 max-h-panel space-y-2 overflow-y-auto">
+        <li
+          v-for="row in pendingProviders"
+          :key="row.id"
+          class="flex flex-wrap items-baseline gap-x-3 gap-y-1"
+        >
+          <span class="font-medium">{{ row.name }} #{{ row.id }}</span>
+          <a
+            v-if="row.site"
+            :href="row.site"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="break-all underline"
+          >
+            {{ row.site }}
+          </a>
+          <span v-else>{{ t('admin.profit.noSite') }}</span>
+          <span class="font-mono">{{
+            row.has_key ? row.key_hint || t('admin.profit.keyConfigured') : t('admin.profit.noKey')
+          }}</span>
+        </li>
+      </ul>
+    </details>
   </div>
   <div
     v-else-if="failed"
@@ -26,22 +53,27 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useLocalDay } from '@/composables/useLocalDay'
-import { readProfit } from '@/api/admin/profit'
+import { readProfit, type ProfitProvider } from '@/api/admin/profit'
 
-// ProfitReminder.vue surfaces unconfirmed upstream multipliers on the dashboard.
-// Its bounded report read exposes only the count and links to the protected profit
-// page; it never requests credentials. Failed reads offer retry instead of claiming
-// that every provider has a configured cost.
+// ProfitReminder.vue surfaces unconfirmed upstream multipliers in administration.
+// Settings can expand the provider list with website origins and masked key hints.
+// Both surfaces link to the filtered profit page for manual confirmation. Failed
+// reads offer a retry, since a failed request does not establish complete rates.
+
+defineProps<{
+  showProviders?: boolean // Allow inspection of all pending providers.
+}>()
 
 // This component owns one replaceable reminder request and discards responses
 // after cancellation or unmount, preserving the current dashboard's lifetime.
 const { t } = useI18n()
 const { today } = useLocalDay()
 const missing = ref(0)
+const pendingProviders = ref<ProfitProvider[]>([])
 const failed = ref(false)
 let abort: AbortController | undefined
 
-// refresh loads the current missing-rate count without publishing cancelled reads.
+// refresh loads pending providers and their count without publishing cancelled reads.
 // An explicit retry replaces the previous request. Failure leaves an actionable
 // message, while unmount aborts the request before it can update this component.
 async function refresh(): Promise<void> {
@@ -56,7 +88,9 @@ async function refresh(): Promise<void> {
       Intl.DateTimeFormat().resolvedOptions().timeZone,
       pending.signal,
     )
-    if (!pending.signal.aborted) missing.value = report.missing_providers
+    if (pending.signal.aborted) return
+    pendingProviders.value = report.providers.filter((row) => !row.deleted && !row.configured)
+    missing.value = report.missing_providers
   } catch {
     if (!pending.signal.aborted) failed.value = true
   }

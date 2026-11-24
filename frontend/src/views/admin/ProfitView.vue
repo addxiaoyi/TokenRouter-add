@@ -290,6 +290,7 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import DateRangePicker from '@/components/common/DateRangePicker.vue'
 import TotpStepUpDialog from '@/components/auth/TotpStepUpDialog.vue'
@@ -325,6 +326,7 @@ const {
   copyKey,
   money,
 } = useProfitReport()
+missingOnly.value = useRoute().query.rates === 'missing'
 
 // costText keeps an unknown subtotal visually distinct from a measured zero cost.
 function costText(amount: number, confirmed: number, missing: number): string {
