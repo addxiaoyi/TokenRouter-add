@@ -39,7 +39,8 @@ RUN --mount=type=cache,id=tokenrouter-pnpm-store,target=/root/.local/share/pnpm/
 COPY frontend/ ./
 COPY docs/legal/ /app/docs/legal/
 COPY backend/internal/pkg/locale/*.json /app/backend/internal/pkg/locale/
-RUN pnpm run build
+# Leave headroom for the running gateway while Vue type-checking runs on small builders.
+RUN NODE_OPTIONS=--max-old-space-size=3072 pnpm run build
 
 # -----------------------------------------------------------------------------
 # Stage 2: Backend Builder
