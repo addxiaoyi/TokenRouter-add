@@ -237,19 +237,23 @@ func (a *RequestActivity) record(userID int64, hash uint64) {
 	a.expire(now)
 	members := a.users[userID]
 	var nearest, oldest *list.Element
+	var nearestProfile *requestActivityProfile
+	var oldestSeen time.Time
 	distance := requestActivityDistance + 1
 	for _, elem := range members {
-		p := elem.Value.(*requestActivityProfile)
-		if oldest == nil || p.seen.Before(oldest.Value.(*requestActivityProfile).seen) {
-			oldest = elem
+		p, ok := elem.Value.(*requestActivityProfile)
+		if !ok {
+			continue
+		}
+		if oldest == nil || p.seen.Before(oldestSeen) {
+			oldest, oldestSeen = elem, p.seen
 		}
 		if delta := bits.OnesCount64(p.hash ^ hash); delta < distance {
-			nearest, distance = elem, delta
+			nearest, nearestProfile, distance = elem, p, delta
 		}
 	}
 	if nearest != nil {
-		p := nearest.Value.(*requestActivityProfile)
-		p.hash, p.seen = hash, now
+		nearestProfile.hash, nearestProfile.seen = hash, now
 		a.lru.MoveToBack(nearest)
 		return
 	}
@@ -266,7 +270,15 @@ func (a *RequestActivity) record(userID int64, hash uint64) {
 // expire drops every profile outside the ten-minute window under the tracker lock.
 func (a *RequestActivity) expire(now time.Time) {
 	cutoff := now.Add(-RequestActivityWindow)
-	for front := a.lru.Front(); front != nil && !front.Value.(*requestActivityProfile).seen.After(cutoff); front = a.lru.Front() {
+	for front := a.lru.Front(); front != nil; front = a.lru.Front() {
+		profile, ok := front.Value.(*requestActivityProfile)
+		if !ok {
+			a.lru.Remove(front)
+			continue
+		}
+		if profile.seen.After(cutoff) {
+			return
+		}
 		a.remove(front)
 	}
 }
@@ -275,7 +287,12 @@ func (a *RequestActivity) expire(now time.Time) {
 // The member slice need not keep a sorted order because record selects its
 // oldest observation from timestamps and the global list owns expiry.
 func (a *RequestActivity) remove(elem *list.Element) {
-	id := elem.Value.(*requestActivityProfile).userID
+	profile, ok := elem.Value.(*requestActivityProfile)
+	if !ok {
+		a.lru.Remove(elem)
+		return
+	}
+	id := profile.userID
 	members := a.users[id]
 	for i, candidate := range members {
 		if candidate != elem {
