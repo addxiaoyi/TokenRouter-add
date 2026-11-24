@@ -53,4 +53,18 @@ describe('monitored group cards', () => {
     expect(view.get('.group-monitor-status').attributes('data-status')).toBe('idle')
     expect(view.findAll('[data-state="healthy"]')).toHaveLength(0)
   })
+
+  // Selectors use the compact variant to retain availability while keeping one
+  // selectable group on each row without the full metric breakdown.
+  it('renders a compact availability row without detailed metrics', () => {
+    const view = mount(GroupMonitorCard, {
+      props: { name: 'Compact group', stats: observed(), compact: true },
+    })
+    expect(view.classes()).toContain('group-monitor-card-compact')
+    expect(view.find('.group-monitor-timings').exists()).toBe(false)
+    expect(view.find('.group-monitor-footer').exists()).toBe(false)
+    expect(view.find('.group-monitor-bars').exists()).toBe(true)
+    expect(view.text()).toContain('100.00%')
+    expect(view.text()).not.toContain('1.00s')
+  })
 })

@@ -5,7 +5,7 @@
         v-if="open && position"
         :inert="!(open && position) || undefined"
         ref="panelRef"
-        class="dropdown animate-in fade-in slide-in-from-top-2 fixed z-teleport-dropdown w-[680px] max-w-[calc(100vw-16px)] overflow-hidden py-0 duration-normal"
+        class="dropdown animate-in fade-in slide-in-from-top-2 fixed z-teleport-dropdown w-[560px] max-w-[calc(100vw-16px)] overflow-hidden py-0 duration-normal"
         style="pointer-events: auto !important"
         :style="{
           top: position.top !== undefined ? position.top + 'px' : undefined,
@@ -29,14 +29,14 @@
             t('common.retry')
           }}</button>
         </div>
-        <div class="grid max-h-[60vh] grid-cols-1 gap-3 overflow-y-auto p-3 sm:grid-cols-2">
+        <div class="grid max-h-[60vh] grid-cols-1 gap-1 overflow-y-auto p-2">
           <button
             v-for="option in filteredOptions"
             :key="option.value ?? 'null'"
             type="button"
             @click="selectedKey && emit('select', selectedKey, option.value)"
             :class="[
-              'w-full rounded-surface text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500',
+              'w-full rounded-control text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500',
               '',
               isSelectedGroup(option.value)
                 ? 'bg-primary-50 dark:bg-primary-500/8 dark:text-primary-500'
@@ -47,12 +47,12 @@
             <GroupMonitorCard
               :name="option.label"
               :multiplier="option.userRate ?? option.rate"
-              :description="option.description"
               :stats="monitoring?.groups.find((group) => group.id === option.value)"
               :window-end="monitoring?.end"
               :window-start="monitoring?.start"
               :bucket-minutes="monitoring?.bucket_minutes"
               :selected="isSelectedGroup(option.value)"
+              compact
               class="w-full"
             />
           </button>

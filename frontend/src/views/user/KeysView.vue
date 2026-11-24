@@ -708,7 +708,6 @@
             <template #option="{ option, selected }">
               <GroupMonitorCard
                 :name="(option as unknown as GroupOption).label"
-                :description="(option as unknown as GroupOption).description"
                 :multiplier="
                   (option as unknown as GroupOption).userRate ??
                   (option as unknown as GroupOption).rate
@@ -718,6 +717,8 @@
                 :window-start="groupMonitoring.snapshot.value?.start"
                 :bucket-minutes="groupMonitoring.snapshot.value?.bucket_minutes"
                 :selected="selected"
+                compact
+                class="w-full min-w-0"
               />
             </template>
           </Select>
@@ -2620,11 +2621,11 @@ const openGroupSelector = (key: ApiKey) => {
       // Estimate a comfortable group-panel height before choosing its side, and allow the positioning helper to use near-full viewport width on narrow screens.
       const position = getFloatingPanelPosition(rect, window.innerWidth, window.innerHeight, {
         align: 'left',
-        maxWidth: 680,
+        maxWidth: 560,
         viewportPadding: 8,
         gap: 4,
         maxHeightRatio: 1,
-        minComfortableHeight: 400,
+        minComfortableHeight: 280,
       })
       if (position.bottom !== null) {
         // Anchor upward when the positioning helper selects space above the trigger.

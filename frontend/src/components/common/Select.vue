@@ -697,6 +697,17 @@ onUnmounted(() => {
   pointer-events: auto !important;
 }
 
+/* Rich group options own their horizontal row layout. Keeping the option wrapper
+   block-level prevents the flex menu item from shrinking the monitoring row into
+   a narrow vertical strip on compact form panels. */
+.select-dropdown-portal .select-option:has(.group-monitor-card) {
+  display: block;
+}
+
+.select-dropdown-portal .select-option:has(.group-monitor-card) > .group-monitor-card {
+  width: 100%;
+}
+
 .select-dropdown-portal .select-option-selected {
   /* Dark selected options use a tinted brand surface with brand-colored labels and check marks. */
   @apply bg-gray-100 dark:bg-primary-500/8 dark:hover:bg-primary-500/8;

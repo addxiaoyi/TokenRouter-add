@@ -15,7 +15,9 @@ import { monitoringBuckets, monitoringStatus } from '@/utils/monitoring'
 // Missing intervals receive empty cells, while measured rates determine both bar
 // height and status color. The headline uses weighted request counts rather than
 // averaging interval rates, and cache percentages use the endpoint's input-token
-// denominator. This keeps sparse groups comparable without filling their gaps.
+// denominator. This keeps sparse groups comparable without filling their gaps. The
+// compact variant keeps status and availability in group selectors without displacing
+// a single-column scan with detailed performance metrics.
 
 // Props carries display metadata and nullable observations; the parent owns selection
 // and persistence, while this presentation preserves explicit no-sample states.
@@ -27,6 +29,7 @@ const props = defineProps<{
   modelCount?: number // Catalog requestable model count.
   stats?: MonitoringGroup | null // Permission-scoped aggregate observation window.
   selected?: boolean // Parent-owned current group selection.
+  compact?: boolean // Parent-owned status and availability-only selector row.
   // windowEnd anchors the strip to the observed endpoint; omission uses current
   // time so old samples cannot occupy the newest displayed hour by default.
   windowEnd?: string
@@ -87,22 +90,25 @@ function bucketTitle(time: number, rate: number | null): string {
 </script>
 
 <template>
-  <div class="group-monitor-card" :class="{ 'group-monitor-selected': selected }">
+  <div
+    class="group-monitor-card"
+    :class="{ 'group-monitor-selected': selected, 'group-monitor-card-compact': compact }"
+  >
     <div class="group-monitor-heading">
       <span class="group-monitor-name" :title="name">{{ name }}</span>
       <span v-if="multiplier != null" class="shrink-0 text-xs text-gray-500"
         >×{{ multiplier }}</span
       >
-      <span class="group-monitor-status" :data-status="status"
+      <span v-if="!compact" class="group-monitor-status" :data-status="status"
         ><span class="group-monitor-dot" aria-hidden="true"></span
         >{{ t(`monitoring.${status}`) }}</span
       >
     </div>
-    <p v-if="description" class="group-monitor-description" :title="description">{{
+    <p v-if="description && !compact" class="group-monitor-description" :title="description">{{
       description
     }}</p>
     <p class="sr-only">{{ t('monitoring.windowHours', { count: windowHours }) }}</p>
-    <dl class="group-monitor-timings">
+    <dl v-if="!compact" class="group-monitor-timings">
       <div
         ><dt>{{ t('monitoring.latency') }}</dt
         ><dd>{{ seconds(stats?.avg_duration_ms) }}</dd></div
@@ -115,7 +121,7 @@ function bucketTitle(time: number, rate: number | null): string {
         ><dd>{{ stats?.avg_tps == null ? '—' : `${stats.avg_tps.toFixed(1)} t/s` }}</dd></div
       >
     </dl>
-    <div class="group-monitor-availability">
+    <div v-if="!compact" class="group-monitor-availability">
       <div class="flex flex-wrap items-end justify-between gap-2">
         <div class="text-left"
           ><p class="text-xs text-gray-500">{{ t('monitoring.availability') }}</p
@@ -133,28 +139,33 @@ function bucketTitle(time: number, rate: number | null): string {
         }}</strong>
       </div>
     </div>
-    <div class="group-monitor-bars" role="img" :aria-label="`${name}: ${t('monitoring.trend')}`">
-      <span
-        v-for="(bucket, index) in history"
-        :key="index"
-        :data-state="
-          bucket.rate == null
-            ? 'empty'
-            : bucket.rate >= 0.99
-              ? 'healthy'
-              : bucket.rate >= 0.95
-                ? 'degraded'
-                : 'incident'
-        "
-        :style="{ '--bar-height': `${bucket.rate == null ? 16 : 25 + bucket.rate * 75}%` }"
-        :title="bucketTitle(bucket.time, bucket.rate)"
-      />
+    <div class="group-monitor-trend" :class="{ 'group-monitor-trend-compact': compact }">
+      <strong v-if="compact && rate != null" class="group-monitor-rate" :data-status="status">{{
+        rate == null ? '��' : `${rate.toFixed(2)}%`
+      }}</strong>
+      <div class="group-monitor-bars" role="img" :aria-label="`${name}: ${t('monitoring.trend')}`">
+        <span
+          v-for="(bucket, index) in history"
+          :key="index"
+          :data-state="
+            bucket.rate == null
+              ? 'empty'
+              : bucket.rate >= 0.99
+                ? 'healthy'
+                : bucket.rate >= 0.95
+                  ? 'degraded'
+                  : 'incident'
+          "
+          :style="{ '--bar-height': `${bucket.rate == null ? 16 : 25 + bucket.rate * 75}%` }"
+          :title="bucketTitle(bucket.time, bucket.rate)"
+        />
+      </div>
     </div>
-    <div class="mt-1 flex justify-between text-xs text-gray-400"
+    <div v-if="!compact" class="mt-1 flex justify-between text-xs text-gray-400"
       ><span>{{ t('monitoring.past') }}</span
       ><span>{{ t('monitoring.now') }}</span></div
     >
-    <dl class="group-monitor-footer">
+    <dl v-if="!compact" class="group-monitor-footer">
       <div :title="t('monitoring.cacheHitRateHint')"
         ><dt>{{ t('monitoring.cacheHitRate') }}</dt
         ><dd>{{ percent(stats?.cache_hit_rate) }}</dd></div
@@ -195,6 +206,18 @@ function bucketTitle(time: number, rate: number | null): string {
   @apply ring-1;
   border-color: var(--tr-color-brand);
   --tw-ring-color: var(--tr-color-brand);
+}
+.group-monitor-card-compact {
+  @apply flex-row items-center gap-3 border-0 p-2;
+}
+.group-monitor-card-compact .group-monitor-heading {
+  @apply min-w-0 flex-1;
+}
+.group-monitor-card-compact .group-monitor-name {
+  @apply text-sm;
+}
+.group-monitor-card-compact .group-monitor-status {
+  @apply ml-0 px-1.5 py-0.5;
 }
 .group-monitor-heading {
   @apply flex min-w-0 flex-wrap items-center gap-2;
@@ -244,6 +267,18 @@ dd {
 }
 .group-monitor-bars {
   @apply mt-4 flex h-12 items-end gap-1;
+}
+.group-monitor-trend {
+  @apply min-w-0;
+}
+.group-monitor-trend-compact {
+  @apply flex shrink-0 items-center gap-2;
+}
+.group-monitor-trend-compact .group-monitor-rate {
+  @apply text-sm;
+}
+.group-monitor-trend-compact .group-monitor-bars {
+  @apply mt-0 h-6 w-24 gap-0.5;
 }
 .group-monitor-bars > span {
   @apply min-w-0 flex-1;
