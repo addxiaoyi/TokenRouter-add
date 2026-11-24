@@ -142,6 +142,7 @@ func RegisterProviderRoutes(admin *gin.RouterGroup, endpoints ProviderRouteEndpo
 		adminapi.Register(providers, ManagementOperations["providers.sync.crs.create"], endpoints.ProviderCRS.SyncFromCRS)
 		adminapi.Register(providers, ManagementOperations["providers.sync.crs.preview.create"], endpoints.ProviderCRS.PreviewFromCRS)
 		adminapi.Register(providers, ManagementOperations["providers.update"], endpoints.ProviderManagement.Update)
+		adminapi.Register(providers, ManagementOperations["providers.cost_rate.update"], endpoints.ProviderManagement.SetCostRate)
 		registerDiagnostics(providers)
 		adminapi.Register(providers, ManagementOperations["providers.ollama_cloud_usage.list"], endpoints.ProviderOllama.GetOllamaCloudUsage)
 		adminapi.Register(providers, ManagementOperations["providers.ollama_cloud_usage.session.update"], endpoints.ProviderOllama.SaveOllamaCloudUsageSession)

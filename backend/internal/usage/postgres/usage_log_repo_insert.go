@@ -132,6 +132,7 @@ var (
 		{name: "request_source", dataType: "text"},
 		{name: "system_usage", dataType: "jsonb"},
 		{name: "cache_write_anomaly", dataType: "jsonb"},
+		{name: "provider_cost_confirmed", dataType: "boolean"},
 	}
 
 	// usageLogInsert caches fixed SQL metadata once for the direct and batch
@@ -1317,6 +1318,7 @@ func prepareUsageLogInsert(log *usage.UsageLog) usageLogInsertPrepared {
 			log.EffectiveRequestSource(),
 			systemArg,
 			anomalyArg,
+			log.ProviderCostConfirmed,
 		},
 	}
 }

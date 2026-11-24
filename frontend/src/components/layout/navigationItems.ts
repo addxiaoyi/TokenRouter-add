@@ -190,6 +190,7 @@ export function useNavigationItems(): NavigationItems {
   const adminNavItems = computed((): NavItem[] => {
     const baseItems: NavItem[] = [
       { path: '/admin/dashboard', label: t('nav.dashboard'), icon: 'dashboard' as const },
+      { path: '/admin/profit', label: t('admin.profit.title'), icon: 'chart' as const },
       ...(adminSettingsStore.opsMonitoringEnabled
         ? [{ path: '/admin/ops', label: t('nav.ops'), icon: 'chart' as const }]
         : []),

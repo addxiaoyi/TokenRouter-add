@@ -1,0 +1,54 @@
+// profit.ts describes administrator margins, missing-cost reminders, and explicit
+// credential access. Confirmed customer margins and internal overhead remain separate;
+// missing historical cost must never be described as measured business profit.
+export default {
+  title: 'Profit records',
+  description:
+    'Automatic usage margin: customer charges minus upstream cost. Internal model costs are separate; hosting and payment fees are excluded.',
+  summary: 'Selected period margin overview',
+  revenue: 'Customer charges',
+  upstreamCost: 'Confirmed upstream cost',
+  grossProfit: 'Confirmed gross margin',
+  formula: 'Covered customer charges minus upstream cost',
+  systemCost: 'Internal model cost',
+  systemHint: 'Tests and internal calls; {count} costs remain unknown',
+  requests: '{count} customer requests',
+  coverage: 'Confirmed cost: {known} / {total} requests',
+  reminder: '{count} upstream multipliers need confirmation',
+  reminderHint:
+    'The legacy default of 1 was not necessarily verified. Open the upstream website and locate the key before confirming its multiplier.',
+  missingOnly: 'Needs confirmation only',
+  incomplete:
+    '{count} requests have unknown cost. Their {revenue} in charges is excluded from confirmed margin.',
+  providers: 'Upstream costs and sources',
+  search: 'Search provider, website, or key suffix',
+  needsRate: 'Confirm multiplier',
+  noSite: 'No upstream website configured',
+  noKey: 'Uses another authentication method',
+  keyConfigured: 'Key configured',
+  upstreamKey: 'Upstream API key',
+  viewKey: 'View key',
+  copyKey: 'Copy key',
+  hideKey: 'Hide',
+  rate: 'Upstream cost multiplier',
+  rateHint: 'Applies to future requests. Zero means a free upstream.',
+  confirm: 'Confirm rate',
+  unknown: 'Unknown',
+  deleted: 'Deleted provider; history retained',
+  history: 'Daily margin records',
+  date: 'Date',
+  missingRecords: 'Unknown costs',
+  retention:
+    'Based on retained usage in the selected timezone, up to 93 days. Confirming a rate does not reprice historical defaults or unknown costs. Amounts are USD billing values, not cash receipts or net income.',
+  emptyHistory: 'No usage records in this period.',
+  emptyProviders: 'No matching providers.',
+  retry: 'Reload',
+  reminderError: 'Upstream multiplier reminders could not be loaded.',
+  loadError: 'Could not load profit records. Check the date range and retry.',
+  invalidRate: 'Enter a nonnegative multiplier with up to four decimal places.',
+  saved: 'Upstream rate confirmed. Future requests will record cost and margin.',
+  saveError: 'Could not save the multiplier. Please retry.',
+  keyBlocked:
+    'Enable secondary verification in your profile and sign in through the administrator website to view keys.',
+  keyError: 'Could not read this provider key. Check your permissions and retry.',
+}

@@ -583,6 +583,20 @@ func (_c *UsageLogCreate) SetNillableLongContextBillingApplied(v *bool) *UsageLo
 	return _c
 }
 
+// SetProviderCostConfirmed sets the "provider_cost_confirmed" field.
+func (_c *UsageLogCreate) SetProviderCostConfirmed(v bool) *UsageLogCreate {
+	_c.mutation.SetProviderCostConfirmed(v)
+	return _c
+}
+
+// SetNillableProviderCostConfirmed sets the "provider_cost_confirmed" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillableProviderCostConfirmed(v *bool) *UsageLogCreate {
+	if v != nil {
+		_c.SetProviderCostConfirmed(*v)
+	}
+	return _c
+}
+
 // SetProviderRateMultiplier sets the "provider_rate_multiplier" field.
 func (_c *UsageLogCreate) SetProviderRateMultiplier(v float64) *UsageLogCreate {
 	_c.mutation.SetProviderRateMultiplier(v)
@@ -1346,6 +1360,10 @@ func (_c *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.LongContextBillingApplied(); ok {
 		_spec.SetField(usagelog.FieldLongContextBillingApplied, field.TypeBool, value)
 		_node.LongContextBillingApplied = value
+	}
+	if value, ok := _c.mutation.ProviderCostConfirmed(); ok {
+		_spec.SetField(usagelog.FieldProviderCostConfirmed, field.TypeBool, value)
+		_node.ProviderCostConfirmed = &value
 	}
 	if value, ok := _c.mutation.ProviderRateMultiplier(); ok {
 		_spec.SetField(usagelog.FieldProviderRateMultiplier, field.TypeFloat64, value)
@@ -2332,6 +2350,24 @@ func (u *UsageLogUpsert) SetLongContextBillingApplied(v bool) *UsageLogUpsert {
 // UpdateLongContextBillingApplied sets the "long_context_billing_applied" field to the value that was provided on create.
 func (u *UsageLogUpsert) UpdateLongContextBillingApplied() *UsageLogUpsert {
 	u.SetExcluded(usagelog.FieldLongContextBillingApplied)
+	return u
+}
+
+// SetProviderCostConfirmed sets the "provider_cost_confirmed" field.
+func (u *UsageLogUpsert) SetProviderCostConfirmed(v bool) *UsageLogUpsert {
+	u.Set(usagelog.FieldProviderCostConfirmed, v)
+	return u
+}
+
+// UpdateProviderCostConfirmed sets the "provider_cost_confirmed" field to the value that was provided on create.
+func (u *UsageLogUpsert) UpdateProviderCostConfirmed() *UsageLogUpsert {
+	u.SetExcluded(usagelog.FieldProviderCostConfirmed)
+	return u
+}
+
+// ClearProviderCostConfirmed clears the value of the "provider_cost_confirmed" field.
+func (u *UsageLogUpsert) ClearProviderCostConfirmed() *UsageLogUpsert {
+	u.SetNull(usagelog.FieldProviderCostConfirmed)
 	return u
 }
 
@@ -3578,6 +3614,27 @@ func (u *UsageLogUpsertOne) SetLongContextBillingApplied(v bool) *UsageLogUpsert
 func (u *UsageLogUpsertOne) UpdateLongContextBillingApplied() *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.UpdateLongContextBillingApplied()
+	})
+}
+
+// SetProviderCostConfirmed sets the "provider_cost_confirmed" field.
+func (u *UsageLogUpsertOne) SetProviderCostConfirmed(v bool) *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetProviderCostConfirmed(v)
+	})
+}
+
+// UpdateProviderCostConfirmed sets the "provider_cost_confirmed" field to the value that was provided on create.
+func (u *UsageLogUpsertOne) UpdateProviderCostConfirmed() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateProviderCostConfirmed()
+	})
+}
+
+// ClearProviderCostConfirmed clears the value of the "provider_cost_confirmed" field.
+func (u *UsageLogUpsertOne) ClearProviderCostConfirmed() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearProviderCostConfirmed()
 	})
 }
 
@@ -5042,6 +5099,27 @@ func (u *UsageLogUpsertBulk) SetLongContextBillingApplied(v bool) *UsageLogUpser
 func (u *UsageLogUpsertBulk) UpdateLongContextBillingApplied() *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.UpdateLongContextBillingApplied()
+	})
+}
+
+// SetProviderCostConfirmed sets the "provider_cost_confirmed" field.
+func (u *UsageLogUpsertBulk) SetProviderCostConfirmed(v bool) *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetProviderCostConfirmed(v)
+	})
+}
+
+// UpdateProviderCostConfirmed sets the "provider_cost_confirmed" field to the value that was provided on create.
+func (u *UsageLogUpsertBulk) UpdateProviderCostConfirmed() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateProviderCostConfirmed()
+	})
+}
+
+// ClearProviderCostConfirmed clears the value of the "provider_cost_confirmed" field.
+func (u *UsageLogUpsertBulk) ClearProviderCostConfirmed() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.ClearProviderCostConfirmed()
 	})
 }
 

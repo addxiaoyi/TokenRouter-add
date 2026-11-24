@@ -471,7 +471,7 @@ const paletteOptions: Array<{ id: ThemePalette; label: string; swatch: string }>
 ]
 
 // Semantic Codex section buckets keep the 20+ admin entries scannable without dropping any route.
-const OVERVIEW_PATHS = new Set(['/admin/dashboard', '/admin/ops'])
+const OVERVIEW_PATHS = new Set(['/admin/dashboard', '/admin/ops', '/admin/profit'])
 const RESOURCE_PATHS = new Set([
   '/admin/providers',
   '/admin/groups',

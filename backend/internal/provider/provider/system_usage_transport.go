@@ -34,7 +34,6 @@ import (
 // closes the original body, and submits the observation once. Cancellation
 // retains partial observations, while provider limits are checked before any
 // automatic model exchange. Manual diagnostics deliberately bypass that check.
-
 // These limits bound transient parsing and trailing usage collection without
 // storing prompts, credentials, response text, or generated media in usage rows.
 const (
@@ -48,10 +47,9 @@ type SystemUsageTransport struct {
 	// Background admits accounting into the application lifecycle. Nil or rejected
 	// admission writes synchronously, ensuring shutdown cannot silently discard work.
 	Background func(func()) bool
-
-	Base     httpclient.UpstreamTransport                           // shared upstream request transport
-	Read     func(context.Context, int64) (*provider.Record, error) // fresh provider snapshot reader
-	Recorder *usage.SystemRecorder                                  // shared provider-only accounting service
+	Base       httpclient.UpstreamTransport                           // shared upstream request transport
+	Read       func(context.Context, int64) (*provider.Record, error) // fresh provider snapshot reader
+	Recorder   *usage.SystemRecorder                                  // shared provider-only accounting service
 }
 
 // systemUsageBody streams bytes to the caller while observing usage snapshots.
@@ -116,7 +114,7 @@ func (t *SystemUsageTransport) exchange(req *http.Request, id int64, send func(*
 	multiplier := value.BillingRateMultiplier()
 	endpoint := req.URL.Path
 	row := &usage.UsageLog{
-		RequestID: uuid.NewString(), RequestSource: scope.Source, ProviderID: id, Platform: value.Platform, Model: model, RequestedModel: strings.TrimSpace(scope.RequestedModel), UpstreamModel: &model, Stream: stream, CreatedAt: started, ProviderRateMultiplier: &multiplier, UpstreamEndpoint: &endpoint,
+		RequestID: uuid.NewString(), RequestSource: scope.Source, ProviderID: id, Platform: value.Platform, Model: model, RequestedModel: strings.TrimSpace(scope.RequestedModel), UpstreamModel: &model, Stream: stream, CreatedAt: started, ProviderRateMultiplier: &multiplier, ProviderCostConfirmed: new(value.CostRateConfirmed()), UpstreamEndpoint: &endpoint,
 		SystemUsage: &usage.SystemUsage{MappedModel: strings.TrimSpace(scope.MappedModel), PricingModel: imageModel, ParentRequestID: scope.ParentRequestID, OperatorUserID: scope.OperatorUserID, Outcome: "failed", UsageState: "missing", CostState: "unknown"},
 	}
 	if row.RequestedModel == "" {

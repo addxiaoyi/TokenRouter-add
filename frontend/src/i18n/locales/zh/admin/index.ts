@@ -1,3 +1,4 @@
+import profit from './profit'
 import mcp from './mcp'
 import modelAttributes from './modelAttributes'
 import overview from './overview'
@@ -16,6 +17,7 @@ import plugins from './plugins'
 // forms.
 
 export default {
+  profit,
   plugins,
   protocols: {
     imageModes: {

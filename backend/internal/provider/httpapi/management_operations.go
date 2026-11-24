@@ -15,6 +15,12 @@ import (
 // ManagementOperations supplies stable permission identities and parameter descriptions
 // for this module. Registrars mount these descriptions together with existing HTTP handlers.
 var ManagementOperations = map[string]*adminapi.Operation{
+	"providers.cost_rate.update": adminapi.Define(adminapi.Operation{
+		ID: "providers.cost_rate.update", Module: "providers", Title: "Confirm upstream cost multiplier",
+		Description: "Save a verified upstream cost multiplier for future profit records without repricing history.",
+		Method:      "PUT", Path: "/api/v1/admin/providers/:id/cost-rate", Response: "json", BrowserPath: "/admin/profit",
+		Input: adminapi.Arguments("/api/v1/admin/providers/:id/cost-rate", nil, (*CostRateRequest)(nil)),
+	}),
 	"antigravity.oauth.auth_url.create": adminapi.Define(adminapi.Operation{
 		ID:          "antigravity.oauth.auth_url.create",
 		Module:      "antigravity",

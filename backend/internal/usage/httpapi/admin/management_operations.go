@@ -12,6 +12,12 @@ import (
 // ManagementOperations supplies stable permission identities and parameter descriptions
 // for this module. Registrars mount these descriptions together with existing HTTP handlers.
 var ManagementOperations = map[string]*adminapi.Operation{
+	"dashboard.profit.list": adminapi.Define(adminapi.Operation{
+		ID: "dashboard.profit.list", Module: "dashboard", Title: "Read profit records",
+		Description: "Read retained customer margins, system overhead, and masked upstream cost reminders.",
+		Method:      "GET", Path: "/api/v1/admin/dashboard/profit", ReadOnly: true, Response: "json", BrowserPath: "/admin/profit",
+		Input: adminapi.Arguments("/api/v1/admin/dashboard/profit", []string{"start_date", "end_date", "timezone"}, nil),
+	}),
 	"dashboard.api_keys_trend.list": adminapi.Define(adminapi.Operation{
 		ID:     "dashboard.api_keys_trend.list",
 		Module: "dashboard",

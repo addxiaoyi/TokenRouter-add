@@ -147,6 +147,9 @@ func buildCredentialFieldPolicyEntries() []credentialFieldPolicyEntry {
 // shared by configuration merges, patches, duplication, and scheduler metadata.
 func buildExtraFieldPolicyEntries() []extraFieldPolicyEntry {
 	return []extraFieldPolicyEntry{
+		// Profit confidence follows the execution snapshot, while a duplicated
+		// provider must confirm its own default rate before recording known costs.
+		{key: "profit_cost_rate", policy: ExtraFieldPolicy{DiscardOnDuplicate: true, IncludeInSchedulerMeta: true}},
 		// Billing-maintained quota counters and active window starts.
 		{key: "quota_used", policy: ExtraFieldPolicy{ManagedConfiguration: true, DiscardOnDuplicate: true, IncludeInSchedulerMeta: true}},
 		{key: "quota_daily_used", policy: ExtraFieldPolicy{ManagedConfiguration: true, DiscardOnDuplicate: true, IncludeInSchedulerMeta: true}},

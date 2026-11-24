@@ -1,3 +1,4 @@
+import profit from './profit'
 import mcp from './mcp'
 import modelAttributes from './modelAttributes'
 import overview from './overview'
@@ -15,6 +16,7 @@ import plugins from './plugins'
 // conversion choices, and image-tool policies used by configuration forms.
 
 export default {
+  profit,
   plugins,
   protocols: {
     imageModes: {

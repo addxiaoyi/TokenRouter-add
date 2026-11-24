@@ -18,7 +18,6 @@ import (
 // and funding facts for statistics and audits. User-side funding amounts can
 // differ from the provider pricing base, and separate request and billing
 // identifiers keep query correlation distinct from financial deduplication.
-
 // UsageLog declares historical request attribution, measured usage, and calculated billing facts.
 type UsageLog struct {
 	ent.Schema // generated entity definition
@@ -114,7 +113,6 @@ func (UsageLog) Fields() []ent.Field {
 		field.Int64("subscription_id").
 			Optional().
 			Nillable(),
-
 		// input_tokens, output_tokens, cache_creation_tokens, and cache_read_tokens
 		// retain the aggregate token dimensions. cache_creation_5m_tokens and
 		// cache_creation_1h_tokens separately retain TTL detail; UsageLog.TotalTokens
@@ -145,7 +143,6 @@ func (UsageLog) Fields() []ent.Field {
 		field.JSON("cache_write_anomaly", map[string]any{}).
 			Optional().
 			SchemaType(map[string]string{dialect.Postgres: "jsonb"}),
-
 		// USD input-token cost.
 		field.Float("input_cost").
 			Default(0).
@@ -203,7 +200,9 @@ func (UsageLog) Fields() []ent.Field {
 		field.Bool("long_context_billing_applied").
 			Default(false).
 			Comment("Records whether long-context rules increased this request's cost"),
-
+		// provider_cost_confirmed records cost-rate confidence at completion. NULL
+		// identifies historical writers; current provider edits never rewrite it.
+		field.Bool("provider_cost_confirmed").Optional().Nillable(),
 		// provider_rate_multiplier snapshots the provider cost multiplier. Usage
 		// statistics treat historical null values as one, independently of the
 		// user-side amounts recorded in the funding fields.
@@ -211,7 +210,6 @@ func (UsageLog) Fields() []ent.Field {
 			Optional().
 			Nillable().
 			SchemaType(map[string]string{dialect.Postgres: "decimal(10,4)"}),
-
 		// Legacy funding category: zero for balance, one for subscription.
 		field.Int8("billing_type").
 			Default(0),
@@ -234,7 +232,6 @@ func (UsageLog) Fields() []ent.Field {
 			MaxLen(45). // Accommodate IPv6 text that contains embedded IPv4 octets.
 			Optional().
 			Nillable(),
-
 		// Generated image output count.
 		field.Int("image_count").
 			Default(0),
@@ -262,7 +259,6 @@ func (UsageLog) Fields() []ent.Field {
 		field.JSON("image_size_breakdown", map[string]int{}).
 			Optional().
 			SchemaType(map[string]string{dialect.Postgres: "jsonb"}),
-
 		// video_count identifies generated video usage when positive. Analytics
 		// can recognize such rows independently of billing_mode, while Grok
 		// video pricing uses the separately recorded duration in seconds.
@@ -287,7 +283,6 @@ func (UsageLog) Fields() []ent.Field {
 		// Administrator cache-TTL billing override.
 		field.Bool("cache_ttl_overridden").
 			Default(false),
-
 		// created_at is immutable and defaults to time.Now for generated Ent
 		// inserts. The raw SQL usage repository can retain a supplied request
 		// time; this declaration supplies no updated_at field.

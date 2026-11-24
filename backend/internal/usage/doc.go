@@ -19,7 +19,8 @@
 // field-specific progress updates. cleanup*.go covers task creation,
 // cancellation and execution. export*.go manages persisted CSV export tasks,
 // signed download tickets and streaming encoders. provider*.go describes
-// provider costs and token windows. ranking.go, runtime_settings.go,
+// provider costs and token windows. profit.go defines immutable cost-confidence
+// reporting and current rate reminders. ranking.go, runtime_settings.go,
 // settings_participant.go and admin_settings_read.go control ranking visibility
 // and user error views.
 package usage

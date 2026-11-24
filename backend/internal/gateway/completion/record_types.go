@@ -148,6 +148,7 @@ type ProviderSnapshot struct {
 	ID                         int64   // executing provider identifier
 	Type                       string  // captured provider category
 	RateMultiplier             float64 // provider cost multiplier
+	CostRateConfirmed          bool    // captured upstream rate confirmation
 	// OpenAI, OAuthLike, QuotaEligible, and HasQuotaLimit retain independent
 	// classification and quota inputs for tier exceptions and provider usage updates.
 	// OpenAI identifies the platform; OAuthLike identifies its credential lifecycle.

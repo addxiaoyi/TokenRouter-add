@@ -7,6 +7,17 @@ import type { RouteRecordRaw } from 'vue-router'
 // adminRoutes supplies the ordered records for this navigation area to the application router.
 export const adminRoutes: RouteRecordRaw[] = [
   {
+    path: '/admin/profit',
+    name: 'AdminProfit',
+    component: () => import('@/views/admin/ProfitView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      titleKey: 'admin.profit.title',
+      descriptionKey: 'admin.profit.description',
+    },
+  },
+  {
     path: '/admin/plugins',
     name: 'Plugins',
     component: () => import('@/views/admin/plugins/PluginsView.vue'),

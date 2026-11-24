@@ -53622,6 +53622,7 @@ type UsageLogMutation struct {
 	rate_multiplier              *float64
 	addrate_multiplier           *float64
 	long_context_billing_applied *bool
+	provider_cost_confirmed      *bool
 	provider_rate_multiplier     *float64
 	addprovider_rate_multiplier  *float64
 	billing_type                 *int8
@@ -56010,6 +56011,55 @@ func (m *UsageLogMutation) ResetLongContextBillingApplied() {
 	m.long_context_billing_applied = nil
 }
 
+// SetProviderCostConfirmed sets the "provider_cost_confirmed" field.
+func (m *UsageLogMutation) SetProviderCostConfirmed(b bool) {
+	m.provider_cost_confirmed = &b
+}
+
+// ProviderCostConfirmed returns the value of the "provider_cost_confirmed" field in the mutation.
+func (m *UsageLogMutation) ProviderCostConfirmed() (r bool, exists bool) {
+	v := m.provider_cost_confirmed
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProviderCostConfirmed returns the old "provider_cost_confirmed" field's value of the UsageLog entity.
+// If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageLogMutation) OldProviderCostConfirmed(ctx context.Context) (v *bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProviderCostConfirmed is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProviderCostConfirmed requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProviderCostConfirmed: %w", err)
+	}
+	return oldValue.ProviderCostConfirmed, nil
+}
+
+// ClearProviderCostConfirmed clears the value of the "provider_cost_confirmed" field.
+func (m *UsageLogMutation) ClearProviderCostConfirmed() {
+	m.provider_cost_confirmed = nil
+	m.clearedFields[usagelog.FieldProviderCostConfirmed] = struct{}{}
+}
+
+// ProviderCostConfirmedCleared returns if the "provider_cost_confirmed" field was cleared in this mutation.
+func (m *UsageLogMutation) ProviderCostConfirmedCleared() bool {
+	_, ok := m.clearedFields[usagelog.FieldProviderCostConfirmed]
+	return ok
+}
+
+// ResetProviderCostConfirmed resets all changes to the "provider_cost_confirmed" field.
+func (m *UsageLogMutation) ResetProviderCostConfirmed() {
+	m.provider_cost_confirmed = nil
+	delete(m.clearedFields, usagelog.FieldProviderCostConfirmed)
+}
+
 // SetProviderRateMultiplier sets the "provider_rate_multiplier" field.
 func (m *UsageLogMutation) SetProviderRateMultiplier(f float64) {
 	m.provider_rate_multiplier = &f
@@ -57133,7 +57183,7 @@ func (m *UsageLogMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UsageLogMutation) Fields() []string {
-	fields := make([]string, 0, 61)
+	fields := make([]string, 0, 62)
 	if m.image_frame_count != nil {
 		fields = append(fields, usagelog.FieldImageFrameCount)
 	}
@@ -57262,6 +57312,9 @@ func (m *UsageLogMutation) Fields() []string {
 	}
 	if m.long_context_billing_applied != nil {
 		fields = append(fields, usagelog.FieldLongContextBillingApplied)
+	}
+	if m.provider_cost_confirmed != nil {
+		fields = append(fields, usagelog.FieldProviderCostConfirmed)
 	}
 	if m.provider_rate_multiplier != nil {
 		fields = append(fields, usagelog.FieldProviderRateMultiplier)
@@ -57411,6 +57464,8 @@ func (m *UsageLogMutation) Field(name string) (ent.Value, bool) {
 		return m.RateMultiplier()
 	case usagelog.FieldLongContextBillingApplied:
 		return m.LongContextBillingApplied()
+	case usagelog.FieldProviderCostConfirmed:
+		return m.ProviderCostConfirmed()
 	case usagelog.FieldProviderRateMultiplier:
 		return m.ProviderRateMultiplier()
 	case usagelog.FieldBillingType:
@@ -57542,6 +57597,8 @@ func (m *UsageLogMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldRateMultiplier(ctx)
 	case usagelog.FieldLongContextBillingApplied:
 		return m.OldLongContextBillingApplied(ctx)
+	case usagelog.FieldProviderCostConfirmed:
+		return m.OldProviderCostConfirmed(ctx)
 	case usagelog.FieldProviderRateMultiplier:
 		return m.OldProviderRateMultiplier(ctx)
 	case usagelog.FieldBillingType:
@@ -57887,6 +57944,13 @@ func (m *UsageLogMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetLongContextBillingApplied(v)
+		return nil
+	case usagelog.FieldProviderCostConfirmed:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProviderCostConfirmed(v)
 		return nil
 	case usagelog.FieldProviderRateMultiplier:
 		v, ok := value.(float64)
@@ -58431,6 +58495,9 @@ func (m *UsageLogMutation) ClearedFields() []string {
 	if m.FieldCleared(usagelog.FieldBillingAllocations) {
 		fields = append(fields, usagelog.FieldBillingAllocations)
 	}
+	if m.FieldCleared(usagelog.FieldProviderCostConfirmed) {
+		fields = append(fields, usagelog.FieldProviderCostConfirmed)
+	}
 	if m.FieldCleared(usagelog.FieldProviderRateMultiplier) {
 		fields = append(fields, usagelog.FieldProviderRateMultiplier)
 	}
@@ -58540,6 +58607,9 @@ func (m *UsageLogMutation) ClearField(name string) error {
 		return nil
 	case usagelog.FieldBillingAllocations:
 		m.ClearBillingAllocations()
+		return nil
+	case usagelog.FieldProviderCostConfirmed:
+		m.ClearProviderCostConfirmed()
 		return nil
 	case usagelog.FieldProviderRateMultiplier:
 		m.ClearProviderRateMultiplier()
@@ -58713,6 +58783,9 @@ func (m *UsageLogMutation) ResetField(name string) error {
 		return nil
 	case usagelog.FieldLongContextBillingApplied:
 		m.ResetLongContextBillingApplied()
+		return nil
+	case usagelog.FieldProviderCostConfirmed:
+		m.ResetProviderCostConfirmed()
 		return nil
 	case usagelog.FieldProviderRateMultiplier:
 		m.ResetProviderRateMultiplier()

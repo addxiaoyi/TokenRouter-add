@@ -415,3 +415,10 @@ POST /api/v1/creative/runs/{id}/outputs/{index}/ack
 6. 检查是否存在动态路由冲突，避免 wildcard 或子路径吞掉已移除或专用固定端点。
 
 相关文档：[上游提供商能力矩阵](upstream_provider_matrix.md)、[网关错误响应策略](gateway_error_policy.md)、[身份与租户](../domains/identity_and_tenancy.md)、[网关请求生命周期](../architecture/gateway_request_lifecycle.md)、[支付与权益](../domains/payments_and_entitlements.md)、[接口目录](index.md)。
+
+
+## 管理员利润统计
+
+- `GET /api/v1/admin/dashboard/profit`：必填 `start_date`、`end_date`（YYYY-MM-DD），可选 IANA `timezone`（默认 UTC）；返回用户收入、已确认成本/毛利、系统成本、每日和提供商汇总及缺失倍率提醒。范围最多 93 天，日期末日按当地日历包含。
+- `PUT /api/v1/admin/providers/:id/cost-rate`：提交非负 `rate`，最多四位小数，确认之后调用使用的上游成本倍率。沿用提供商配置权限和并发合并；不修改历史记录。
+- 完整上游 Key 沿用 `providers.data.list` 的管理员权限和站点二次验证策略，利润统计接口只返回网站原点和遮罩尾号。计算边界见[利润记录与倍率确认](../domains/routing_and_billing.md#profit_reporting)。

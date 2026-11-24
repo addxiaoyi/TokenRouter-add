@@ -46,4 +46,5 @@
 //   - usage_monitor.go and upstream_queries.go: provider usage polling and
 //     manual upstream queries.
 //   - balance_alert*.go: wallet reminder configuration, polling, and delivery.
+//   - cost_rate.go: upstream multiplier confirmation for profit snapshots.
 package provider

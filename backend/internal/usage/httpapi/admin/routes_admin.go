@@ -22,6 +22,7 @@ func RegisterDashboardRoutes(admin *gin.RouterGroup, endpoint *DashboardHandler)
 	{
 		adminapi.Register(dashboard, ManagementOperations["dashboard.snapshot_v2.list"], endpoint.GetSnapshotV2)
 		adminapi.Register(dashboard, ManagementOperations["dashboard.stats.list"], endpoint.GetStats)
+		adminapi.Register(dashboard, ManagementOperations["dashboard.profit.list"], endpoint.GetProfit)
 		adminapi.Register(dashboard, ManagementOperations["dashboard.realtime.list"], endpoint.GetRealtimeMetrics)
 		adminapi.Register(dashboard, ManagementOperations["dashboard.trend.list"], endpoint.GetUsageTrend)
 		adminapi.Register(dashboard, ManagementOperations["dashboard.models.list"], endpoint.GetModelStats)

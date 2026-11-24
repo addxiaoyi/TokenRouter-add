@@ -33,11 +33,10 @@ import (
 // normalizes legacy transport evidence. ListWithFilters then loads current
 // associations in batches; rows with the same association ID share that display
 // pointer, so consumers copy associated values before changing them.
-
 // usageLogSelectColumns defines the positional raw-row read shape; scanUsageLog
 // consumes the same order, and financial BillingKey is currently outside this
 // shape.
-const usageLogSelectColumns = "id, user_id, billing_user_id, team_id, api_key_id, provider_id, request_id, model, requested_model, upstream_model, group_id, subscription_id, input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens, cache_creation_5m_tokens, cache_creation_1h_tokens, cache_creation_30m_tokens, cache_creation_12h_tokens, image_output_tokens, image_output_cost, image_input_tokens, image_input_cost, input_cost, output_cost, cache_creation_cost, cache_read_cost, total_cost, actual_cost, subscription_amount_usd, balance_amount_usd, billing_allocations, rate_multiplier, provider_rate_multiplier, billing_type, request_type, stream, openai_ws_mode, duration_ms, timings, user_agent, ip_address, image_count, image_frame_count, image_cache_read_tokens, image_size, image_input_size, image_output_size, image_size_source, image_size_breakdown, video_count, video_resolution, video_duration_seconds, service_tier, reasoning_effort, inbound_endpoint, upstream_endpoint, cache_ttl_overridden, long_context_billing_applied, pricing_config_id, model_mapping_chain, billing_tier, billing_mode, provider_stats_cost, upstream_request_id, session_id, created_at, requested_reasoning_effort, native_compaction_v2, platform, upstream_response_model, upstream_model_mismatch, request_source, system_usage, cache_write_anomaly"
+const usageLogSelectColumns = "id, user_id, billing_user_id, team_id, api_key_id, provider_id, request_id, model, requested_model, upstream_model, group_id, subscription_id, input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens, cache_creation_5m_tokens, cache_creation_1h_tokens, cache_creation_30m_tokens, cache_creation_12h_tokens, image_output_tokens, image_output_cost, image_input_tokens, image_input_cost, input_cost, output_cost, cache_creation_cost, cache_read_cost, total_cost, actual_cost, subscription_amount_usd, balance_amount_usd, billing_allocations, rate_multiplier, provider_rate_multiplier, billing_type, request_type, stream, openai_ws_mode, duration_ms, timings, user_agent, ip_address, image_count, image_frame_count, image_cache_read_tokens, image_size, image_input_size, image_output_size, image_size_source, image_size_breakdown, video_count, video_resolution, video_duration_seconds, service_tier, reasoning_effort, inbound_endpoint, upstream_endpoint, cache_ttl_overridden, long_context_billing_applied, pricing_config_id, model_mapping_chain, billing_tier, billing_mode, provider_stats_cost, upstream_request_id, session_id, created_at, requested_reasoning_effort, native_compaction_v2, platform, upstream_response_model, upstream_model_mismatch, request_source, system_usage, cache_write_anomaly, provider_cost_confirmed"
 
 // UsageLogFilters carries the usage module's selectors for authorized record
 // listings.
@@ -173,7 +172,6 @@ func (r *Store) Delete(ctx context.Context, id int64) error {
 func (r *Store) ListWithFilters(ctx context.Context, params pagination.PaginationParams, filters UsageLogFilters) ([]usage.UsageLog, *pagination.PaginationResult, error) {
 	conditions := make([]string, 0, 9)
 	args := make([]any, 0, 9)
-
 	source, scopeCondition, args, err := r.buildUsageLogScopeSource(ctx, args, filters.UserID, filters.IncludeOwnedTeam, "")
 	if err != nil {
 		return nil, nil, err
@@ -221,7 +219,6 @@ func (r *Store) ListWithFilters(ctx context.Context, params pagination.Paginatio
 		conditions = append(conditions, fmt.Sprintf("created_at < $%d", len(args)+1))
 		args = append(args, *filters.EndTime)
 	}
-
 	whereClause := buildWhere(conditions)
 	var (
 		logs    []usage.UsageLog
@@ -238,7 +235,6 @@ func (r *Store) ListWithFilters(ctx context.Context, params pagination.Paginatio
 	if listErr != nil {
 		return nil, nil, listErr
 	}
-
 	if err := r.hydrateUsageLogAssociations(ctx, logs); err != nil {
 		return nil, nil, err
 	}
@@ -285,7 +281,6 @@ func (r *Store) buildUsageLogScopeSource(ctx context.Context, args []any, userID
 	if userID <= 0 {
 		return baseSource, "", args, nil
 	}
-
 	args = append(args, userID)
 	userPosition := len(args)
 	prefix := ""
@@ -296,7 +291,6 @@ func (r *Store) buildUsageLogScopeSource(ctx context.Context, args []any, userID
 	if !includeOwnedTeam {
 		return baseSource, userCondition, args, nil
 	}
-
 	teamID, err := r.getOwnedTeamID(ctx, userID)
 	if err != nil {
 		return "", "", nil, err
@@ -344,7 +338,6 @@ func (r *Store) listUsageLogsWithPaginationFrom(ctx context.Context, source, whe
 	if err := scanSingleRow(ctx, r.sql, countQuery, args, &total); err != nil {
 		return nil, nil, err
 	}
-
 	limitPos := len(args) + 1
 	offsetPos := len(args) + 2
 	listArgs := append(append([]any{}, args...), params.Limit(), params.Offset())
@@ -367,30 +360,25 @@ func (r *Store) listUsageLogsWithPaginationFrom(ctx context.Context, source, whe
 func (r *Store) listUsageLogsWithFastPaginationFrom(ctx context.Context, source, whereClause string, args []any, params pagination.PaginationParams) ([]usage.UsageLog, *pagination.PaginationResult, error) {
 	limit := params.Limit()
 	offset := params.Offset()
-
 	limitPos := len(args) + 1
 	offsetPos := len(args) + 2
 	listArgs := append(append([]any{}, args...), limit+1, offset)
 	query := fmt.Sprintf("SELECT %s FROM %s %s ORDER BY %s LIMIT $%d OFFSET $%d", usageLogSelectColumns, source, whereClause, usageLogOrderBy(params), limitPos, offsetPos)
-
 	logs, err := r.queryUsageLogs(ctx, query, listArgs...)
 	if err != nil {
 		return nil, nil, err
 	}
-
 	hasMore := false
 	if len(logs) > limit {
 		hasMore = true
 		logs = logs[:limit]
 	}
-
 	total := int64(offset) + int64(len(logs))
 	if hasMore {
 		// The extra row proves another page exists; the total is a lower bound,
 		// avoiding a full COUNT(*).
 		total = int64(offset) + int64(limit) + 1
 	}
-
 	return logs, paginationResultFromTotal(total, params), nil
 }
 
@@ -401,7 +389,6 @@ func (r *Store) listUsageLogsWithFastPaginationFrom(ctx context.Context, source,
 func usageLogOrderBy(params pagination.PaginationParams) string {
 	sortBy := strings.ToLower(strings.TrimSpace(params.SortBy))
 	sortOrder := strings.ToUpper(params.NormalizedSortOrder(pagination.SortOrderDesc))
-
 	var column string
 	switch sortBy {
 	case "model":
@@ -411,7 +398,6 @@ func usageLogOrderBy(params pagination.PaginationParams) string {
 	default:
 		column = "id"
 	}
-
 	if column == "id" {
 		return fmt.Sprintf("id %s", sortOrder)
 	}
@@ -434,7 +420,6 @@ func (r *Store) queryUsageLogs(ctx context.Context, query string, args ...any) (
 			logs = nil
 		}
 	}()
-
 	logs = make([]usage.UsageLog, 0)
 	for rows.Next() {
 		var log *usage.UsageLog
@@ -466,7 +451,6 @@ func (r *Store) hydrateUsageLogAssociations(ctx context.Context, logs []usage.Us
 	if len(logs) == 0 {
 		return nil
 	}
-
 	ids := collectUsageLogIDs(logs)
 	users, err := r.loadUsers(ctx, ids.userIDs)
 	if err != nil {
@@ -488,7 +472,6 @@ func (r *Store) hydrateUsageLogAssociations(ctx context.Context, logs []usage.Us
 	if err != nil {
 		return err
 	}
-
 	for i := range logs {
 		if user, ok := users[logs[i].UserID]; ok {
 			logs[i].User = user
@@ -519,13 +502,11 @@ func (r *Store) hydrateUsageLogAssociations(ctx context.Context, logs []usage.Us
 // iteration.
 func collectUsageLogIDs(logs []usage.UsageLog) usageLogIDs {
 	idSet := func() map[int64]struct{} { return make(map[int64]struct{}) }
-
 	userIDs := idSet()
 	apiKeyIDs := idSet()
 	providerIDs := idSet()
 	groupIDs := idSet()
 	subscriptionIDs := idSet()
-
 	for i := range logs {
 		userIDs[logs[i].UserID] = struct{}{}
 		apiKeyIDs[logs[i].APIKeyID] = struct{}{}
@@ -537,7 +518,6 @@ func collectUsageLogIDs(logs []usage.UsageLog) usageLogIDs {
 			subscriptionIDs[*logs[i].SubscriptionID] = struct{}{}
 		}
 	}
-
 	return usageLogIDs{
 		userIDs:         setToSlice(userIDs),
 		apiKeyIDs:       setToSlice(apiKeyIDs),
@@ -737,8 +717,8 @@ func scanUsageLog(scanner interface {
 		requestSource             string
 		systemJSON                []byte
 		anomalyJSON               []byte
+		providerCostConfirmed     sql.NullBool
 	)
-
 	if err := scanner.Scan(
 		&id,
 		&userID,
@@ -816,10 +796,10 @@ func scanUsageLog(scanner interface {
 		&requestSource,
 		&systemJSON,
 		&anomalyJSON,
+		&providerCostConfirmed,
 	); err != nil {
 		return nil, err
 	}
-
 	log := &usage.UsageLog{
 		ID:                        id,
 		RequestSource:             requestSource,
@@ -867,6 +847,9 @@ func scanUsageLog(scanner interface {
 	if cacheCreation12h.Valid {
 		log.CacheCreation12hTokens = new(int(cacheCreation12h.Int64))
 	}
+	if providerCostConfirmed.Valid {
+		log.ProviderCostConfirmed = new(providerCostConfirmed.Bool)
+	}
 	if len(systemJSON) > 0 {
 		if err := json.Unmarshal(systemJSON, &log.SystemUsage); err != nil {
 			return nil, fmt.Errorf("decode system usage: %w", err)
@@ -885,7 +868,6 @@ func scanUsageLog(scanner interface {
 	log.OpenAIWSMode = openaiWSMode
 	log.RequestType = log.EffectiveRequestType()
 	log.Stream, log.OpenAIWSMode = usage.ApplyLegacyRequestFields(log.RequestType, stream, openaiWSMode)
-
 	if requestID.Valid {
 		log.RequestID = requestID.String
 	}
@@ -990,7 +972,6 @@ func scanUsageLog(scanner interface {
 	if upstreamRequestID.Valid {
 		log.UpstreamRequestID = &upstreamRequestID.String
 	}
-
 	return log, nil
 }
 

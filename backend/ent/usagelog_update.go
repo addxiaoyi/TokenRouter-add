@@ -886,6 +886,26 @@ func (_u *UsageLogUpdate) SetNillableLongContextBillingApplied(v *bool) *UsageLo
 	return _u
 }
 
+// SetProviderCostConfirmed sets the "provider_cost_confirmed" field.
+func (_u *UsageLogUpdate) SetProviderCostConfirmed(v bool) *UsageLogUpdate {
+	_u.mutation.SetProviderCostConfirmed(v)
+	return _u
+}
+
+// SetNillableProviderCostConfirmed sets the "provider_cost_confirmed" field if the given value is not nil.
+func (_u *UsageLogUpdate) SetNillableProviderCostConfirmed(v *bool) *UsageLogUpdate {
+	if v != nil {
+		_u.SetProviderCostConfirmed(*v)
+	}
+	return _u
+}
+
+// ClearProviderCostConfirmed clears the value of the "provider_cost_confirmed" field.
+func (_u *UsageLogUpdate) ClearProviderCostConfirmed() *UsageLogUpdate {
+	_u.mutation.ClearProviderCostConfirmed()
+	return _u
+}
+
 // SetProviderRateMultiplier sets the "provider_rate_multiplier" field.
 func (_u *UsageLogUpdate) SetProviderRateMultiplier(v float64) *UsageLogUpdate {
 	_u.mutation.ResetProviderRateMultiplier()
@@ -1653,6 +1673,12 @@ func (_u *UsageLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.LongContextBillingApplied(); ok {
 		_spec.SetField(usagelog.FieldLongContextBillingApplied, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.ProviderCostConfirmed(); ok {
+		_spec.SetField(usagelog.FieldProviderCostConfirmed, field.TypeBool, value)
+	}
+	if _u.mutation.ProviderCostConfirmedCleared() {
+		_spec.ClearField(usagelog.FieldProviderCostConfirmed, field.TypeBool)
 	}
 	if value, ok := _u.mutation.ProviderRateMultiplier(); ok {
 		_spec.SetField(usagelog.FieldProviderRateMultiplier, field.TypeFloat64, value)
@@ -2804,6 +2830,26 @@ func (_u *UsageLogUpdateOne) SetNillableLongContextBillingApplied(v *bool) *Usag
 	return _u
 }
 
+// SetProviderCostConfirmed sets the "provider_cost_confirmed" field.
+func (_u *UsageLogUpdateOne) SetProviderCostConfirmed(v bool) *UsageLogUpdateOne {
+	_u.mutation.SetProviderCostConfirmed(v)
+	return _u
+}
+
+// SetNillableProviderCostConfirmed sets the "provider_cost_confirmed" field if the given value is not nil.
+func (_u *UsageLogUpdateOne) SetNillableProviderCostConfirmed(v *bool) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetProviderCostConfirmed(*v)
+	}
+	return _u
+}
+
+// ClearProviderCostConfirmed clears the value of the "provider_cost_confirmed" field.
+func (_u *UsageLogUpdateOne) ClearProviderCostConfirmed() *UsageLogUpdateOne {
+	_u.mutation.ClearProviderCostConfirmed()
+	return _u
+}
+
 // SetProviderRateMultiplier sets the "provider_rate_multiplier" field.
 func (_u *UsageLogUpdateOne) SetProviderRateMultiplier(v float64) *UsageLogUpdateOne {
 	_u.mutation.ResetProviderRateMultiplier()
@@ -3601,6 +3647,12 @@ func (_u *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, err 
 	}
 	if value, ok := _u.mutation.LongContextBillingApplied(); ok {
 		_spec.SetField(usagelog.FieldLongContextBillingApplied, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.ProviderCostConfirmed(); ok {
+		_spec.SetField(usagelog.FieldProviderCostConfirmed, field.TypeBool, value)
+	}
+	if _u.mutation.ProviderCostConfirmedCleared() {
+		_spec.ClearField(usagelog.FieldProviderCostConfirmed, field.TypeBool)
 	}
 	if value, ok := _u.mutation.ProviderRateMultiplier(); ok {
 		_spec.SetField(usagelog.FieldProviderRateMultiplier, field.TypeFloat64, value)

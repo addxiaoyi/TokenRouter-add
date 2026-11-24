@@ -12,6 +12,9 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/site"
 )
 
+// pages_test.go verifies localized Markdown and image lookup through the filesystem adapter.
+// Temporary directories contain translated and shared assets, while external symlinks
+// and traversal attempts exercise the same root boundaries as production readers.
 // TestLocalizedPageFiles creates translated Markdown, language assets, and shared images.
 // It verifies reported language, source and image fallback, and rejection of
 // external Markdown symlinks and image traversal through the filesystem adapter.
@@ -35,10 +38,10 @@ func TestLocalizedPageFiles(t *testing.T) {
 	selected := locale.WithLanguage(ctx, "en")
 	image, err := files.ImagePath(selected, "guide", "logo.png")
 	require.NoError(t, err)
-	require.Contains(t, image, "/guide/en/logo.png")
+	require.Equal(t, filepath.Join(dir, "guide", "en", "logo.png"), image)
 	image, err = files.ImagePath(selected, "guide", "shared.png")
 	require.NoError(t, err)
-	require.Contains(t, image, "/guide/shared.png")
+	require.Equal(t, filepath.Join(dir, "guide", "shared.png"), image)
 	external := filepath.Join(t.TempDir(), "external.md")
 	require.NoError(t, os.WriteFile(external, []byte("private"), 0o600))
 	require.NoError(t, os.Symlink(external, filepath.Join(dir, "guide", "zh-Hans.md")))
@@ -99,7 +102,6 @@ func TestCleanPageImageRelativePath(t *testing.T) {
 		{name: "invalid escape", in: "logo.png%zz", ok: false},
 		{name: "empty path", in: "", ok: false},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got, ok := cleanPageImageRelativePath(tt.in)
@@ -129,7 +131,6 @@ func TestResolvePageImagePath(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(base, "images", "logo.png"), []byte("fake"), 0o644); err != nil {
 		t.Fatalf("create image: %v", err)
 	}
-
 	got, ok := resolvePageImagePath(pagesDir, base, "logo.png")
 	if !ok {
 		t.Fatal("expected direct image path to be accepted")
@@ -138,7 +139,6 @@ func TestResolvePageImagePath(t *testing.T) {
 	if got != want {
 		t.Fatalf("path = %q, want %q", got, want)
 	}
-
 	got, ok = resolvePageImagePath(pagesDir, base, "images/logo.png")
 	if !ok {
 		t.Fatal("expected nested image path to be accepted")
@@ -147,7 +147,6 @@ func TestResolvePageImagePath(t *testing.T) {
 	if got != want {
 		t.Fatalf("path = %q, want %q", got, want)
 	}
-
 	if got, ok := resolvePageImagePath(pagesDir, base, "../guide.md"); ok {
 		t.Fatalf("expected traversal to be rejected, got %q", got)
 	}
@@ -161,7 +160,6 @@ func TestResolvePageImagePathRejectsSymlinkEscape(t *testing.T) {
 	pagesDir := filepath.Join(root, "pages")
 	base := filepath.Join(pagesDir, "guide")
 	outside := filepath.Join(root, "outside")
-
 	if err := os.MkdirAll(base, 0o755); err != nil {
 		t.Fatalf("create page dir: %v", err)
 	}
@@ -176,7 +174,6 @@ func TestResolvePageImagePathRejectsSymlinkEscape(t *testing.T) {
 		// create the fixture skip it instead of interpreting setup failure as access rejection.
 		t.Skipf("symlink not supported: %v", err)
 	}
-
 	if got, ok := resolvePageImagePath(pagesDir, base, "images/secret.png"); ok {
 		t.Fatalf("expected symlink escape to be rejected, got %q", got)
 	}
@@ -187,7 +184,6 @@ func TestResolvePageImagePathRejectsSymlinkEscape(t *testing.T) {
 // resolution fails, so comparisons use the filesystem's actual target spelling.
 func mustEvalSymlinks(t *testing.T, path string) string {
 	t.Helper()
-
 	realPath, err := filepath.EvalSymlinks(path)
 	if err != nil {
 		t.Fatalf("eval symlinks for %q: %v", path, err)

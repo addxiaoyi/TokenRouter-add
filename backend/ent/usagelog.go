@@ -111,6 +111,8 @@ type UsageLog struct {
 	RateMultiplier float64 `json:"rate_multiplier,omitempty"`
 	// Records whether long-context rules increased this request's cost
 	LongContextBillingApplied bool `json:"long_context_billing_applied,omitempty"`
+	// ProviderCostConfirmed holds the value of the "provider_cost_confirmed" field.
+	ProviderCostConfirmed *bool `json:"provider_cost_confirmed,omitempty"`
 	// ProviderRateMultiplier holds the value of the "provider_rate_multiplier" field.
 	ProviderRateMultiplier *float64 `json:"provider_rate_multiplier,omitempty"`
 	// BillingType holds the value of the "billing_type" field.
@@ -245,7 +247,7 @@ func (*UsageLog) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case usagelog.FieldSystemUsage, usagelog.FieldCacheWriteAnomaly, usagelog.FieldBillingAllocations, usagelog.FieldTimings, usagelog.FieldImageSizeBreakdown:
 			values[i] = new([]byte)
-		case usagelog.FieldUpstreamModelMismatch, usagelog.FieldLongContextBillingApplied, usagelog.FieldStream, usagelog.FieldCacheTTLOverridden:
+		case usagelog.FieldUpstreamModelMismatch, usagelog.FieldLongContextBillingApplied, usagelog.FieldProviderCostConfirmed, usagelog.FieldStream, usagelog.FieldCacheTTLOverridden:
 			values[i] = new(sql.NullBool)
 		case usagelog.FieldInputCost, usagelog.FieldOutputCost, usagelog.FieldCacheCreationCost, usagelog.FieldCacheReadCost, usagelog.FieldTotalCost, usagelog.FieldActualCost, usagelog.FieldSubscriptionAmountUsd, usagelog.FieldBalanceAmountUsd, usagelog.FieldRateMultiplier, usagelog.FieldProviderRateMultiplier:
 			values[i] = new(sql.NullFloat64)
@@ -556,6 +558,13 @@ func (_m *UsageLog) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field long_context_billing_applied", values[i])
 			} else if value.Valid {
 				_m.LongContextBillingApplied = value.Bool
+			}
+		case usagelog.FieldProviderCostConfirmed:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field provider_cost_confirmed", values[i])
+			} else if value.Valid {
+				_m.ProviderCostConfirmed = new(bool)
+				*_m.ProviderCostConfirmed = value.Bool
 			}
 		case usagelog.FieldProviderRateMultiplier:
 			if value, ok := values[i].(*sql.NullFloat64); !ok {
@@ -907,6 +916,11 @@ func (_m *UsageLog) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("long_context_billing_applied=")
 	builder.WriteString(fmt.Sprintf("%v", _m.LongContextBillingApplied))
+	builder.WriteString(", ")
+	if v := _m.ProviderCostConfirmed; v != nil {
+		builder.WriteString("provider_cost_confirmed=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteString(", ")
 	if v := _m.ProviderRateMultiplier; v != nil {
 		builder.WriteString("provider_rate_multiplier=")

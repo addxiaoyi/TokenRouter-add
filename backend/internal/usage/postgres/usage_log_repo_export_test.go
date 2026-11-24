@@ -32,7 +32,6 @@ func TestStoreExportBatchReaderKeysetCursorAndCachedOwnedTeamLookup(t *testing.T
 		require.NoError(t, db.Close())
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
-
 	store := &Store{sql: db}
 	uid := int64(19)
 	start := time.Date(2026, 4, 16, 0, 0, 0, 0, time.UTC)
@@ -44,7 +43,6 @@ func TestStoreExportBatchReaderKeysetCursorAndCachedOwnedTeamLookup(t *testing.T
 		UserID:           &uid,
 		IncludeOwnedTeam: true,
 	}
-
 	// CountExportLogs resolves owned team once for the initial count query.
 	mock.ExpectQuery(`FROM team_memberships tm`).
 		WithArgs(uid).
@@ -52,15 +50,12 @@ func TestStoreExportBatchReaderKeysetCursorAndCachedOwnedTeamLookup(t *testing.T
 	mock.ExpectQuery(`SELECT COUNT\(\*\) FROM \(`).
 		WithArgs(uid, int64(88), start, end).
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(int64(2)))
-
 	count, err := store.CountExportLogs(context.Background(), filters)
 	require.NoError(t, err)
 	require.Equal(t, int64(2), count)
-
 	// NewExportBatchReader resolves owned team on batch 1 and reuses it on batch 2.
 	reader := store.NewExportBatchReader(usage.UsageExportScopeUser)
 	cols := strings.Split(usageLogSelectColumns, ", ")
-
 	rowTime := start.Add(30 * time.Minute)
 	mock.ExpectQuery(`FROM team_memberships tm`).
 		WithArgs(uid).
@@ -68,23 +63,20 @@ func TestStoreExportBatchReaderKeysetCursorAndCachedOwnedTeamLookup(t *testing.T
 	mock.ExpectQuery(`ORDER BY created_at DESC, id DESC LIMIT \$5`).
 		WithArgs(uid, int64(88), start, end, 1).
 		WillReturnRows(sqlmock.NewRows(cols).AddRow(makeMockUsageLogRow(501, uid, rowTime)...))
-
 	batch1, err := reader.NextBatch(context.Background(), filters, nil, 1)
 	require.NoError(t, err)
 	require.Len(t, batch1, 1)
 	require.Equal(t, int64(501), batch1[0].ID)
-
 	cursor := &usage.UsageExportCursor{CreatedAt: batch1[0].CreatedAt, ID: batch1[0].ID}
 	mock.ExpectQuery(`\(created_at < \$5 OR \(created_at = \$5 AND id < \$6\)\) ORDER BY created_at DESC, id DESC LIMIT \$7`).
 		WithArgs(uid, int64(88), start, end, cursor.CreatedAt, cursor.ID, 1).
 		WillReturnRows(sqlmock.NewRows(cols))
-
 	batch2, err := reader.NextBatch(context.Background(), filters, cursor, 1)
 	require.NoError(t, err)
 	require.Empty(t, batch2)
 }
 
-// makeMockUsageLogRow builds a 76-column row matching usageLogSelectColumns for sqlmock tests.
+// makeMockUsageLogRow builds a 77-column row matching usageLogSelectColumns for sqlmock tests.
 func makeMockUsageLogRow(id, userID int64, createdAt time.Time) []driver.Value {
 	return []driver.Value{
 		id, userID, userID, nil, int64(3), int64(4), "req_test", "gpt-5.4", "gpt-5.4", nil,
@@ -94,7 +86,7 @@ func makeMockUsageLogRow(id, userID int64, createdAt time.Time) []driver.Value {
 		nil, 0, 0, 0, nil, nil, nil, nil, nil, 0,
 		nil, nil, nil, nil, nil, nil, false, false, nil, nil,
 		nil, nil, nil, nil, nil, createdAt, nil, false, "openai", nil,
-		nil, usage.SourceUser, nil, nil,
+		nil, usage.SourceUser, nil, nil, nil,
 	}
 }
 
@@ -110,11 +102,9 @@ func TestExportBatchReaderCacheEvictionPreservesCurrentBatchAssociations(t *test
 	t.Cleanup(func() { _ = db.Close() })
 	_, err = db.Exec("PRAGMA foreign_keys = ON")
 	require.NoError(t, err)
-
 	drv := entsql.OpenDB(dialect.SQLite, db)
 	client := enttest.NewClient(t, enttest.WithOptions(dbent.Driver(drv)))
 	t.Cleanup(func() { _ = client.Close() })
-
 	var (
 		userIDs     = make([]int64, 4)
 		keyIDs      = make([]int64, 4)
@@ -128,7 +118,6 @@ func TestExportBatchReaderCacheEvictionPreservesCurrentBatchAssociations(t *test
 			Save(ctx)
 		require.NoError(t, createErr)
 		userIDs[i] = u.ID
-
 		k, createErr := client.APIKey.Create().
 			SetUserID(u.ID).
 			SetKey(fmt.Sprintf("sk-export-cache-%d", i+1)).
@@ -136,7 +125,6 @@ func TestExportBatchReaderCacheEvictionPreservesCurrentBatchAssociations(t *test
 			Save(ctx)
 		require.NoError(t, createErr)
 		keyIDs[i] = k.ID
-
 		p, createErr := client.Provider.Create().
 			SetName(fmt.Sprintf("Provider-%d", i+1)).
 			SetPlatform("openai").
@@ -145,7 +133,6 @@ func TestExportBatchReaderCacheEvictionPreservesCurrentBatchAssociations(t *test
 			Save(ctx)
 		require.NoError(t, createErr)
 		providerIDs[i] = p.ID
-
 		g, createErr := client.Group.Create().
 			SetName(fmt.Sprintf("Group-%d", i+1)).
 			SetStatus(billing.StatusActive).
@@ -156,12 +143,10 @@ func TestExportBatchReaderCacheEvictionPreservesCurrentBatchAssociations(t *test
 		require.NoError(t, createErr)
 		groupIDs[i] = g.ID
 	}
-
 	store := &Store{client: client, sql: db}
 	reader, ok := store.NewExportBatchReader(usage.UsageExportScopeAdmin).(*exportBatchReader)
 	require.True(t, ok)
 	reader.maxAssocCacheEntries = 2
-
 	// Batch 1 fills all four caches to capacity (2 entries: index 0 and index 1).
 	g0, g1 := groupIDs[0], groupIDs[1]
 	batch1 := []usage.UsageLog{
@@ -171,7 +156,6 @@ func TestExportBatchReaderCacheEvictionPreservesCurrentBatchAssociations(t *test
 	require.NoError(t, reader.hydrateExportBatch(ctx, batch1))
 	require.NotNil(t, batch1[0].APIKey)
 	require.Equal(t, "Key-1", batch1[0].APIKey.Name)
-
 	// Batch 2 reuses index 0 (already cached) alongside two uncached entries (index 2 and 3),
 	// pushing total entries past maxAssocCacheEntries=2 and triggering eviction.
 	g2, g3 := groupIDs[2], groupIDs[3]
@@ -181,7 +165,6 @@ func TestExportBatchReaderCacheEvictionPreservesCurrentBatchAssociations(t *test
 		{ID: 6, UserID: userIDs[3], APIKeyID: keyIDs[3], ProviderID: providerIDs[3], GroupID: &g3},
 	}
 	require.NoError(t, reader.hydrateExportBatch(ctx, batch2))
-
 	// Row 0 (referencing pre-cached index 0) must still retain all four display names!
 	require.NotNil(t, batch2[0].APIKey)
 	require.Equal(t, "Key-1", batch2[0].APIKey.Name)
@@ -191,7 +174,6 @@ func TestExportBatchReaderCacheEvictionPreservesCurrentBatchAssociations(t *test
 	require.Equal(t, "Provider-1", batch2[0].Provider.Name)
 	require.NotNil(t, batch2[0].Group)
 	require.Equal(t, "Group-1", batch2[0].Group.Name)
-
 	// Newly loaded rows (index 2 and index 3) must also be populated even though batch2
 	// referenced 3 distinct entities while maxAssocCacheEntries was capped at 2.
 	require.NotNil(t, batch2[1].APIKey)

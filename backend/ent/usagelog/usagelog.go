@@ -100,6 +100,8 @@ const (
 	FieldRateMultiplier = "rate_multiplier"
 	// FieldLongContextBillingApplied holds the string denoting the long_context_billing_applied field in the database.
 	FieldLongContextBillingApplied = "long_context_billing_applied"
+	// FieldProviderCostConfirmed holds the string denoting the provider_cost_confirmed field in the database.
+	FieldProviderCostConfirmed = "provider_cost_confirmed"
 	// FieldProviderRateMultiplier holds the string denoting the provider_rate_multiplier field in the database.
 	FieldProviderRateMultiplier = "provider_rate_multiplier"
 	// FieldBillingType holds the string denoting the billing_type field in the database.
@@ -240,6 +242,7 @@ var Columns = []string{
 	FieldBillingAllocations,
 	FieldRateMultiplier,
 	FieldLongContextBillingApplied,
+	FieldProviderCostConfirmed,
 	FieldProviderRateMultiplier,
 	FieldBillingType,
 	FieldStream,
@@ -567,6 +570,11 @@ func ByRateMultiplier(opts ...sql.OrderTermOption) OrderOption {
 // ByLongContextBillingApplied orders the results by the long_context_billing_applied field.
 func ByLongContextBillingApplied(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLongContextBillingApplied, opts...).ToFunc()
+}
+
+// ByProviderCostConfirmed orders the results by the provider_cost_confirmed field.
+func ByProviderCostConfirmed(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldProviderCostConfirmed, opts...).ToFunc()
 }
 
 // ByProviderRateMultiplier orders the results by the provider_rate_multiplier field.

@@ -217,3 +217,8 @@ WHERE p.platform = 'openai'
 | 234 | 自研异步图片任务下线 | 停机；删除自研异步图片路由与 `image_storage_config`，历史 S3/R2 对象需人工盘点清理 | 有效 |
 
 相关文档：[部署与数据库迁移](deployment_and_migrations.md)、[开发、验证与上游同步](development_workflow.md)、[运维目录](index.md)。
+
+
+## 迁移 323：利润成本确认
+
+迁移 323 为使用记录增加可空的倍率确认快照。历史行保持空值，报表仅将已保存的非默认倍率视为配置证据；默认值 1 不自动确认。新列兼容旧二进制写入与回退，无需回填或改写资金记录。上线后核对未知成本、显式免费倍率、确认倍率 1、系统调用及历史倍率修改的隔离，见[利润记录](../domains/routing_and_billing.md#profit_reporting)。

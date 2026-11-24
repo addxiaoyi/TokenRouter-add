@@ -3,12 +3,12 @@ package payment_test
 import (
 	"context"
 	"database/sql"
-	"strconv"
 	"testing"
 	"time"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	_ "modernc.org/sqlite"
 
@@ -20,6 +20,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/pagination"
 )
 
+// helpers_test.go constructs payment lifecycle fixtures with unique order identities.
 // Payment lifecycle cases combine SQLite order storage with map-backed
 // redemption and configurable balance callbacks. The redemption fixture records
 // code use and usage rows separately, returns shallow copies, and adds no lock
@@ -32,7 +33,6 @@ import (
 // requested ID, while an absent write callback reports success without changing
 // balance. Unsupported promoted methods remain nil-backed, making the fixture's
 // implemented method set part of each scenario's setup.
-
 // paymentOrderLifecycleRedeemRepo records unprotected code and usage state for
 // payment redemption scenarios.
 type paymentOrderLifecycleRedeemRepo struct {
@@ -97,12 +97,11 @@ func createPaymentFulfillmentSubscriptionOrder(
 ) *dbent.PaymentOrder {
 	t.Helper()
 	user, err := client.User.Create().
-		SetEmail("fulfillment-" + strconv.FormatInt(time.Now().UnixNano(), 10) + "@example.com").
+		SetEmail("fulfillment-" + uuid.NewString() + "@example.com").
 		SetPasswordHash("hash").
 		SetUsername("payment-fulfillment-user").
 		Save(ctx)
 	require.NoError(t, err)
-
 	// Save the order after its user so the stored identity and display
 	// snapshot refer to that fixture; a rejected order write leaves user
 	// cleanup to the owner of the supplied client.
@@ -113,8 +112,8 @@ func createPaymentFulfillmentSubscriptionOrder(
 		SetAmount(80).
 		SetPayAmount(80).
 		SetFeeRate(0).
-		SetRechargeCode("PAY-SUB-" + strconv.FormatInt(time.Now().UnixNano(), 10)).
-		SetOutTradeNo("sub2_fulfillment_" + strconv.FormatInt(time.Now().UnixNano(), 10)).
+		SetRechargeCode("PAY-SUB-" + uuid.NewString()).
+		SetOutTradeNo("sub2_fulfillment_" + uuid.NewString()).
 		SetPaymentType(payment.TypeAlipay).
 		SetPaymentTradeNo("trade-fulfillment").
 		SetOrderType(payment.OrderTypeSubscription).
@@ -313,17 +312,14 @@ func (r *paymentOrderLifecycleRedeemRepo) SumPositiveBalanceByUser(context.Conte
 // lifetimes serialized.
 func newPaymentOrderLifecycleTestClient(t *testing.T) *dbent.Client {
 	t.Helper()
-
 	db, err := sql.Open("sqlite", "file:payment_order_lifecycle?mode=memory&cache=shared&_fk=1")
 	require.NoError(t, err)
 	// Register pool closure before Ent cleanup so the later wrapper
 	// callback closes its shared driver first; repeated pool closure errors
 	// are discarded by this fixture.
 	t.Cleanup(func() { _ = db.Close() })
-
 	_, err = db.Exec("PRAGMA foreign_keys = ON")
 	require.NoError(t, err)
-
 	drv := entsql.OpenDB(dialect.SQLite, db)
 	client := enttest.NewClient(t, enttest.WithOptions(dbent.Driver(drv)))
 	// Close the Ent wrapper before the pool callback runs, discarding its
@@ -334,7 +330,7 @@ func newPaymentOrderLifecycleTestClient(t *testing.T) *dbent.Client {
 }
 
 // createPaymentOrderLifecycleOrder stores a fixture user followed by a balance
-// order using one nanosecond suffix. The caller selects status and expiresAt
+// order using one unique UUID suffix. The caller selects status and expiresAt
 // and supplies the context and client used by both writes.
 //
 // The saved user provides the order's owner ID, email, and name, so order
@@ -344,14 +340,13 @@ func newPaymentOrderLifecycleTestClient(t *testing.T) *dbent.Client {
 // registers no separate row cleanup.
 func createPaymentOrderLifecycleOrder(t *testing.T, ctx context.Context, client *dbent.Client, status string, expiresAt time.Time) *dbent.PaymentOrder {
 	t.Helper()
-	suffix := strconv.FormatInt(time.Now().UnixNano(), 10)
+	suffix := uuid.NewString()
 	user, err := client.User.Create().
 		SetEmail("payment-lifecycle-" + suffix + "@example.com").
 		SetPasswordHash("hash").
 		SetUsername("payment-lifecycle-" + suffix).
 		Save(ctx)
 	require.NoError(t, err)
-
 	// Keep the order snapshot tied to the user already saved with this
 	// suffix; the caller-owned client scope also determines recovery of an
 	// incomplete user-and-order fixture after a failed save.

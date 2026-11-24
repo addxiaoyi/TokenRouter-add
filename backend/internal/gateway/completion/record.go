@@ -242,6 +242,7 @@ func (s *Recorder) BuildRecordUsageLog(
 		ImageOutputTokens:      result.Usage.ImageOutputTokens,
 		RateMultiplier:         multiplier,
 		ProviderRateMultiplier: &providerRateMultiplier,
+		ProviderCostConfirmed:  new(provider.CostRateConfirmed),
 		BillingType:            billingType,
 		BillingMode:            ResolveBillingMode(result, cost),
 		Stream:                 result.Stream,
@@ -525,6 +526,7 @@ func (s *Recorder) RecordOpenAI(ctx context.Context, input *Input) error {
 		usageLog.RateMultiplier = multiplier
 	}
 	usageLog.ProviderRateMultiplier = &providerRateMultiplier
+	usageLog.ProviderCostConfirmed = new(provider.CostRateConfirmed)
 	usageLog.BillingType = billingType
 	usageLog.Stream = result.Stream
 	usageLog.NativeCompactionV2 = input.NativeCompactionV2

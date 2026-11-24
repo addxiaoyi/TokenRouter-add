@@ -134,6 +134,9 @@ type UsageLog struct {
 	// completion. PostgreSQL cost reports interpret nil as one when reading
 	// historical rows.
 	ProviderRateMultiplier *float64 // provider price multiplier snapshot
+	// ProviderCostConfirmed preserves cost-rate confirmation at completion. Nil
+	// identifies historical writers, whose nondefault recorded rates remain usable.
+	ProviderCostConfirmed *bool // optional upstream rate confirmation
 	// ProviderStatsCost supplies the provider-cost base before its multiplier.
 	// Nil uses TotalCost; a recorded zero therefore represents a zero
 	// provider-cost base.

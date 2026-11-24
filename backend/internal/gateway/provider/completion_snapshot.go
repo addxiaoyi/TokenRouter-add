@@ -70,6 +70,7 @@ func ProjectCompletionProvider(v *provider.Record) *completion.ProviderSnapshot 
 		Type:                           v.Type,
 		Platform:                       v.Platform,
 		RateMultiplier:                 v.BillingRateMultiplier(),
+		CostRateConfirmed:              v.CostRateConfirmed(),
 		OpenAI:                         v.IsOpenAI(),
 		ResetForbiddenCounterOnSuccess: v.UsesCountedForbiddenPolicy(),
 		RequiresExplicitClaudePricing:  v.RequiresExplicitClaudePricing(),

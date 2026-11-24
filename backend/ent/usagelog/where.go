@@ -255,6 +255,11 @@ func LongContextBillingApplied(v bool) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldLongContextBillingApplied, v))
 }
 
+// ProviderCostConfirmed applies equality check predicate on the "provider_cost_confirmed" field. It's identical to ProviderCostConfirmedEQ.
+func ProviderCostConfirmed(v bool) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldProviderCostConfirmed, v))
+}
+
 // ProviderRateMultiplier applies equality check predicate on the "provider_rate_multiplier" field. It's identical to ProviderRateMultiplierEQ.
 func ProviderRateMultiplier(v float64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldProviderRateMultiplier, v))
@@ -2228,6 +2233,26 @@ func LongContextBillingAppliedEQ(v bool) predicate.UsageLog {
 // LongContextBillingAppliedNEQ applies the NEQ predicate on the "long_context_billing_applied" field.
 func LongContextBillingAppliedNEQ(v bool) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNEQ(FieldLongContextBillingApplied, v))
+}
+
+// ProviderCostConfirmedEQ applies the EQ predicate on the "provider_cost_confirmed" field.
+func ProviderCostConfirmedEQ(v bool) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldProviderCostConfirmed, v))
+}
+
+// ProviderCostConfirmedNEQ applies the NEQ predicate on the "provider_cost_confirmed" field.
+func ProviderCostConfirmedNEQ(v bool) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNEQ(FieldProviderCostConfirmed, v))
+}
+
+// ProviderCostConfirmedIsNil applies the IsNil predicate on the "provider_cost_confirmed" field.
+func ProviderCostConfirmedIsNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIsNull(FieldProviderCostConfirmed))
+}
+
+// ProviderCostConfirmedNotNil applies the NotNil predicate on the "provider_cost_confirmed" field.
+func ProviderCostConfirmedNotNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotNull(FieldProviderCostConfirmed))
 }
 
 // ProviderRateMultiplierEQ applies the EQ predicate on the "provider_rate_multiplier" field.

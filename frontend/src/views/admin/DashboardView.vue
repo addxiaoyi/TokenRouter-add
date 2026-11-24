@@ -13,6 +13,7 @@
     </template>
 
     <div class="space-y-4">
+      <ProfitReminder />
       <DashboardSkeleton v-if="loading && !stats" />
 
       <template v-else-if="stats">
@@ -392,6 +393,7 @@ import type {
 import type { TrendDataPoint, ModelStat } from '@/api/usage.types'
 import LoadErrorState from '@/components/common/LoadErrorState.vue'
 import AppLayout from '@/components/layout/AppLayout.vue'
+import ProfitReminder from '@/components/admin/ProfitReminder.vue'
 import ChartSkeleton from '@/components/common/ChartSkeleton.vue'
 import DashboardSkeleton from '@/components/common/DashboardSkeleton.vue'
 import Icon from '@/components/icons/Icon.vue'

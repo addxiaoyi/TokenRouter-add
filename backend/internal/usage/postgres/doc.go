@@ -16,7 +16,7 @@
 //     and multidimensional analytics queries with raw source recovery.
 //   - dashboard_aggregation_repo.go and usage_analytics_aggregation_repo.go
 //     aggregate, backfill, and clean reconstructible report data.
-//   - provider_report.go and team_reports.go read provider and team reports.
+//   - provider_report.go, profit.go, and team_reports.go read provider, margin, and team reports.
 //   - api_key_dashboard_analytics.go and key_totals.go read key dashboard metrics
 //     and retained usage totals.
 //   - usage_cleanup_repo.go persists cleanup tasks and deletes analytical rows.

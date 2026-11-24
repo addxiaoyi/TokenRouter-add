@@ -258,7 +258,7 @@ func TestContentModerationRuntimeSnapshotUpdateWinsOverInitialLoad(t *testing.T)
 }
 
 // TestContentModerationRuntimeSnapshotRefreshFailureKeepsStaleConfig loads
-// keyword policy, expires it immediately, and then fails batch settings reads.
+// keyword policy, publishes an expired snapshot, and then fails batch settings reads.
 // It checks stale blocking continues and an additional refresh read was
 // attempted.
 func TestContentModerationRuntimeSnapshotRefreshFailureKeepsStaleConfig(t *testing.T) {
@@ -266,13 +266,18 @@ func TestContentModerationRuntimeSnapshotRefreshFailureKeepsStaleConfig(t *testi
 		SettingKeyRiskControlEnabled:      "true",
 		SettingKeyContentModerationConfig: runtimeCacheTestConfig(t, "blocked"),
 	}}
-	svc := runtimeCacheTestService(repo, time.Nanosecond)
+	svc := runtimeCacheTestService(repo, time.Minute)
 	input := runtimeCacheTestInput("blocked")
 
 	decision, err := svc.Check(context.Background(), input)
 	require.NoError(t, err)
 	require.True(t, decision.Blocked)
 
+	// Expire a copied snapshot explicitly; clock resolution must not determine
+	// whether the second request schedules the failure-path refresh under test.
+	expired := *svc.runtimeSnapshot.Load()
+	expired.loadedAt = time.Now().Add(-2 * time.Minute)
+	svc.runtimeSnapshot.Store(&expired)
 	repo.failMultiple(errors.New("database unavailable"))
 	decision, err = svc.Check(context.Background(), input)
 	require.NoError(t, err)
