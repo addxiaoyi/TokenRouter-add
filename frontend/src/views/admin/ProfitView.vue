@@ -227,7 +227,7 @@
                   class="input min-w-0"
                   type="text"
                   inputmode="decimal"
-                  placeholder="0.25"
+                  :placeholder="t('admin.profit.ratePlaceholder')"
                   :disabled="saving !== null"
                 />
                 <button

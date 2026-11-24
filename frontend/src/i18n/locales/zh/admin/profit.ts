@@ -28,6 +28,7 @@ export default {
   copyKey: '复制 Key',
   hideKey: '隐藏',
   rate: '上游成本倍率',
+  ratePlaceholder: '填写已核对倍率',
   rateHint: '确认后用于之后的调用；0 表示上游免费。',
   confirm: '确认倍率',
   unknown: '待确认',

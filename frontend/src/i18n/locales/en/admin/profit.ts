@@ -31,6 +31,7 @@ export default {
   copyKey: 'Copy key',
   hideKey: 'Hide',
   rate: 'Upstream cost multiplier',
+  ratePlaceholder: 'Enter verified multiplier',
   rateHint: 'Applies to future requests. Zero means a free upstream.',
   confirm: 'Confirm rate',
   unknown: 'Unknown',
