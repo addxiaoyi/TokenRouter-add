@@ -2,6 +2,11 @@
 
 set -euo pipefail
 
+if [[ "${OSTYPE:-}" != darwin* ]]; then
+    printf 'Apple Container lifecycle tests require macOS; skipping on %s.\n' "${OSTYPE:-unknown OS}"
+    exit 0
+fi
+
 # apple-container-test.sh checks Apple Container lifecycle commands with
 # isolated command fixtures. It verifies environment-file permissions, startup
 # and teardown, ownership rejection, and legacy volume reuse without creating
@@ -32,15 +37,6 @@ assert_missing() {
     [[ ! -e "$1" ]] || fail "Expected path to be absent: $1"
 }
 
-file_mode() {
-    local mode
-    if mode="$(stat -f '%Lp' "$1" 2>/dev/null)" && [[ "${mode}" =~ ^[0-7]+$ ]]; then
-        printf '%s\n' "${mode}"
-        return
-    fi
-    stat -c '%a' "$1"
-}
-
 export FAKE_CONTAINER_STATE="${STATE_DIR}"
 export PATH="${TEST_DIR}/fixtures/bin:${PATH}"
 export TOKENROUTER_ENV_FILE="${ENV_FILE}"
@@ -48,7 +44,7 @@ export TOKENROUTER_ENV_FILE="${ENV_FILE}"
 mkdir -p "${STATE_DIR}"
 
 "${SCRIPT}" init
-[[ "$(file_mode "${ENV_FILE}")" == "600" ]] || fail "init did not create a mode-600 env file"
+[[ "$(stat -f '%Lp' "${ENV_FILE}")" == "600" ]] || fail "init did not create a mode-600 env file"
 grep -q '^POSTGRES_PASSWORD=change_this_secure_password$' "${ENV_FILE}" && fail "init retained the placeholder password"
 
 chmod 644 "${ENV_FILE}"
