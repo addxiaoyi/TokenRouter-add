@@ -17,10 +17,15 @@ GOARCH=amd64 \
   "$adapter" build -tags=embed -ldflags='-s -w' -o "$temp_dir/output/tokenrouter" ./cmd/server
 
 cmp "$temp_dir/input/tokenrouter_linux_amd64" "$temp_dir/output/tokenrouter"
-[ -x "$temp_dir/output/tokenrouter" ] || {
-  printf 'goreleaser prebuilt adapter test failed: output is not executable\n' >&2
-  exit 1
-}
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*) ;;
+  *)
+    [ -x "$temp_dir/output/tokenrouter" ] || {
+      printf 'goreleaser prebuilt adapter test failed: output is not executable\n' >&2
+      exit 1
+    }
+    ;;
+esac
 
 # 缺少目标产物时必须失败，避免发布出错误架构或空二进制。
 if GORELEASER_PREBUILT_DIR="$temp_dir/input" GOOS=darwin GOARCH=arm64 \
