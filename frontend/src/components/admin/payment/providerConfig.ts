@@ -83,6 +83,7 @@ export const PROVIDER_SUPPORTED_TYPES: Record<string, string[]> = {
   airwallex: ['airwallex'],
   epusdt: ['epusdt'],
   nowpayments: ['nowpayments'],
+  starpay: ['starpay'],
 }
 
 // PAYMENT_CURRENCY_OPTIONS lists the currency codes exposed by provider currency
@@ -115,6 +116,7 @@ export const WEBHOOK_PATHS: Record<string, string> = {
   airwallex: '/api/v1/payment/webhook/airwallex',
   epusdt: '/api/v1/payment/webhook/epusdt',
   nowpayments: '/api/v1/payment/webhook/nowpayments',
+  starpay: '/api/v1/payment/webhook/starpay',
 }
 
 // RETURN_PATH identifies the browser result page appended to configured return origins for
@@ -129,11 +131,28 @@ export const PROVIDER_CALLBACK_PATHS: Record<string, CallbackPaths> = {
   wxpay: { notifyUrl: WEBHOOK_PATHS.wxpay },
   epusdt: { notifyUrl: WEBHOOK_PATHS.epusdt },
   nowpayments: { notifyUrl: WEBHOOK_PATHS.nowpayments },
+  starpay: { notifyUrl: WEBHOOK_PATHS.starpay },
 }
 
 // PROVIDER_CONFIG_FIELDS drives credential inputs and validation for each provider;
 // callback URLs and custom EasyPay method rows are handled separately.
 export const PROVIDER_CONFIG_FIELDS: Record<string, ConfigFieldDef[]> = {
+  starpay: [
+    {
+      key: 'apiBase',
+      label: '',
+      sensitive: false,
+      defaultValue: 'https://star-web.top/pay',
+      hintKey: 'admin.settings.payment.field_starpayApiBaseHint',
+    },
+    { key: 'pid', label: 'EPay PID', sensitive: false },
+    {
+      key: 'pkey',
+      label: '',
+      sensitive: true,
+      hintKey: 'admin.settings.payment.field_starpayKeyHint',
+    },
+  ],
   epusdt: [
     {
       key: 'apiBase',

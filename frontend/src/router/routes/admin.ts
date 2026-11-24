@@ -18,6 +18,53 @@ export const adminRoutes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/admin/model-quality',
+    name: 'AdminModelQuality',
+    component: () => import('@/views/ModelQualityView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      titleKey: 'quality.title',
+      descriptionKey: 'quality.description',
+    },
+  },
+  {
+    path: '/admin/support-tickets/:id?',
+    name: 'AdminSupportTickets',
+    component: () => import('@/views/user/SupportView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      titleKey: 'support.adminTitle',
+      descriptionKey: 'support.adminDescription',
+    },
+  },
+  { path: '/support-tickets-admin', redirect: '/admin/support-tickets' },
+  {
+    path: '/admin/task-history',
+    alias: '/task-records',
+    name: 'AdminTaskHistory',
+    component: () => import('@/views/TaskHistoryView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      titleKey: 'taskHistory.adminTitle',
+      descriptionKey: 'taskHistory.adminDescription',
+    },
+  },
+  {
+    path: '/admin/permissions',
+    alias: '/permissions',
+    name: 'AdminPermissions',
+    component: () => import('@/views/admin/PermissionsView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      titleKey: 'permissions.title',
+      descriptionKey: 'permissions.description',
+    },
+  },
+  {
     path: '/admin/plugins',
     name: 'Plugins',
     component: () => import('@/views/admin/plugins/PluginsView.vue'),

@@ -277,6 +277,8 @@ func (s *UserService) GetProfileIdentitySummaries(ctx context.Context, userID in
 		WeChat:   s.ProfileBuildProviderIdentitySummary("wechat", user, records),
 		DingTalk: s.ProfileBuildProviderIdentitySummary("dingtalk", user, records),
 		QQ:       s.ProfileBuildProviderIdentitySummary("qq", user, records),
+		Telegram: s.ProfileBuildProviderIdentitySummary("telegram", user, records),
+		Discord:  s.ProfileBuildProviderIdentitySummary("discord", user, records),
 		Phone:    s.ProfileBuildProviderIdentitySummary("phone", user, records),
 	}
 
@@ -310,6 +312,8 @@ func (s *UserService) ProfileApplyExplicitProviderAvailability(ctx context.Conte
 		SettingKeyDingTalkConnectEnabled,
 		SettingKeyQQConnectEnabled,
 		SettingKeySMSLoginEnabled,
+		"telegram_oauth_enabled", "telegram_oauth_client_id", "telegram_oauth_client_secret", "telegram_oauth_redirect_url",
+		"discord_oauth_enabled", "discord_oauth_client_id", "discord_oauth_client_secret", "discord_oauth_redirect_url",
 	})
 	if err != nil {
 		// Failed availability reads leave existing relationship views intact;
@@ -317,6 +321,12 @@ func (s *UserService) ProfileApplyExplicitProviderAvailability(ctx context.Conte
 		return
 	}
 
+	if !SocialOAuthPublicEnabled(settings, SocialTelegram) {
+		ProfileDisableIdentityBindAction(&summaries.Telegram)
+	}
+	if !SocialOAuthPublicEnabled(settings, SocialDiscord) {
+		ProfileDisableIdentityBindAction(&summaries.Discord)
+	}
 	if raw, ok := settings[SettingKeyLinuxDoConnectEnabled]; ok && strings.TrimSpace(raw) != "" && raw != "true" {
 		ProfileDisableIdentityBindAction(&summaries.LinuxDo)
 	}
@@ -859,7 +869,7 @@ func (s *UserService) ProfileBuildProviderIdentitySummary(provider string, user 
 
 // ProfileCanUnbindProvider reports whether removing a bound non-email provider
 // leaves another recognized login method. A usable stored email can satisfy the
-// check; otherwise a distinct LinuxDo, OIDC, WeChat, DingTalk, QQ, or phone
+// check; otherwise a distinct LinuxDo, OIDC, WeChat, DingTalk, QQ, Telegram, Discord, or phone
 // identity is required. Callers supply a normalized provider label because
 // candidate exclusion compares that text exactly.
 //
@@ -876,7 +886,7 @@ func (s *UserService) ProfileCanUnbindProvider(provider string, user *User, reco
 		return true
 	}
 
-	for _, candidate := range []string{"linuxdo", "oidc", "wechat", "dingtalk", "qq", "phone"} {
+	for _, candidate := range []string{"linuxdo", "oidc", "wechat", "dingtalk", "qq", "phone", "telegram", "discord"} {
 		if candidate == provider {
 			continue
 		}
@@ -976,6 +986,8 @@ func ProfileBuildUserIdentityBindAuthorizeURL(provider, redirectTo string) (stri
 		path = "/api/v1/auth/oauth/dingtalk/bind/start"
 	case "qq":
 		path = "/api/v1/auth/oauth/qq/bind/start"
+	case SocialTelegram, SocialDiscord:
+		path = "/api/v1/auth/oauth/" + provider + "/bind/start"
 	default:
 		return "", ErrIdentityProviderInvalid
 	}
@@ -988,7 +1000,7 @@ func ProfileBuildUserIdentityBindAuthorizeURL(provider, redirectTo string) (stri
 
 // ProfileNormalizeUserIdentityProvider returns a recognized profile provider
 // label after trimming and lowercasing. Email, LinuxDo, OIDC, WeChat,
-// DingTalk, QQ, and phone are accepted; other labels become empty so
+// DingTalk, QQ, phone, Telegram, and Discord are accepted; other labels become empty so
 // operation-specific callers can reject unsupported choices.
 func ProfileNormalizeUserIdentityProvider(provider string) string {
 	switch strings.ToLower(strings.TrimSpace(provider)) {
@@ -1004,6 +1016,10 @@ func ProfileNormalizeUserIdentityProvider(provider string) string {
 		return "qq"
 	case "phone":
 		return "phone"
+	case SocialTelegram:
+		return SocialTelegram
+	case SocialDiscord:
+		return SocialDiscord
 	case "email":
 		return "email"
 	default:

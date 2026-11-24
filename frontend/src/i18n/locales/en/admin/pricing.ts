@@ -465,6 +465,7 @@ export default {
         actions: 'Actions',
       },
       keys: {
+        per_request_price: 'Per request',
         input: 'Input',
         output: 'Output',
         cache_read: 'Cache read',

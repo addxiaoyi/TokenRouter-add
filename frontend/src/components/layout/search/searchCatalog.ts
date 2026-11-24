@@ -74,6 +74,7 @@ export interface RankedItem {
 const PAGE_KEYWORDS: Record<string, readonly string[]> = {
   '/dashboard': ['home', 'overview', '首页', '概览'],
   '/models': ['marketplace', 'price', 'pricing', '模型', '价格'],
+  '/docs': ['docs', 'documentation', 'quickstart', 'api', '文档', '接入'],
   '/usage-ranking': ['leaderboard', '排行', '排名'],
   '/keys': ['key', 'token', 'api key', '密钥', '令牌'],
   '/team': ['members', '团队', '成员'],
@@ -244,6 +245,7 @@ export function useSearchCatalog(modelEntries: Ref<readonly ModelSearchEntry[]>)
     } else if (hasAccountPages.value) {
       items.push(...flattenNav(accountNavItems.value, ''))
     }
+    items.push(pageItem({ path: '/docs', label: t('apiDocs.title'), icon: 'book' }, ''))
     if (docUrl.value) {
       items.push({
         kind: 'page',

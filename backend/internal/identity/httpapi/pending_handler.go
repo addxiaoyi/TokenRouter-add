@@ -991,7 +991,8 @@ func (h *PendingHandler) CreatePendingAccountForProvider(c *gin.Context, provide
 // current active login target before binding.
 //
 // Invitation, email, binding-login, and required-adoption steps keep the
-// browser session available. Other sessions may apply adoption only when token
+// browser session available. Telegram and Discord logins also retain it while
+// an enabled local TOTP challenge is pending. Other sessions may apply adoption only when token
 // issuance is eligible or the intent binds a current user. Adoption precedes
 // separate consumption, and fresh credentials are issued afterward; later
 // failures can follow saved adoption or consumed state. Completion expires
@@ -1129,6 +1130,9 @@ func (h *PendingHandler) ExchangePendingOAuthCompletion(c *gin.Context) {
 	decision, err := h.ensurePendingOAuthAdoptionDecision(c, session.ID, decisionReq)
 	if err != nil {
 		response.ErrorFrom(c, err)
+		return
+	}
+	if h.requireSocialLoginTotp(c, session, loginUser) {
 		return
 	}
 	// Adoption commits before the separate browser claim. Issue fresh credentials

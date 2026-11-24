@@ -14,19 +14,19 @@
       </div>
 
       <div v-for="item in providerItems" :key="item.provider" :class="rowClass">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div class="flex min-w-0 flex-1 items-start gap-4">
+        <div class="grid grid-cols-1 items-start gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+          <div class="flex min-w-0 items-start gap-3">
             <div
-              :class="providerIconClass(item.provider)"
-              class="flex h-11 w-11 shrink-0 items-center justify-center rounded-control text-sm font-semibold"
+              class="flex h-8 w-8 shrink-0 items-center justify-center text-gray-700 dark:text-dark-200"
             >
-              <Icon v-if="item.provider === 'email'" name="mail" size="sm" class="text-current" />
-              <span v-else>{{ providerInitial(item.provider) }}</span>
+              <AuthProviderIcon :provider="item.provider" class="h-6 w-6" />
             </div>
 
-            <div class="min-w-0 flex-1 space-y-3">
-              <div class="flex flex-wrap items-center gap-2">
-                <h3 class="font-medium text-gray-900 dark:text-white">
+            <div class="min-w-0 flex-1 space-y-1">
+              <div class="flex min-h-8 flex-wrap items-center gap-2">
+                <h3
+                  class="min-w-0 break-words text-sm font-medium text-gray-900 dark:text-white [overflow-wrap:anywhere]"
+                >
                   {{ item.label }}
                 </h3>
                 <span
@@ -43,14 +43,14 @@
 
               <p
                 v-if="providerSummary(item.provider)"
-                class="text-sm text-gray-600 dark:text-gray-300"
+                class="break-all text-xs leading-5 text-gray-600 dark:text-gray-300"
               >
                 {{ providerSummary(item.provider) }}
               </p>
 
               <div
                 v-if="hasBindingDetails(item.provider, item.details)"
-                class="grid gap-1 text-sm text-gray-500 dark:text-gray-400"
+                class="grid gap-1 break-words text-xs leading-5 text-gray-500 dark:text-gray-400"
               >
                 <p
                   v-if="item.provider !== 'email' && item.details?.display_name"
@@ -177,7 +177,7 @@
             </div>
           </div>
 
-          <div class="flex shrink-0 flex-wrap items-center gap-3">
+          <div class="flex flex-wrap items-center justify-end gap-2 pl-11 sm:min-w-28 sm:pl-0">
             <button
               v-if="item.provider === 'email' && compact && canManageEmail"
               data-testid="profile-binding-email-toggle"
@@ -195,10 +195,12 @@
               v-if="item.canBind"
               :data-testid="`profile-binding-${item.provider}-action`"
               type="button"
-              class="btn btn-primary btn-sm"
+              class="btn btn-primary btn-sm max-w-full"
               @click="startBinding(item.provider)"
             >
-              {{ t('profile.authBindings.bindAction', { providerName: item.label }) }}
+              <span class="min-w-0 break-words [overflow-wrap:anywhere]">
+                {{ t('profile.authBindings.bindAction', { providerName: item.label }) }}
+              </span>
             </button>
             <button
               v-if="item.canUnbind"
@@ -240,11 +242,11 @@ import {
   bindPhone as bindPhoneRequest,
   sendPhoneBindCode as sendPhoneBindCodeRequest,
 } from '@/api/auth'
-import Icon from '@/components/icons/Icon.vue'
+import AuthProviderIcon from '@/components/auth/AuthProviderIcon.vue'
 import { useAppStore, useAuthStore } from '@/stores'
 import type { User, UserAuthBindingStatus, UserAuthProvider } from '@/api/identity.types'
 
-// ProfileIdentityBindingsSection.vue manages email and external sign-in identities for the
+// ProfileIdentityBindingsSection.vue manages email, phone, and external sign-in identities for the
 // profile page. Binding status accepts direct flags and compatible nested records, while
 // action availability combines current bindings, public provider settings, and server-
 // provided permissions. Cached WeChat settings take precedence over props and retain
@@ -262,7 +264,8 @@ import type { User, UserAuthBindingStatus, UserAuthProvider } from '@/api/identi
 type BindableProvider = Exclude<UserAuthProvider, 'email'>
 // ConfigurableBindingProvider identifies providers whose binding availability comes from
 // public settings.
-type ConfigurableBindingProvider = 'linuxdo' | 'dingtalk' | 'oidc' | 'wechat' | 'qq'
+type ConfigurableBindingProvider =
+  'linuxdo' | 'dingtalk' | 'oidc' | 'wechat' | 'qq' | 'telegram' | 'discord'
 
 // Profile and provider-availability props determine the displayed account details and
 // binding actions; explicit WeChat capabilities retain their distinction from legacy
@@ -271,6 +274,8 @@ const props = withDefaults(
   defineProps<{
     user: User | null // Current account profile.
     linuxdoEnabled?: boolean // Linux DO binding availability.
+    telegramEnabled?: boolean // Telegram binding availability.
+    discordEnabled?: boolean // Discord binding availability.
     qqEnabled?: boolean // QQ binding availability.
     smsLoginEnabled?: boolean // SMS code login availability for phone binding.
     dingtalkEnabled?: boolean // DingTalk binding availability.
@@ -284,6 +289,8 @@ const props = withDefaults(
   }>(),
   {
     linuxdoEnabled: false, // Linux DO binding availability.
+    telegramEnabled: false, // Telegram binding availability.
+    discordEnabled: false, // Discord binding availability.
     qqEnabled: false, // QQ binding availability.
     smsLoginEnabled: false, // SMS code login availability for phone binding.
     dingtalkEnabled: false, // DingTalk binding availability.
@@ -356,7 +363,7 @@ const rowClass = computed(() =>
     ? compact.value
       ? 'rounded-surface border border-gray-100 bg-white p-4 shadow-sm dark:border-dark-700 dark:bg-dark-900/40'
       : 'rounded-surface border border-gray-100 bg-gray-50/70 p-4 dark:border-dark-700 dark:bg-dark-900/30'
-    : 'px-6 py-5',
+    : 'px-6 py-4',
 )
 const emailBound = computed(() => getBindingStatus('email'))
 // userEmailChangeEnabled permits replacing a bound email only when loaded public settings
@@ -538,6 +545,8 @@ function isProviderEnabledForBinding(provider: ConfigurableBindingProvider): boo
   if (provider === 'oidc') {
     return props.oidcEnabled
   }
+  if (provider === 'telegram') return props.telegramEnabled
+  if (provider === 'discord') return props.discordEnabled
   if (provider === 'qq') {
     return props.qqEnabled
   }
@@ -600,6 +609,28 @@ const providerItems = computed(() => [
     details: getBindingDetails('wechat'),
   },
   {
+    provider: 'telegram' as const,
+    label: 'Telegram',
+    bound: getBindingStatus('telegram'),
+    canBind:
+      !getBindingStatus('telegram') &&
+      isProviderEnabledForBinding('telegram') &&
+      (getBindingDetails('telegram')?.can_bind ?? true),
+    canUnbind: Boolean(getBindingStatus('telegram') && getBindingDetails('telegram')?.can_unbind),
+    details: getBindingDetails('telegram'),
+  },
+  {
+    provider: 'discord' as const,
+    label: 'Discord',
+    bound: getBindingStatus('discord'),
+    canBind:
+      !getBindingStatus('discord') &&
+      isProviderEnabledForBinding('discord') &&
+      (getBindingDetails('discord')?.can_bind ?? true),
+    canUnbind: Boolean(getBindingStatus('discord') && getBindingDetails('discord')?.can_unbind),
+    details: getBindingDetails('discord'),
+  },
+  {
     provider: 'qq' as const,
     label: t('profile.authBindings.providers.qq'),
     bound: getBindingStatus('qq'),
@@ -622,52 +653,6 @@ const providerItems = computed(() => [
     details: getBindingDetails('phone'),
   },
 ])
-
-// providerInitial supplies the single-letter emblem used by the displayed provider row.
-function providerInitial(provider: UserAuthProvider): string {
-  if (provider === 'linuxdo') {
-    return 'L'
-  }
-  if (provider === 'dingtalk') {
-    return 'D'
-  }
-  if (provider === 'wechat') {
-    return 'W'
-  }
-  if (provider === 'oidc') {
-    return 'O'
-  }
-  if (provider === 'qq') {
-    return 'Q'
-  }
-  if (provider === 'phone') {
-    return 'P'
-  }
-  return 'E'
-}
-
-// providerIconClass supplies the provider row's light and dark emblem colors.
-function providerIconClass(provider: UserAuthProvider): string {
-  if (provider === 'linuxdo') {
-    return 'bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-300'
-  }
-  if (provider === 'dingtalk') {
-    return 'bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:text-blue-300'
-  }
-  if (provider === 'wechat') {
-    return 'bg-green-100 text-green-600 dark:bg-green-900/20 dark:text-green-300'
-  }
-  if (provider === 'oidc') {
-    return 'bg-sky-100 text-sky-600 dark:bg-sky-900/20 dark:text-sky-300'
-  }
-  if (provider === 'qq') {
-    return 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/20 dark:text-cyan-300'
-  }
-  if (provider === 'phone') {
-    return 'bg-violet-100 text-violet-600 dark:bg-violet-900/20 dark:text-violet-300'
-  }
-  return 'bg-primary-100 text-primary-600 dark:bg-primary-900/20 dark:text-primary-300'
-}
 
 // providerSummary returns the displayable account email or empty text for external
 // providers.

@@ -173,6 +173,7 @@ func resolveProbeType(ctx context.Context, lookup ModelAttributeLookup, value *p
 // Automatic legacy tests retain their existing builders; routed tests propagate
 // profile failures before transport and reuse the test's attribute session.
 func applyProbeSampling(run *TestRun, lookup ModelAttributeLookup, value *provider.Record, model, protocol string, payload map[string]any) error {
+	applyTestOutputBudget(run, protocol, payload)
 	if run.ProtocolRoute.ClientProtocol == "" || lookup == nil {
 		return nil
 	}
@@ -188,4 +189,31 @@ func applyProbeSampling(run *TestRun, lookup ModelAttributeLookup, value *provid
 		delete(payload, "top_p")
 	}
 	return nil
+}
+
+// applyTestOutputBudget bounds scored assessments without changing ordinary probes.
+// The caller supplies the native protocol payload before encoding. A zero cap
+// preserves existing defaults, and supported text protocols receive their own
+// output-limit field so the gateway does not depend on provider default limits.
+func applyTestOutputBudget(run *TestRun, protocol string, payload map[string]any) {
+	cap := run.Constraints.OutputTokens
+	if cap <= 0 {
+		return
+	}
+	switch protocol {
+	case "openai_chat_completions":
+		delete(payload, "max_tokens")
+		payload["max_completion_tokens"] = cap
+	case "openai_responses":
+		payload["max_output_tokens"] = cap
+	case "anthropic_messages":
+		payload["max_tokens"] = cap
+	case "gemini_generate_content":
+		config, ok := payload["generationConfig"].(map[string]any)
+		if !ok {
+			config = map[string]any{}
+			payload["generationConfig"] = config
+		}
+		config["maxOutputTokens"] = cap
+	}
 }

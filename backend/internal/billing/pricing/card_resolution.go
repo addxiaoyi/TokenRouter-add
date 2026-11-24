@@ -1,5 +1,10 @@
 package pricing
 
+import (
+	"slices"
+	"strings"
+)
+
 // card_resolution.go combines configured cards with base prices and assigns
 // their billing mode and source.
 // A configured price card can replace amount buckets or simply adjust a catalog
@@ -14,6 +19,50 @@ package pricing
 // before amount and service-tier scaling. The resulting record can retain
 // references to the supplied card metadata, which callers keep stable during
 // use.
+
+// ResolveCatalogPricing selects usable catalog amounts without card overrides.
+// Nil or unavailable entries return nil, allowing the caller to retain its
+// configured fallback. Native video, image, and token prices precede the
+// optional request baseline so later catalog updates replace temporary request
+// pricing automatically. Request zeros remain explicit prices. Video labels are
+// copied in stable order; image amounts are selected by the shared image-unit
+// resolver when the request supplies its dimensions.
+func ResolveCatalogPricing(model string, raw *CatalogModelPricing, longContextEnabled bool) *ResolvedPricing {
+	if raw == nil {
+		return nil
+	}
+	resolved := &ResolvedPricing{Source: PricingSourceCatalog, LongContextPricingEnabled: longContextEnabled}
+	switch DefaultBillingMode(model, raw.Mode, raw) {
+	case "video":
+		prices, err := NormalizeVideoPrices(raw.VideoPrices)
+		if err != nil || len(prices) == 0 {
+			return nil
+		}
+		resolved.Mode = BillingModeVideo
+		for label, price := range prices {
+			resolved.RequestTiers = append(resolved.RequestTiers, PricingInterval{TierLabel: label, PerRequestPrice: &price})
+		}
+		slices.SortFunc(resolved.RequestTiers, func(a, b PricingInterval) int {
+			return strings.Compare(a.TierLabel, b.TierLabel)
+		})
+	case "image":
+		if len(raw.ImagePrices) == 0 && !HasImageUnitPrice(raw) {
+			return nil
+		}
+		resolved.Mode = BillingModeImage
+	case "per_request":
+		resolved.Mode = BillingModePerRequest
+		resolved.DefaultPerRequestPrice = *raw.CostPerRequest
+		resolved.DefaultPerRequestPricePresent = true
+	default:
+		base, err := ResolveModelPricing(model, raw)
+		if err != nil || base == nil {
+			return nil
+		}
+		return ResolvePriceCards(nil, base, PricingSourceCatalog, longContextEnabled)
+	}
+	return resolved
+}
 
 // ResolveConfiguredPricing returns effective amounts for a non-nil card and its
 // optional base. An empty mode uses token rules. Request and media modes

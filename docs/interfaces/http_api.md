@@ -1,5 +1,7 @@
 # HTTP 接口
 
+自营数电发票使用登录用户的订单身份，提供 `GET/POST /api/v1/payment/orders/:id/tax-invoice` 和 `GET /api/v1/payment/orders/:id/tax-invoice/file`。接口字段、资格条件、关闭行为和恢复规则见[自营订单数电开票](../operations/tax_invoicing.md)。
+
 本文说明 TokenRouter 的路由族、中间件顺序、认证方式、核心业务接口约定、响应格式与模块归属。新增或调整接口时，据此确定落点与兼容性边界。本文不逐一列举所有端点；上游协议规范和领域状态机见各自文档。
 
 新增创作台路由前，先读[创作台](../domains/creative_studio.md)，核对生命周期、幂等和留存规则。
@@ -50,9 +52,14 @@ RequestLogger
 | `/health`、`/setup/status` | 无 | `server`：进程健康检查和正常模式下的 setup 状态 |
 | `/api/event_logging/batch` | 无 | 兼容 Claude Code 遥测的空接收端，固定返回成功 |
 | `/api/v1/auth/*` | 大多公开；账户管理子流程按路由要求 JWT 或短期状态 | `identity`：注册、登录、刷新、找回密码、OAuth、Passkey 登录和身份补全 |
+| `/api/v1/auth/oauth/{telegram,discord}/*` | start 经验证码和限流；bind/start 需当前用户证明；callback 校验浏览器 state 与平台身份 | `identity`：GET/POST start、GET bind/start、GET callback，后续使用共享 `/auth/oauth/pending/*`；浏览器回调不携带访问令牌 |
 | `/api/v1/user/*`、`/keys`、`/team`、`/groups`、`/subscriptions`、`/redeem` 等 | 用户 JWT | `identity`、`team`、`apikey`、`billing`、`usage`：用户面板资源、团队、Key、用量和权益 |
 | `/api/v1/marketplace/models`、`/api/v1/marketplace/stats` | 无 | `routing`：公开模型分组和首页汇总 |
 | `/api/v1/marketplace/models/available` | 用户 JWT | `routing`：公开分组与当前用户获授权的专属分组，返回私有、不缓存响应 |
+| `/api/v1/support-tickets/*`、`/api/v1/admin/support-tickets/*` | 用户 JWT；管理入口需管理员 | `support`：所有者隔离的工单、回复、版本化状态和邮件投递设置，见[工单](../domains/support_conversations.md) |
+| `/api/v1/monitoring?hours=24` | 用户 JWT | `ops`：当前获授权分组的 24/72/168 小时聚合观测，私有且不缓存 |
+| `/api/v1/task-history`、`/api/v1/admin/task-history` | 用户 JWT；管理入口需管理员 | `batchimage`：提交人权限范围内的[批量图片任务摘要](../domains/batch_image_jobs.md#panel_task_history) |
+| `/api/v1/model-quality`、`/api/v1/admin/model-quality/*` | 历史公开；执行与进度需管理员 | `modelquality`：固定题集评估、持久进度和安全报告，见[模型能力检测](../domains/model_quality.md) |
 | `/api/v1/admin/plugins*`、`/api/v1/admin/plugin-catalog*`、`/api/v1/admin/plugin-indexes*` | 管理员（执行代码与来源变更另需 step-up） | `plugin`：安装、更新回滚、市场与索引来源，见[安装管理](plugin_contracts.md#administration) |
 | `/api/v1/plugins/*` | UI 描述需用户 JWT；静态资源公开；API 按 manifest 决定 | `plugin`：插件页面描述、版本化静态资源和非流式 HTTP 代理，见[插件契约](plugin_contracts.md#http_contributions) |
 | `/api/v1/admin/*` | 管理员 JWT 或受限管理密钥（部分操作另需 step-up） | 各领域管理入口：用户、分组、提供商、价格配置、设置、运维、备份、支付和安全管理 |
@@ -60,7 +67,7 @@ RequestLogger
 | `/api/v1/admin/mcp/oauth/*` | 管理员 JWT | MCP OAuth 浏览器授权与应用管理，见 [MCP OAuth 应用授权](mcp_management.md#oauth_authorization) |
 | `/api/v1/payment/*` | 用户 JWT | `payment`：配置和套餐查询、下单、查单、取消、invoice 和申请退款 |
 | `/api/v1/payment/public/*` | 签名 resume token 或旧订单验证约束 | `payment`：恢复已知订单的支付结果，禁止匿名列举订单 |
-| `/api/v1/payment/webhook/*` | 提供商验签（按原始 body、query 和 Header） | `payment`：EasyPay、Alipay、WeChat Pay、Stripe、Airwallex、EPUSDT 异步回调 |
+| `/api/v1/payment/webhook/*` | 提供商验签（按原始 body、query 和 Header） | `payment`：EasyPay、Alipay、WeChat Pay、Stripe、Airwallex、EPUSDT、StarPAY 异步回调；StarPAY 为 POST JSON |
 | `/v1/*` 及兼容裸路径别名 | TokenRouter API Key | `gateway`：Anthropic、OpenAI 兼容的消息、Responses、Chat、图片、视频、模型、用量、批任务及 `/v1/systemone` |
 | `/v1beta/*` | TokenRouter API Key | `gateway`：Gemini 原生模型 URL、生成、流式生成和 token 统计 |
 | `/antigravity/*` | TokenRouter API Key（强制平台） | `gateway`：Antigravity 专用 Claude 和 Gemini 入口及管理自省接口 |

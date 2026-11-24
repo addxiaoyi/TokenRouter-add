@@ -34,13 +34,14 @@ const VISIBLE_METHOD_ALIASES = {
   airwallex: 'airwallex',
   epusdt: 'epusdt',
   nowpayments: 'nowpayments',
+  starpay: 'starpay',
 } as const
 
 /**
  * VisiblePaymentMethod names the built-in methods presented to checkout users.
  */
 export type VisiblePaymentMethod =
-  'alipay' | 'wxpay' | 'stripe' | 'airwallex' | 'epusdt' | 'nowpayments'
+  'alipay' | 'wxpay' | 'stripe' | 'airwallex' | 'epusdt' | 'nowpayments' | 'starpay'
 /**
  * StripeVisibleMethod identifies a wallet preselected inside Stripe Payment Element.
  */

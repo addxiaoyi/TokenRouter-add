@@ -1,28 +1,7 @@
 <template>
   <div class="space-y-4">
     <button type="button" :disabled="disabled" class="btn btn-secondary w-full" @click="startLogin">
-      <svg
-        class="icon mr-2"
-        viewBox="0 0 24 24"
-        xmlns="http://www.w3.org/2000/svg"
-        width="20"
-        height="20"
-        aria-hidden="true"
-        style="flex-shrink: 0"
-      >
-        <circle cx="12" cy="12" r="12" fill="#1677FF" />
-        <text
-          x="12"
-          y="17"
-          font-family="sans-serif"
-          font-size="13"
-          font-weight="bold"
-          fill="white"
-          text-anchor="middle"
-        >
-          {{ '钉' }}
-        </text>
-      </svg>
+      <AuthProviderIcon provider="dingtalk" class="h-5 w-5" />
       {{ t('auth.dingtalk.signIn') }}
     </button>
 
@@ -41,6 +20,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import type { OAuthLoginStart } from '@/api/auth'
 import { resolveAffiliateCode, storeOAuthAffiliateCode } from '@/utils/oauthAffiliate'
+import AuthProviderIcon from './AuthProviderIcon.vue'
 
 // DingTalkOAuthSection.vue presents the DingTalk sign-in entry and emits its start
 // request to the parent authentication gate. The parent receives the redirect and

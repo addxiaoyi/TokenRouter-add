@@ -14,6 +14,7 @@
 //   - billing.go, pricing.go and settlement.go: reserve and settle frozen funding.
 //   - pipeline.go, recovery.go and runtime.go: resume stages and manage work loops.
 //   - download.go and cleanup.go: stream retained results and remove resources.
+//   - history.go: define the panel's task metadata and visible lifecycle filters.
 //   - registry.go and model_attributes.go: select backends and validate model
 //     preferences. provider_values.go and public_values.go render persisted
 //     values; value_helpers.go supplies nullable-field and model-identity

@@ -31,6 +31,13 @@
           <template #actions="{ row }">
             <div class="flex items-center gap-2">
               <button
+                :aria-label="`${t('common.view')} #${row.id}`"
+                class="btn btn-secondary btn-sm"
+                @click="openOrderDetails(row)"
+              >
+                {{ t('common.view') }}
+              </button>
+              <button
                 v-if="row.status === 'PENDING'"
                 @click="handleCancel(row.id)"
                 class="inline-flex items-center gap-1 rounded-compact px-2 py-1 text-xs font-medium text-yellow-600 hover:bg-yellow-50 dark:text-yellow-400 dark:hover:bg-yellow-900/20"
@@ -70,6 +77,35 @@
         />
       </template>
     </TablePageLayout>
+
+    <BaseDialog
+      :show="!!detailTarget"
+      :title="detailTarget ? `${t('payment.orders.orderId')} #${detailTarget.id}` : ''"
+      @close="closeOrderDetails"
+    >
+      <div v-if="detailTarget" class="space-y-4">
+        <dl class="space-y-2 rounded-surface bg-gray-50 p-4 text-sm dark:bg-dark-800">
+          <div class="flex flex-wrap justify-between gap-2">
+            <dt class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.orderNo') }}</dt>
+            <dd class="break-all font-mono text-gray-900 dark:text-white">{{
+              detailTarget.out_trade_no
+            }}</dd>
+          </div>
+          <div class="flex flex-wrap justify-between gap-2">
+            <dt class="text-gray-500 dark:text-gray-400">{{ t('payment.orders.payAmount') }}</dt>
+            <dd class="text-gray-900 dark:text-white">{{
+              formatGatewayAmount(detailTarget.pay_amount, detailTarget.currency)
+            }}</dd>
+          </div>
+        </dl>
+        <TaxInvoicePanel :key="detailTarget.id" :order-id="detailTarget.id" />
+      </div>
+      <template #footer>
+        <button class="btn btn-secondary" @click="closeOrderDetails">{{
+          t('common.close')
+        }}</button>
+      </template>
+    </BaseDialog>
 
     <!-- Keep the selected cancellation target until confirmation succeeds or the user closes this dialog. -->
     <BaseDialog
@@ -154,6 +190,7 @@ import BaseDialog from '@/components/common/BaseDialog.vue'
 import Select from '@/components/common/Select.vue'
 import Icon from '@/components/icons/Icon.vue'
 import OrderTable from '@/components/payment/OrderTable.vue'
+import TaxInvoicePanel from '@/components/payment/TaxInvoicePanel.vue'
 import { formatPaymentAmount } from '@/utils/payment/currency'
 
 // UserOrdersView.vue coordinates the current user's order list and its available
@@ -167,7 +204,9 @@ import { formatPaymentAmount } from '@/utils/payment/currency'
 // the normal list path. Invoice requests select the first available document URL
 // and open it in a separate browsing context. Requests retain their existing
 // independent completion behavior; the page does not cancel in-flight list or
-// eligibility reads when filters change or the page unmounts.
+// refund eligibility reads when filters change or the page unmounts. Chinese tax
+// invoices load only inside the selected order's detail panel, whose keyed mount
+// owns cancellation and prevents buyer state from crossing between orders.
 
 // Page services provide translated labels, navigation, feedback, and the account's
 // selected balance display unit for balance-type order amounts.
@@ -190,6 +229,9 @@ const currentFilter = ref('')
 const cancelTargetId = ref<number | null>(null)
 const refundTarget = ref<PaymentOrder | null>(null)
 const refundReason = ref('')
+// detailTarget mounts one invoice panel only after an explicit customer selection;
+// closing the detail unmounts that panel and releases its requests and polling.
+const detailTarget = ref<PaymentOrder | null>(null)
 // pagination retains the requested page size and backend total for the shared
 // pager; changing page size restarts the table at its first page.
 const pagination = reactive({ page: 1, page_size: 20, total: 0 })
@@ -204,6 +246,16 @@ const statusFilters = computed(() => [
   { value: 'FAILED', label: t('payment.status.failed') },
   { value: 'REFUNDED', label: t('payment.status.refunded') },
 ])
+
+// openOrderDetails selects one order and mounts its lazy invoice reader.
+function openOrderDetails(order: PaymentOrder) {
+  detailTarget.value = order
+}
+
+// closeOrderDetails clears selection and unmounts the selected invoice reader.
+function closeOrderDetails() {
+  detailTarget.value = null
+}
 
 // fetchOrders loads the selected page and status into the visible table.
 // Failures keep existing rows and report an error. Concurrent requests can each

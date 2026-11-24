@@ -8,7 +8,7 @@
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
           {{ t('team.transferActionDescription') }}
         </p>
-        <div class="mt-4 flex gap-3">
+        <div class="mt-4 flex flex-wrap gap-3">
           <button
             class="btn btn-primary"
             :disabled="resolvingToken"
@@ -67,7 +67,7 @@
             <div
               v-for="member in 3"
               :key="member"
-              class="flex flex-wrap items-center justify-between gap-4 p-5"
+              class="grid min-w-0 grid-cols-1 gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
             >
               <div class="space-y-2">
                 <div class="flex items-center gap-2">
@@ -76,7 +76,7 @@
                 </div>
                 <Skeleton :width="145" :height="14" />
               </div>
-              <Skeleton :width="72" :height="28" class="rounded-control" />
+              <Skeleton :width="72" :height="28" class="justify-self-end rounded-control" />
             </div>
           </div>
         </section>
@@ -225,11 +225,11 @@
               <div
                 v-for="member in members"
                 :key="member.user_id"
-                class="flex flex-wrap items-center justify-between gap-4 p-5"
+                class="grid min-w-0 grid-cols-1 gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
               >
                 <div class="min-w-0">
-                  <div class="flex items-center gap-2">
-                    <p class="truncate font-medium text-gray-900 dark:text-white">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <p class="min-w-0 break-words font-medium text-gray-900 dark:text-white">
                       {{ member.username || member.email }}
                     </p>
                     <span
@@ -238,7 +238,7 @@
                       >{{ member.role === 'owner' ? t('team.owner') : t('team.member') }}</span
                     >
                   </div>
-                  <p class="mt-1 truncate text-sm text-gray-500">{{ member.email }}</p>
+                  <p class="mt-1 break-all text-sm text-gray-500">{{ member.email }}</p>
                   <p
                     v-if="member.role === 'member'"
                     class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500"
@@ -269,7 +269,7 @@
                     >
                   </p>
                 </div>
-                <div v-if="member.role === 'member'" class="flex flex-wrap gap-2">
+                <div v-if="member.role === 'member'" class="flex flex-wrap justify-end gap-2">
                   <button class="btn btn-secondary btn-sm" @click="openLimitEditor(member)">
                     <Icon name="edit" size="sm" />{{ t('team.editLimits') }}
                   </button>
@@ -314,16 +314,21 @@
               <div
                 v-for="invitation in invitations"
                 :key="invitation.id"
-                class="flex flex-wrap items-center justify-between gap-4 p-5"
+                class="grid min-w-0 grid-cols-1 gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
               >
-                <div>
-                  <p class="font-medium text-gray-900 dark:text-white">{{ invitation.email }}</p>
+                <div class="min-w-0">
+                  <p class="break-all font-medium text-gray-900 dark:text-white">{{
+                    invitation.email
+                  }}</p>
                   <p class="mt-1 text-sm text-gray-500">
                     {{ statusLabel(invitation.status) }} · {{ t('team.expiresAt') }}
                     {{ formatDateTime(invitation.expires_at) }}
                   </p>
                 </div>
-                <div v-if="invitation.status === 'pending'" class="flex gap-2">
+                <div
+                  v-if="invitation.status === 'pending'"
+                  class="flex flex-wrap justify-end gap-2"
+                >
                   <button
                     class="btn btn-secondary btn-sm"
                     @click="reissueInvitation(invitation.id)"
@@ -355,11 +360,13 @@
               <div
                 v-for="key in teamKeys"
                 :key="key.id"
-                class="flex flex-wrap items-center justify-between gap-4 p-5"
+                class="grid min-w-0 grid-cols-1 gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
               >
                 <div class="min-w-0">
                   <div class="flex flex-wrap items-center gap-2">
-                    <p class="font-medium text-gray-900 dark:text-white">{{ key.name }}</p>
+                    <p class="min-w-0 break-words font-medium text-gray-900 dark:text-white">{{
+                      key.name
+                    }}</p>
                     <span
                       class="badge"
                       :class="
@@ -374,11 +381,11 @@
                     </span>
                   </div>
                   <p class="mt-1 truncate font-mono text-xs text-gray-500">{{ key.masked_key }}</p>
-                  <p class="mt-1 text-xs text-gray-500">
+                  <p class="mt-1 break-all text-xs text-gray-500">
                     {{ key.user_email }} · {{ key.group_name || t('team.noGroup') }}
                   </p>
                 </div>
-                <div class="flex flex-wrap gap-2">
+                <div class="flex flex-wrap justify-end gap-2">
                   <button
                     v-if="key.team_owner_disabled || key.status !== 'active'"
                     class="btn btn-secondary btn-sm"

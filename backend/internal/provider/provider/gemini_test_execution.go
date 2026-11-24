@@ -94,6 +94,18 @@ func (s *GeminiProviderTest) Execute(c *TestRun, value *providercore.Record, mod
 		return (TestStreamOutput{}).Error(c, capabilityErr.Error())
 	}
 	payload := geminiTestPayload(testModelID, prompt, testType)
+	if c.Constraints.OutputTokens > 0 {
+		var object map[string]any
+		if err := json.Unmarshal(payload, &object); err != nil {
+			return (TestStreamOutput{}).Error(c, "Invalid assessment payload")
+		}
+		applyTestOutputBudget(c, "gemini_generate_content", object)
+		var encodeErr error
+		payload, encodeErr = json.Marshal(object)
+		if encodeErr != nil {
+			return (TestStreamOutput{}).Error(c, "Invalid assessment payload")
+		}
+	}
 
 	var req *http.Request
 	var err error

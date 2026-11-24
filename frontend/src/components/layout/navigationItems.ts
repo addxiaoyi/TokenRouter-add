@@ -105,6 +105,8 @@ export function useNavigationItems(): NavigationItems {
   const accountNavItems = computed((): NavItem[] => {
     const items: NavItem[] = [
       { path: '/dashboard', label: t('nav.dashboard'), icon: 'dashboard' as const },
+      { path: '/chat', label: t('chat.title'), icon: 'chat' as const },
+      { path: '/support-tickets', label: t('support.title'), icon: 'ticket' as const },
       { path: '/monitoring', label: t('monitoring.title'), icon: 'monitor' as const },
       { path: '/models', label: t('nav.modelMarketplace'), icon: 'modelMarketplace' as const },
       {
@@ -122,6 +124,7 @@ export function useNavigationItems(): NavigationItems {
         featureFlag: flagCreativeStudioAccess,
       },
       { path: '/usage', label: t('nav.usage'), icon: 'chart' as const },
+      { path: '/task-history', label: t('taskHistory.title'), icon: 'history' as const },
       { path: '/subscriptions', label: t('nav.mySubscriptions'), icon: 'creditCard' as const },
       ...(appStore.cachedPublicSettings?.payment_enabled
         ? [
@@ -160,11 +163,7 @@ export function useNavigationItems(): NavigationItems {
       })),
       ...pluginNavItems('user'),
     ]
-    // Model-quality history remains addressable, while account navigation omits the
-    // retired entry consistently from both the sidebar and global search catalog.
-    const visibleItems = items.filter(
-      (item) => item.path !== '/model-quality' && item.featureFlag?.() !== false,
-    )
+    const visibleItems = items.filter((item) => item.featureFlag?.() !== false)
     return visibleItems
   })
 
@@ -240,6 +239,7 @@ export function useNavigationItems(): NavigationItems {
       },
       { path: '/admin/providers', label: t('nav.providers'), icon: 'globe' as const },
       { path: '/admin/announcements', label: t('nav.announcements'), icon: 'bell' as const },
+      { path: '/admin/support-tickets', label: t('support.adminTitle'), icon: 'ticket' as const },
       { path: '/admin/proxies', label: t('nav.proxies'), icon: 'server' as const },
       {
         path: '/admin/risk-control',
@@ -294,7 +294,9 @@ export function useNavigationItems(): NavigationItems {
         : []),
       { path: '/admin/usage', label: t('nav.usage'), icon: 'chart' as const },
       { path: '/admin/requests', label: t('requests.title'), icon: 'search' as const },
+      { path: '/admin/task-history', label: t('taskHistory.adminTitle'), icon: 'history' as const },
       { path: '/admin/audit-logs', label: t('nav.auditLogs'), icon: 'shieldCheck' as const },
+      { path: '/admin/permissions', label: t('permissions.title'), icon: 'lock' as const },
       { path: '/admin/mcp', label: t('admin.mcp.title'), icon: 'key' as const },
       { path: '/admin/plugins', label: t('admin.plugins.title'), icon: 'puzzle' as const },
     ]

@@ -275,8 +275,8 @@ import {
   oauthAffiliatePayload,
 } from '@/utils/oauthAffiliate'
 
-// OidcCallbackView.vue completes OIDC authentication and keeps unfinished account
-// actions on their corresponding forms. Legacy fragment tokens and cookie-backed
+// OidcCallbackView.vue completes OIDC, Telegram, and Discord authentication and
+// keeps unfinished account actions on their corresponding forms. Legacy fragment tokens and cookie-backed
 // pending exchanges enter the page through separate paths. Invitation, account
 // choice, profile adoption, and TOTP results remain pending until the server
 // returns a completed login or binding.
@@ -288,9 +288,17 @@ import {
 // public settings and refreshes with locale changes, leaving authentication
 // progression separate from display-name availability.
 
-// route and router connect callback or sign-in handlers to query values and
-// navigation. Authentication stores and translators supply the session actions and
-// notifications used by those handlers.
+// props selects a fixed route provider. Social callbacks accept only server
+// continuations; the legacy fragment token path belongs exclusively to OIDC.
+const props = withDefaults(
+  defineProps<{
+    provider?: 'oidc' | 'telegram' | 'discord' // trusted callback route provider
+  }>(),
+  { provider: 'oidc' },
+)
+
+// route and router connect callback handlers to query values and navigation.
+// Stores and translators supply the session actions and feedback for those handlers.
 const route = useRoute() // current callback query context
 const router = useRouter() // application navigation service
 const { t } = useI18n() // translated authentication message resolver
@@ -308,7 +316,9 @@ const invitationCode = ref('') // entered signup invitation code
 const isSubmitting = ref(false) // account-action request busy flag
 const invitationError = ref('') // invitation completion failure message
 const redirectTo = ref('/dashboard') // saved authentication continuation destination
-const providerName = ref('OIDC') // displayed authentication provider name
+const providerName = ref(
+  props.provider === 'telegram' ? 'Telegram' : props.provider === 'discord' ? 'Discord' : 'OIDC',
+) // displayed authentication provider name
 const adoptionRequired = ref(false) // server profile-consent requirement
 const suggestedDisplayName = ref('') // server suggested account name
 const suggestedAvatarUrl = ref('') // server suggested avatar URL
@@ -385,6 +395,7 @@ watch(errorMessage, (value) => {
 // PendingOidcCompletion describes provider continuation fields accepted alongside
 // the shared OAuth response.
 type PendingOidcCompletion = PendingOAuthExchangeResponse & {
+  provider?: string // verified pending identity provider
   step?: string // server continuation step
 
   pending_email?: string // pending creation email
@@ -418,7 +429,7 @@ function persistPendingAuthSession(redirect?: string) {
   authStore.setPendingAuthSession({
     token: '',
     token_field: 'pending_oauth_token',
-    provider: 'oidc',
+    provider: props.provider,
     redirect: sanitizeRedirectPath(redirect || redirectTo.value),
   })
 }
@@ -484,10 +495,11 @@ function sanitizeRedirectPath(path: string | null | undefined): string {
 
 useLocaleRefresh(loadProviderName)
 
-// loadProviderName refreshes the OIDC display name from public settings. Empty
-// names and failed requests leave the current name unchanged, allowing locale
-// refresh and callback processing to proceed independently.
+// loadProviderName refreshes the OIDC display name from public settings.
+// Telegram and Discord retain their fixed names. Empty names and failed requests
+// leave the current name unchanged so label refresh does not block authentication.
 async function loadProviderName() {
+  if (props.provider !== 'oidc') return
   try {
     const settings = await getPublicSettings()
     const name = settings.oidc_oauth_provider_name?.trim()
@@ -753,6 +765,13 @@ function isCreateAccountRecoveryError(error: unknown): boolean {
 // response belongs to the continuation dispatcher and cannot be treated as a
 // successful login here.
 async function finalizeCompletion(completion: PendingOAuthExchangeResponse, redirect: string) {
+  if (
+    props.provider !== 'oidc' &&
+    'provider' in completion &&
+    completion.provider !== props.provider
+  ) {
+    throw new Error(t('auth.social.providerMismatch'))
+  }
   if (getOAuthCompletionKind(completion) === 'bind') {
     const bindRedirect = sanitizeRedirectPath(completion.redirect || '/profile')
     // Clear the saved continuation at this terminal or failed-initialization path
@@ -791,6 +810,9 @@ async function finalizeCompletion(completion: PendingOAuthExchangeResponse, redi
 // editable continuation. Responses outside those pending branches reach
 // finalizeCompletion, which checks for binding or login completion.
 async function finalizePendingAccountResponse(completion: PendingOidcCompletion) {
+  if (props.provider !== 'oidc' && completion.provider && completion.provider !== props.provider) {
+    throw new Error(t('auth.social.providerMismatch'))
+  }
   applyAdoptionSuggestionState(completion)
   const redirect = sanitizeRedirectPath(completion.redirect || redirectTo.value)
 
@@ -991,8 +1013,9 @@ onMounted(async () => {
   void loadProviderName()
 
   const params = parseFragmentParams()
-  const legacyLogin = readLegacyFragmentLogin(params)
-  const legacyPendingToken = params.get('pending_oauth_token')?.trim() || ''
+  const legacyLogin = props.provider === 'oidc' ? readLegacyFragmentLogin(params) : null
+  const legacyPendingToken =
+    props.provider === 'oidc' ? params.get('pending_oauth_token')?.trim() || '' : ''
   const error = params.get('error')
   const errorDesc = params.get('error_description') || params.get('error_message') || ''
   const redirect = sanitizeRedirectPath(
@@ -1029,6 +1052,9 @@ onMounted(async () => {
     }
 
     const completion = (await exchangePendingOAuthCompletion()) as PendingOidcCompletion
+    if (props.provider !== 'oidc' && completion.provider !== props.provider) {
+      throw new Error(t('auth.social.providerMismatch'))
+    }
     const completionRedirect = sanitizeRedirectPath(
       completion.redirect || (route.query.redirect as string | undefined) || '/dashboard',
     )

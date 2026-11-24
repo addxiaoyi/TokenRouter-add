@@ -7,6 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/creative"
 	gatewaydto "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi/dto"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/promptpolicy"
+	"github.com/TokenFlux/TokenRouter/internal/identity"
 	identitydto "github.com/TokenFlux/TokenRouter/internal/identity/httpapi/dto"
 	"github.com/TokenFlux/TokenRouter/internal/payment"
 	"github.com/TokenFlux/TokenRouter/internal/pkg/locale"
@@ -34,6 +35,7 @@ import (
 // Pointer nil values can represent omission or JSON null, and UpdateSettings
 // merges them according to each owning module's preparation rules.
 type UpdateSettingsRequest struct {
+	identity.SocialOAuthSettings // submitted social provider settings
 	// ResponsesWS retains submitted JSON bytes, including null, while omission
 	// leaves a nil value. The registered WebSocket participant validates supplied
 	// objects and combines them with its deployment defaults.

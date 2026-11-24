@@ -90,6 +90,8 @@ type UserProfileResponse struct {
 	WeChatBound      bool                                    `json:"wechat_bound"`      // WeChat identity presence flag
 	DingTalkBound    bool                                    `json:"dingtalk_bound"`    // DingTalk identity presence flag
 	QQBound          bool                                    `json:"qq_bound"`          // QQ identity presence flag
+	TelegramBound    bool                                    `json:"telegram_bound"`    // Telegram identity presence flag
+	DiscordBound     bool                                    `json:"discord_bound"`     // Discord identity presence flag
 	PhoneBound       bool                                    `json:"phone_bound"`       // phone identity presence flag
 }
 
@@ -585,12 +587,14 @@ func UserProfileResponseFromService(user *identity.User, identities identity.Use
 		WeChatBound:       identities.WeChat.Bound,
 		DingTalkBound:     identities.DingTalk.Bound,
 		QQBound:           identities.QQ.Bound,
+		TelegramBound:     identities.Telegram.Bound,
+		DiscordBound:      identities.Discord.Bound,
 		PhoneBound:        identities.Phone.Bound,
 	}
 }
 
 // UserProfileBindingMap allocates the email, LinuxDo, OIDC, WeChat, DingTalk, QQ,
-// and phone summary map. The summary structs are copied by value, while any
+// Telegram, Discord, and phone summary map. The summary structs are copied by value, while any
 // referenced data within those values retains its original sharing.
 func UserProfileBindingMap(identities identity.UserIdentitySummarySet) map[string]identity.UserIdentitySummary {
 	return map[string]identity.UserIdentitySummary{
@@ -600,6 +604,8 @@ func UserProfileBindingMap(identities identity.UserIdentitySummarySet) map[strin
 		"wechat":   identities.WeChat,
 		"dingtalk": identities.DingTalk,
 		"qq":       identities.QQ,
+		"telegram": identities.Telegram,
+		"discord":  identities.Discord,
 		"phone":    identities.Phone,
 	}
 }
@@ -609,7 +615,7 @@ func UserProfileBindingMap(identities identity.UserIdentitySummarySet) map[strin
 // current values do not select a source.
 //
 // The first exact trimmed hint match among bound LinuxDo, OIDC, WeChat,
-// DingTalk, and QQ summaries wins separately for avatar and username. Username
+// DingTalk, QQ, Telegram, and Discord summaries wins separately for avatar and username. Username
 // matching reads provider DisplayName, and its pointer is reused for
 // display_name and nickname labels. These matches describe current value
 // equality; callers cannot use them as persisted editing provenance.
@@ -662,13 +668,13 @@ func InferUserProfileSources(user *identity.User, identities identity.UserIdenti
 	return profileSources, avatarSource, usernameSource
 }
 
-// ThirdPartyIdentityProviders returns bound LinuxDo, OIDC, WeChat, and
-// DingTalk summaries in that fixed order. It allocates an outer slice while
+// ThirdPartyIdentityProviders returns bound LinuxDo, OIDC, WeChat, DingTalk,
+// QQ, Telegram, and Discord summaries in that order. It allocates an outer slice while
 // retaining referenced summary data; source inference uses the first matching
 // returned entry.
 func ThirdPartyIdentityProviders(identities identity.UserIdentitySummarySet) []identity.UserIdentitySummary {
 	out := make([]identity.UserIdentitySummary, 0, 3)
-	for _, summary := range []identity.UserIdentitySummary{identities.LinuxDo, identities.OIDC, identities.WeChat, identities.DingTalk, identities.QQ} {
+	for _, summary := range []identity.UserIdentitySummary{identities.LinuxDo, identities.OIDC, identities.WeChat, identities.DingTalk, identities.QQ, identities.Telegram, identities.Discord} {
 		if summary.Bound {
 			out = append(out, summary)
 		}

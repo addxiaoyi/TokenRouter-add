@@ -1,0 +1,42 @@
+// taxInvoice.ts supplies Chinese text for order invoice applications and recovery.
+// These messages distinguish a saved or uncertain application from confirmed
+// issuance and keep the customer's available actions tied to the original order.
+
+export default {
+  title: '数电发票',
+  loading: '正在查询开票资格…',
+  unavailable: '这笔订单暂时不能申请开票。',
+  loadError: '发票信息加载失败，请刷新后重试。',
+  submitError: '提交结果尚未确认，请先刷新原申请状态。',
+  submitRejected: '这次申请未被受理，请检查资料后重试。',
+  fileError: '暂时无法获取发票文件，请稍后重试。',
+  invalidBuyer: '请检查发票抬头、纳税人识别号和邮箱是否正确。',
+  buyerType: '购方类型',
+  individual: '个人',
+  organization: '企业',
+  buyerTitle: '发票抬头',
+  taxId: '纳税人识别号',
+  email: '电子邮箱',
+  buyerHint: '请核对购方资料，提交后将随订单保存。',
+  submit: '提交开票申请',
+  submitting: '正在提交…',
+  retrySubmission: '按原资料重试提交',
+  retryHint: '提交结果尚未确认，重试时将沿用以上购方资料。',
+  refresh: '刷新状态',
+  amount: '开票金额（人民币）',
+  invoiceNumber: '发票号码',
+  saved: '购方资料已保存，不能在此修改。',
+  pending: '正在核对原申请。你可以关闭窗口，稍后回来查看。',
+  unconfirmed: '尚未确认开票结果',
+  requestFile: '获取发票文件',
+  download: '下载发票',
+  downloadHint: '下载链接短期有效，过期后请重新获取。',
+  status: {
+    UNKNOWN: '待确认',
+    PROCESSING: '开票处理中',
+    ISSUED: '已开票',
+    FAILED: '开票失败，请联系客服',
+    REVERSING: '红冲处理中',
+    REVERSED: '已红冲',
+  },
+}

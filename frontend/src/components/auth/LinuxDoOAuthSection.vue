@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-4">
     <button type="button" :disabled="disabled" class="btn btn-secondary w-full" @click="startLogin">
-      <LinuxDoMark class="icon mr-2 h-5 w-5" />
+      <AuthProviderIcon provider="linuxdo" class="h-5 w-5" />
       {{ t('auth.linuxdo.signIn') }}
     </button>
 
@@ -20,7 +20,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import type { OAuthLoginStart } from '@/api/auth'
 import { resolveAffiliateCode, storeOAuthAffiliateCode } from '@/utils/oauthAffiliate'
-import LinuxDoMark from './LinuxDoMark.vue'
+import AuthProviderIcon from './AuthProviderIcon.vue'
 
 // LinuxDoOAuthSection.vue presents the LinuxDo sign-in entry and emits its start
 // request to the parent authentication gate. A nonblank promotion code travels

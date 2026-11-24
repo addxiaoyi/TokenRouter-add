@@ -7,6 +7,7 @@ import { PAYMENT_RECOVERY_STORAGE_KEY } from '@/utils/payment/paymentFlow'
 import { formatPaymentAmount } from '@/utils/payment/currency'
 import AmountInput from '@/components/payment/AmountInput.vue'
 import SubscriptionPlanCard from '@/components/payment/SubscriptionPlanCard.vue'
+import PaymentMethodSelector from '@/components/payment/PaymentMethodSelector.vue'
 import en from '@/i18n/locales/en'
 import zh from '@/i18n/locales/zh'
 import type { CheckoutInfoResponse, MethodLimit, SubscriptionPlan } from '@/api/payment.types'
@@ -1512,6 +1513,67 @@ describe('PaymentView personal recharge rate', () => {
 // Invalid entitlements must stop checkout even when the principal fits the selected
 // payment method. These cases exercise the page's validation and submission boundary.
 describe('PaymentView credit amount validation', () => {
+  // An uncertain StarPAY response arrives after the buyer changes method selection.
+  // Recovery must retain the submitted method and business number without creating another payment.
+  it('retains StarPAY identity when creation cannot be confirmed', async () => {
+    const failure = {
+      reason: 'PAYMENT_CREATE_UNCONFIRMED',
+      metadata: {
+        order_id: '42',
+        out_trade_no: 'tr_starpay_recovery',
+        amount: '100',
+        pay_amount: '100',
+        currency: 'CNY',
+        expires_at: '2099-01-01T12:30:00Z',
+      },
+    }
+    let rejectCreation!: (reason: unknown) => void
+    createOrder.mockReset().mockImplementation(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectCreation = reject
+        }),
+    )
+    routeState.path = '/purchase'
+    routeState.query = {}
+    window.localStorage.removeItem(PAYMENT_RECOVERY_STORAGE_KEY)
+    getCheckoutInfo.mockResolvedValue(
+      checkoutInfoFixture({ methods: { starpay: checkoutInfoFixture().data.methods.wxpay } }),
+    )
+    const wrapper = shallowMount(PaymentView, {
+      global: {
+        plugins: [createPinia()],
+        stubs: {
+          MotionTransition: motionTransitionStub,
+          AppLayout: { template: '<div><slot /></div>' },
+          RouterLink: true,
+          Teleport: true,
+          Transition: false,
+        },
+      },
+    })
+    await flushPromises()
+    wrapper.getComponent(AmountInput).vm.$emit('update:modelValue', 100)
+    await flushPromises()
+    const pay = wrapper
+      .findAll('button')
+      .find((button) => button.text().includes('payment.createOrder'))!
+    await pay.trigger('click')
+    wrapper.getComponent(PaymentMethodSelector).vm.$emit('select', 'wxpay')
+    rejectCreation(failure)
+    await flushPromises()
+    expect(createOrder).toHaveBeenCalledTimes(1)
+    const saved = JSON.parse(window.localStorage.getItem(PAYMENT_RECOVERY_STORAGE_KEY) || '{}')
+    expect(saved).toMatchObject({
+      orderId: 42,
+      paymentType: 'starpay',
+      outTradeNo: 'tr_starpay_recovery',
+      currency: 'CNY',
+      payUrl: '',
+    })
+    wrapper.unmount()
+    window.localStorage.removeItem(PAYMENT_RECOVERY_STORAGE_KEY)
+  })
   // Tiny and oversized personal rates cannot produce a payable order. The page explains
   // the credit problem and keeps payment disabled without sending a create request.
   it.each([1e-8, 1e11, 1e308])('blocks unfulfillable credits at rate %s', async (rate) => {

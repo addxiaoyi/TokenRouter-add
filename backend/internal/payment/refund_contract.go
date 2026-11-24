@@ -78,8 +78,8 @@ type RefundPlan struct {
 	// to be verified before an uncompensated pending refund is marked successful.
 	VerifyLegacyRevocation bool
 	// OperationID correlates committed local preparation and audit records.
-	// Providers receive their own order/amount identifiers for idempotency; the
-	// local operation ID remains outside their request encoding.
+	// StarPAY receives this ID as its refund request key after preparation commits;
+	// other adapters retain their own order/amount idempotency rules.
 	OperationID     string
 	ChannelRefundID string // provider refund identity for recovery
 }

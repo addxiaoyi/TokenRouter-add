@@ -54,6 +54,21 @@ func RegisterAuthenticationRoutes(v1 *gin.RouterGroup, endpoints AuthEndpoints, 
 	// events.
 	auth.Use(guards.Audit)
 	{
+		for _, provider := range []string{"telegram", "discord"} {
+			// Provider selection comes from registration, never a query field, so
+			// callbacks cannot choose another issuer's credentials or ceremony cookies.
+			social := auth.Group("/oauth/" + provider)
+			social.Use(func(c *gin.Context) { c.Set(socialProviderContext, provider) })
+			social.GET("/start", guards.Limit("oauth-"+provider+"-start", 20, time.Minute), endpoints.SocialOAuthStart)
+			social.POST("/start", guards.Limit("oauth-"+provider+"-start", 20, time.Minute), endpoints.SocialOAuthStart)
+			social.GET("/bind/start", guards.Limit("oauth-"+provider+"-bind", 20, time.Minute), func(c *gin.Context) {
+				query := c.Request.URL.Query()
+				query.Set("intent", OauthIntentBindCurrentUser)
+				c.Request.URL.RawQuery = query.Encode()
+				endpoints.SocialOAuthStart(c)
+			})
+			social.GET("/callback", guards.Limit("oauth-"+provider+"-callback", 30, time.Minute), endpoints.SocialOAuthCallback)
+		}
 		// Authentication, refresh, verification-mail, code-preview, reset, Passkey,
 		// and pending-continuation requests each use a named per-action minute window.
 		// The production limiter rejects excess requests or unavailable Redis reads

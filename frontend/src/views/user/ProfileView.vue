@@ -6,6 +6,8 @@
         :user="user"
         :linuxdo-enabled="linuxdoOAuthEnabled"
         :qq-enabled="qqOAuthEnabled"
+        :telegram-enabled="telegramOAuthEnabled"
+        :discord-enabled="discordOAuthEnabled"
         :sms-login-enabled="smsLoginEnabled"
         :dingtalk-enabled="dingtalkOAuthEnabled"
         :oidc-enabled="oidcOAuthEnabled"
@@ -64,6 +66,8 @@ const balanceLowNotifyEnabled = ref(false)
 const systemDefaultThreshold = ref(0)
 const linuxdoOAuthEnabled = ref(false)
 const qqOAuthEnabled = ref(false)
+const telegramOAuthEnabled = ref(false) // configured Telegram binding availability
+const discordOAuthEnabled = ref(false) // configured Discord binding availability
 const smsLoginEnabled = ref(false)
 const dingtalkOAuthEnabled = ref(false)
 const wechatOAuthEnabled = ref(false)
@@ -90,6 +94,8 @@ onMounted(async () => {
       systemDefaultThreshold.value = settings.balance_low_notify_threshold ?? 0
       linuxdoOAuthEnabled.value = settings.linuxdo_oauth_enabled ?? false
       qqOAuthEnabled.value = settings.qq_oauth_enabled ?? false
+      telegramOAuthEnabled.value = settings.telegram_oauth_enabled === true
+      discordOAuthEnabled.value = settings.discord_oauth_enabled === true
       smsLoginEnabled.value = settings.sms_login_enabled ?? false
       dingtalkOAuthEnabled.value = settings.dingtalk_oauth_enabled ?? false
       wechatOAuthEnabled.value = isWeChatWebOAuthEnabled(settings)

@@ -160,6 +160,10 @@ export default {
     footer: {
       allRightsReserved: 'All rights reserved.',
       description: 'One API for AI models, request routing, and usage management.',
+      googleSignIn:
+        'Google profile information is used for sign-in and account management. We do not sell it or use it for advertising. Google sign-in does not grant access to Gmail or Google Drive.',
+      acceptableUse:
+        'Non-consensual intimate images, sexual content involving minors, and violations of personal privacy are prohibited by our usage policy.',
       navigation: 'Footer navigation',
       product: 'Explore',
       account: 'Account',

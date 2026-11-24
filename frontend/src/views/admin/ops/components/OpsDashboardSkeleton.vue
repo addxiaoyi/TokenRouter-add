@@ -32,7 +32,7 @@ const { t } = useI18n()
       <!-- Header (matches OpsDashboardHeader + overview blocks) -->
       <div
         :class="[
-          'rounded-surface bg-white shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-900 dark:ring-dark-700',
+          'ops-summary rounded-surface bg-white shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-900 dark:ring-dark-700',
           props.fullscreen ? 'p-8' : 'p-6',
         ]"
       >
@@ -54,9 +54,9 @@ const { t } = useI18n()
           </div>
         </div>
 
-        <div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
-          <div class="rounded-surface bg-gray-50 p-4 dark:bg-dark-950/30 lg:col-span-5">
-            <div class="grid h-full grid-cols-1 gap-4 md:grid-cols-[200px_1fr] md:items-center">
+        <div class="ops-overview mt-4">
+          <div class="rounded-surface bg-gray-50 p-4 dark:bg-dark-950/30">
+            <div class="ops-health-grid h-full">
               <div class="h-28 skeleton rounded-surface"></div>
               <div class="space-y-4">
                 <div class="h-4 w-32 skeleton rounded-compact"></div>
@@ -67,8 +67,8 @@ const { t } = useI18n()
             </div>
           </div>
 
-          <div class="lg:col-span-7">
-            <div class="grid h-full grid-cols-1 content-center gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <div class="ops-metrics-grid">
               <div v-for="i in 6" :key="i" class="h-20 skeleton rounded-surface"></div>
             </div>
           </div>
@@ -76,7 +76,7 @@ const { t } = useI18n()
       </div>
 
       <!-- Row: Concurrency + Throughput (matches OpsDashboard.vue) -->
-      <div class="grid grid-cols-1 gap-4 lg:grid-cols-4">
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4">
         <div
           :class="[
             'min-h-[360px] rounded-surface bg-white shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-900 dark:ring-dark-700 lg:col-span-1',
@@ -97,7 +97,7 @@ const { t } = useI18n()
         </div>
         <div
           :class="[
-            'min-h-[360px] rounded-surface bg-white shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-900 dark:ring-dark-700 lg:col-span-2',
+            'min-h-[360px] min-w-0 rounded-surface bg-white shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-900 dark:ring-dark-700 md:col-span-2',
             props.fullscreen ? 'p-8' : 'p-6',
           ]"
         >
@@ -106,8 +106,8 @@ const { t } = useI18n()
         </div>
       </div>
 
-      <!-- Row: Visual Analysis (baseline 3-up grid) -->
-      <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <!-- Analysis placeholders retain the populated chart layout at each width. -->
+      <div class="grid grid-cols-1 gap-4 2xl:grid-cols-3">
         <div
           v-for="i in 3"
           :key="i"

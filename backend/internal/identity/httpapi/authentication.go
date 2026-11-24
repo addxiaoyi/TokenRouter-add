@@ -23,11 +23,22 @@ type AuthenticationHandler struct {
 	LinuxDo  *LinuxDoHandler      // LinuxDo OAuth HTTP operations
 	OIDC     *OIDCHandler         // OIDC OAuth HTTP operations
 	QQ       *QQHandler           // QQ OAuth HTTP operations
+	Social   *SocialHandler       // Telegram and Discord OAuth operations
 	Email    *EmailOAuthHandler   // GitHub and Google email OAuth
 	Google   *GoogleOneTapHandler // Google One Tap HTTP operations
 	WeChat   *WeChatHandler       // WeChat OAuth HTTP operations
 	DingTalk *DingTalkHandler     // DingTalk OAuth HTTP operations
 	SMS      *SMSHandler          // SMS code login and phone binding operations
+}
+
+// SocialOAuthStart delegates the selected provider's browser authorization ceremony.
+func (h *AuthenticationHandler) SocialOAuthStart(c *gin.Context) {
+	h.Social.SocialOAuthStart(c)
+}
+
+// SocialOAuthCallback delegates provider verification and pending account continuation.
+func (h *AuthenticationHandler) SocialOAuthCallback(c *gin.Context) {
+	h.Social.SocialOAuthCallback(c)
 }
 
 // BindDingTalkOAuthLogin delegates to the child handler that binds a browser

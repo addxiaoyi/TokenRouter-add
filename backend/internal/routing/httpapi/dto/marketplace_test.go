@@ -39,6 +39,24 @@ func TestMarketplaceHeaderTagVisibilityJSON(t *testing.T) {
 	}
 }
 
+// TestRequestPriceJSONPreservesFreeAndMissing serializes request quotes through
+// the public DTO. Explicit free prices stay present, while unavailable values
+// remain omitted rather than becoming zero in the API response.
+func TestRequestPriceJSONPreservesFreeAndMissing(t *testing.T) {
+	for _, amount := range []*float64{nil, new(float64), new(0.0001), new(0.02)} {
+		row := modelMarketplacePricingFromRouting(pricing.ModelDisplayPricing{PricingMode: "per_request", PriceStatus: "priced", PricePerRequest: amount})
+		body, err := json.Marshal(row)
+		require.NoError(t, err)
+		var fields map[string]any
+		require.NoError(t, json.Unmarshal(body, &fields))
+		if amount == nil {
+			require.NotContains(t, fields, "price_per_request")
+		} else {
+			require.Equal(t, *amount, fields["price_per_request"])
+		}
+	}
+}
+
 // TestImagePriceJSONPreservesFreeAndMissingSizes serializes a quote with two
 // declared sizes and one absent size. It checks that zero-valued 1K remains
 // free in JSON, 2K keeps its amount, and 4K is omitted.

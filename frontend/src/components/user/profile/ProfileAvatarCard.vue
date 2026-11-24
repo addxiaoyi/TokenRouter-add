@@ -1,5 +1,9 @@
 <template>
-  <div :class="props.embedded ? '' : 'card'">
+  <div
+    :class="
+      props.embedded ? 'grid gap-3 sm:grid-cols-[8rem_minmax(0,1fr)] sm:items-center' : 'card'
+    "
+  >
     <div v-if="!props.embedded" class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
       <h2 class="text-lg font-medium text-gray-900 dark:text-white">
         {{ t('profile.avatar.title') }}
@@ -8,6 +12,10 @@
         {{ t('profile.avatar.description') }}
       </p>
     </div>
+
+    <p v-if="props.embedded" class="text-sm font-medium text-gray-700 dark:text-dark-200">
+      {{ t('profile.avatar.title') }}
+    </p>
 
     <div
       :class="
@@ -20,16 +28,13 @@
         :avatar-url="avatarDisplayUrl"
         :user-id="user?.id"
         :alt="displayName"
-        :size-class="props.embedded ? 'h-16 w-16 shrink-0' : 'h-24 w-24 shrink-0'"
+        :size-class="props.embedded ? 'h-12 w-12 shrink-0' : 'h-24 w-24 shrink-0'"
         :data-testid="avatarDisplayUrl ? 'profile-avatar-preview' : undefined"
       />
 
-      <div :class="props.embedded ? 'min-w-0 space-y-2' : 'min-w-0 flex-1 space-y-4'">
-        <div class="space-y-1">
-          <p v-if="props.embedded" class="text-sm font-semibold text-gray-900 dark:text-white">
-            {{ t('profile.avatar.title') }}
-          </p>
-          <p v-else class="text-sm font-medium text-gray-900 dark:text-white">
+      <div :class="props.embedded ? 'min-w-0' : 'min-w-0 flex-1 space-y-4'">
+        <div v-if="!props.embedded" class="space-y-1">
+          <p class="text-sm font-medium text-gray-900 dark:text-white">
             {{ displayName }}
           </p>
         </div>
@@ -53,7 +58,7 @@
           <button
             data-testid="profile-avatar-delete"
             type="button"
-            class="btn btn-secondary"
+            class="btn btn-ghost"
             :disabled="avatarSaving"
             @click="handleAvatarDelete"
           >

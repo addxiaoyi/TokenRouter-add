@@ -1,0 +1,55 @@
+/*
+ * opsLayout.css sizes monitoring panels by their available content width.
+ * Sidebar space and browser zoom reduce the dashboard independently of viewport
+ * breakpoints, so each metric grid keeps readable minimum widths and stacks when
+ * those widths cannot fit. The loading skeleton uses the same layout classes.
+ */
+.ops-summary {
+  container-type: inline-size;
+}
+
+.ops-overview,
+.ops-health-grid,
+.ops-metrics-grid,
+.ops-resources-grid {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.ops-overview {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ops-health-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  align-items: center;
+}
+
+.ops-metrics-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+}
+
+.ops-resources-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
+}
+
+.ops-overview > *,
+.ops-health-grid > *,
+.ops-metrics-grid > *,
+.ops-resources-grid > * {
+  min-width: 0;
+}
+
+.ops-metrics-grid button,
+.ops-resources-grid button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Two panels fit only when health and three metric columns retain their widths. */
+@container (min-width: 75rem) {
+  .ops-overview {
+    grid-template-columns: minmax(25rem, 2fr) minmax(40rem, 3fr);
+  }
+}

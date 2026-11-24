@@ -169,6 +169,12 @@ backend/
 │   │   ├── postgres/                                    PostgreSQL 持久化及事务适配
 │   │   ├── provider/                                    外部服务与技术能力适配
 │   │   └── rediscache/                                  Redis 缓存、计数或会话适配
+│   ├── modelquality/                                    固定题集、评分、持久检测任务与公开报告
+│   │   ├── httpapi/                                     公开结果与管理员检测接口
+│   │   └── postgres/                                    任务租约、历史系列与比较基线
+│   ├── support/                                         工单权限、状态、事务去重与持久通知
+│   │   ├── httpapi/                                     用户与管理员工单接口
+│   │   └── postgres/                                    会话存储、通知租约和投递重试
 │   ├── notification/                                    通知事件、模板、退订和邮件投递
 │   │   ├── contract/                                    配额、风险、报告占位符与 SMTP 配置值
 │   │   ├── httpapi/                                     HTTP 路由、鉴权接入与输入输出适配

@@ -10,7 +10,7 @@
 
       <ContentSkeleton v-if="adminApiKeyLoading" variant="form" :rows="1" />
 
-      <div v-else-if="!adminApiKeyExists" class="flex items-center justify-between gap-4">
+      <div v-else-if="!adminApiKeyExists" class="flex flex-wrap items-center justify-between gap-4">
         <span class="text-sm text-primary-900/80 dark:text-dark-300">
           {{ t('admin.settings.adminApiKey.notConfigured') }}
         </span>
@@ -37,17 +37,17 @@
 
       <template v-else>
         <div class="flex flex-wrap items-end justify-between gap-4">
-          <div>
+          <div class="min-w-0">
             <p class="input-label">
               {{ t('admin.settings.adminApiKey.currentKey') }}
             </p>
             <code
-              class="rounded-compact bg-gray-100 px-2 py-1 font-mono text-sm text-gray-900 dark:bg-dark-700 dark:text-dark-50"
+              class="block max-w-full break-all rounded-compact bg-gray-100 px-2 py-1 font-mono text-sm text-gray-900 dark:bg-dark-700 dark:text-dark-50"
             >
               {{ adminApiKeyMasked }}
             </code>
           </div>
-          <div class="flex gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <button
               type="button"
               :disabled="adminApiKeyOperating"
@@ -79,15 +79,15 @@
           <p class="text-sm font-medium text-green-700 dark:text-green-300">
             {{ t('admin.settings.adminApiKey.keyWarning') }}
           </p>
-          <div class="flex items-center gap-2">
+          <div class="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start">
             <code
-              class="flex-1 select-all break-all rounded-compact border border-green-300 bg-white px-3 py-2 font-mono text-sm dark:border-green-700 dark:bg-dark-800"
+              class="min-w-0 flex-1 select-all break-all rounded-compact border border-green-300 bg-white px-3 py-2 font-mono text-sm dark:border-green-700 dark:bg-dark-800"
             >
               {{ newAdminApiKey }}
             </code>
             <button
               type="button"
-              class="btn btn-primary btn-sm h-9 flex-shrink-0"
+              class="btn btn-primary btn-sm h-9 shrink-0 self-end sm:self-start"
               @click="copyNewKey"
             >
               {{ t('admin.settings.adminApiKey.copyKey') }}

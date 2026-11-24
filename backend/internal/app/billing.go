@@ -145,10 +145,15 @@ func provideWindowCostCache(rdb *redis.Client) billing.WindowCostCache {
 	return billingredis.NewWindowCostCache(rdb)
 }
 
-// provideBillingCalculator binds catalog pricing to the application calendar
-// and location loader.
-func provideBillingCalculator(catalog *catalogprovider.Service, calendar timezone.Calendar) *billing.Calculator {
-	return billing.NewCalculator(catalog, billing.CalculatorOptions{Now: calendar.Now, LoadLocation: billingadapter.LoadPricingLocation})
+// provideBillingCalculator binds catalog pricing to the application calendar,
+// location loader, and configured catalog precedence. Group and funding rates
+// remain inputs to each quote and charge calculation.
+func provideBillingCalculator(catalog *catalogprovider.Service, calendar timezone.Calendar, cfg *config.Config) *billing.Calculator {
+	return billing.NewCalculator(catalog, billing.CalculatorOptions{
+		PreferCatalogPricing: cfg.ModelCatalog.PreferCatalogPricing,
+		Now:                  calendar.Now,
+		LoadLocation:         billingadapter.LoadPricingLocation,
+	})
 }
 
 // provideBillingPriceResolver combines group prices, platform model identity,

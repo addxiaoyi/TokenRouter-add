@@ -5,6 +5,9 @@ import (
 	"crypto/tls"
 	"database/sql"
 	"fmt"
+	"net"
+	"net/url"
+	"strconv"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -30,8 +33,8 @@ import (
 // with close errors either logged or discarded as stated by their entry
 // points. HTTP and CLI setup validate the host, port, user, database name, and
 // SSL mode before probing; automatic setup passes its environment values directly.
-// Callers provide a valid database identifier and libpq-compatible field text
-// because these adapters interpolate the supplied values.
+// Connection URLs encode credentials independently from the target database,
+// preserving empty passwords, reserved characters, and IPv6 server addresses.
 
 // SetupRedisConfig carries temporary Redis probe settings from setup input.
 type SetupRedisConfig struct {
@@ -55,15 +58,14 @@ type SetupDatabaseConfig struct {
 	SSLMode  string `json:"sslmode" yaml:"sslmode"`   // libpq TLS mode
 }
 
-// BuildPostgresDSN interpolates setup connection fields into a libpq keyword
-// DSN using the supplied dbName. Values are inserted as supplied, so callers
-// provide text valid for that format; this helper performs no quoting or
-// validation.
+// BuildPostgresDSN encodes setup connection fields as a PostgreSQL URL.
+// Empty passwords remain explicit, while reserved characters and IPv6 addresses
+// retain their field boundaries. Callers validate database names and SSL modes.
 func BuildPostgresDSN(cfg *SetupDatabaseConfig, dbName string) string {
-	return fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-		cfg.Host, cfg.Port, cfg.User, cfg.Password, dbName, cfg.SSLMode,
-	)
+	connection := url.URL{Scheme: "postgres", User: url.UserPassword(cfg.User, cfg.Password), Host: net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port)), Path: "/" + dbName}
+	query := url.Values{"sslmode": {cfg.SSLMode}}
+	connection.RawQuery = query.Encode()
+	return connection.String()
 }
 
 // BuildDatabaseConnectionDSNs returns maintenance and target DSNs using the

@@ -182,6 +182,18 @@
           :show-divider="false"
           @start="handleOAuthStart"
         />
+        <SocialOAuthSection
+          v-if="telegramOAuthEnabled"
+          provider="telegram"
+          :disabled="authActionDisabled"
+          @start="handleOAuthStart"
+        />
+        <SocialOAuthSection
+          v-if="discordOAuthEnabled"
+          provider="discord"
+          :disabled="authActionDisabled"
+          @start="handleOAuthStart"
+        />
         <QQOAuthSection
           v-if="qqOAuthEnabled"
           :disabled="authActionDisabled"
@@ -238,6 +250,7 @@ import EmailOAuthButtons from '@/components/auth/EmailOAuthButtons.vue'
 import GoogleOneTap from '@/components/auth/GoogleOneTap.vue'
 import LinuxDoOAuthSection from '@/components/auth/LinuxDoOAuthSection.vue'
 import QQOAuthSection from '@/components/auth/QQOAuthSection.vue'
+import SocialOAuthSection from '@/components/auth/SocialOAuthSection.vue'
 import SMSLoginSection from '@/components/auth/SMSLoginSection.vue'
 import DingTalkOAuthSection from '@/components/auth/DingTalkOAuthSection.vue'
 import OidcOAuthSection from '@/components/auth/OidcOAuthSection.vue'
@@ -320,6 +333,8 @@ const aliyunCaptchaRegion = ref<string>('cn') // Aliyun SDK region selector
 // individual methods are configured.
 const linuxdoOAuthEnabled = ref<boolean>(false) // public LinuxDo login enable flag
 const qqOAuthEnabled = ref<boolean>(false) // public QQ login enable flag
+const telegramOAuthEnabled = ref(false) // public Telegram login availability
+const discordOAuthEnabled = ref(false) // public Discord login availability
 const smsLoginEnabled = ref<boolean>(false) // public SMS code login enable flag
 const dingtalkOAuthEnabled = ref<boolean>(false) // public DingTalk login enable flag
 const wechatOAuthEnabled = ref<boolean>(false) // public WeChat web-login availability
@@ -444,6 +459,8 @@ const showOAuthLogin = computed(
     !backendModeEnabled.value &&
     (linuxdoOAuthEnabled.value ||
       qqOAuthEnabled.value ||
+      telegramOAuthEnabled.value ||
+      discordOAuthEnabled.value ||
       dingtalkOAuthEnabled.value ||
       wechatOAuthEnabled.value ||
       oidcOAuthEnabled.value ||
@@ -512,6 +529,8 @@ onMounted(async () => {
     aliyunCaptchaRegion.value = settings.aliyun_captcha_region || 'cn'
     linuxdoOAuthEnabled.value = settings.linuxdo_oauth_enabled
     qqOAuthEnabled.value = settings.qq_oauth_enabled === true
+    telegramOAuthEnabled.value = settings.telegram_oauth_enabled === true
+    discordOAuthEnabled.value = settings.discord_oauth_enabled === true
     smsLoginEnabled.value = settings.sms_login_enabled === true
     dingtalkOAuthEnabled.value = settings.dingtalk_oauth_enabled ?? false
     wechatOAuthEnabled.value = isWeChatWebOAuthEnabled(settings)

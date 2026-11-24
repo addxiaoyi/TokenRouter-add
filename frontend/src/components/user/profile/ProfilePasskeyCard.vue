@@ -1,9 +1,9 @@
 <template>
   <div class="card">
     <div
-      class="flex items-end justify-between border-b border-gray-100 px-6 py-4 dark:border-dark-700"
+      class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-6 py-4 dark:border-dark-700"
     >
-      <div>
+      <div class="min-w-0 flex-1 basis-48">
         <h2 class="text-lg font-medium text-gray-900 dark:text-white">
           {{ t('profile.passkey.title') }}
         </h2>
@@ -14,16 +14,16 @@
       <button
         v-if="enabled && supported && !showAddForm"
         type="button"
-        class="btn btn-primary"
+        class="btn btn-primary shrink-0"
         :disabled="busy"
         @click="showAddForm = true"
       >
-        <Icon name="plus" size="sm" class="mr-2" />
+        <Icon name="plus" size="sm" :animate-on-hover="false" />
         {{ t('profile.passkey.add') }}
       </button>
     </div>
 
-    <div class="px-6 py-6">
+    <div class="px-6 py-5">
       <div v-if="!enabled" class="text-sm text-gray-500 dark:text-gray-400">
         {{ t('profile.passkey.featureDisabled') }}
       </div>
@@ -32,11 +32,8 @@
       </div>
       <div v-else>
         <Collapse :open="showAddForm" unmount-on-hide>
-          <form
-            class="mb-5 flex flex-col gap-3 rounded-control border border-gray-200 p-4 dark:border-dark-700 sm:flex-row sm:items-end"
-            @submit.prevent="addPasskey"
-          >
-            <div class="flex-1">
+          <form class="mb-5 flex flex-wrap items-end gap-3" @submit.prevent="addPasskey">
+            <div class="min-w-0 flex-1 basis-48">
               <label for="passkey-name" class="input-label">{{ t('profile.passkey.name') }}</label>
               <input
                 id="passkey-name"
@@ -47,7 +44,7 @@
                 autofocus
               />
             </div>
-            <div class="flex gap-2">
+            <div class="ml-auto flex flex-wrap justify-end gap-2">
               <button type="button" class="btn btn-secondary" :disabled="busy" @click="cancelAdd">
                 {{ t('common.cancel') }}
               </button>
@@ -62,7 +59,7 @@
 
         <div
           v-else-if="credentials.length === 0"
-          class="rounded-control border border-dashed border-gray-200 px-4 py-8 text-center text-sm text-gray-500 dark:border-dark-700 dark:text-gray-400"
+          class="py-3 text-sm leading-6 text-gray-500 dark:text-gray-400"
         >
           {{ t('profile.passkey.empty') }}
         </div>
@@ -71,22 +68,31 @@
           <div
             v-for="credential in credentials"
             :key="credential.id"
-            class="flex items-center justify-between gap-4 py-4 first:pt-0 last:pb-0"
+            class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 py-4 first:pt-0 last:pb-0"
           >
             <div class="min-w-0">
-              <div class="flex items-center gap-2">
-                <Icon name="key" size="md" class="shrink-0 text-primary-500" />
-                <p class="truncate font-medium text-gray-900 dark:text-white">
-                  {{ credential.name }}
-                </p>
-                <span
-                  v-if="credential.backup"
-                  class="rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                >
-                  {{ t('profile.passkey.synced') }}
-                </span>
+              <div class="flex min-w-0 items-start gap-2">
+                <Icon
+                  name="key"
+                  size="sm"
+                  :animate-on-hover="false"
+                  class="mt-0.5 shrink-0 text-primary-500"
+                />
+                <div class="min-w-0 flex-1 text-sm leading-5">
+                  <span
+                    class="break-words font-medium text-gray-900 dark:text-white [overflow-wrap:anywhere]"
+                  >
+                    {{ credential.name }}
+                  </span>
+                  <span
+                    v-if="credential.backup"
+                    class="ml-2 inline-flex rounded-full bg-green-50 px-2 py-0.5 align-middle text-xs text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                  >
+                    {{ t('profile.passkey.synced') }}
+                  </span>
+                </div>
               </div>
-              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              <p class="mt-1 break-words text-xs leading-5 text-gray-500 dark:text-gray-400">
                 {{ t('profile.passkey.createdAt', { date: formatDate(credential.created_at) }) }}
                 <template v-if="credential.last_used_at">
                   ·

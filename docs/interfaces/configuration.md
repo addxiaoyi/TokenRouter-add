@@ -144,6 +144,7 @@ database:
 - 目录同步：`model_catalog.catalog_url` 默认 `https://models.dev/experimental/v2.0/api.json`，`model_catalog.check_interval_minutes` 默认 `10` 分钟，自动同步价格和模型属性。加载时自动将 models.dev 官方旧路径 `/catalog.json`、`/api.json` 映射至 v2 并保留原模型类型筛选；自定义镜像地址原样保留，须返回 v2 提供商目录。
 - v1 目录迁移：v1 升级自动将已知 Wei-Shaw、BerriAI 旧公共价格地址迁至 models.dev 并补上新下载域名，自定义地址不变；旧的相对资源路径和 `/app/resources/` 路径仅在原文件不存在时迁至同目录 `model_pricing_supplements.json`；旧目录缓存不再加载也不删除。
 - 补充文件：官方补充经 `go:embed` 编入二进制（同条目含价格字段和 `attributes`）；`model_catalog.supplement_file` 默认空，指定同格式自定义补充。
+- 售价来源：`model_catalog.prefer_catalog_pricing` 默认 `false`，开启后有效目录价格优先于自定义模型价卡，具体规则见[共享模型价卡](../domains/routing_and_billing.md#group_model_pricing)。这是启动配置，修改后须重启服务。
 - 字段覆盖优先级：
   1. 目录已有字段（包含零价）最高。
   2. 自定义补充文件次之。
@@ -283,6 +284,8 @@ setup 使用与主服务一致的配置文件查找规则（含 `CONFIG_FILE` �
 - 开发与托管：Vite 开发服务器同样注入（未配前端地址时用本地开发端口）；独立静态托管须由服务端完成相同注入，前端 JS 补写无法替代。社交平台缓存旧预览不随保存立即刷新。
 
 ### 注册、邮箱和登录
+
+Telegram 和 Discord 使用数据库运行时设置 `telegram_oauth_*`、`discord_oauth_*`，在身份认证页保存后生效。每组包含 `enabled`、`client_id`、`client_secret`、`redirect_url`；默认关闭，密钥留空保留已保存值，回调留空采用当前公网 API 来源。启用时校验有效凭据，外部回调要求 HTTPS（回环开发地址可用 HTTP），公开接口只返回可用性开关，管理接口仅返回密钥是否已配置。平台登记步骤见[登录配置指南](../guides/social_login.md)。
 
 | 设置键 | 默认值与故障语义 | 行为与暴露范围 |
 | --- | --- | --- |

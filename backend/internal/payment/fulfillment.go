@@ -17,7 +17,7 @@ import (
 // repeatable balance or subscription delivery.
 // Verified provider progress can arrive repeatedly or after a local pending
 // order was closed. Notification handling first resolves merchant identity and
-// checks saved provider metadata and EasyPay/EPUSDT EPay transaction identity, then
+// checks saved provider metadata and EasyPay/EPUSDT/StarPAY transaction identity, then
 // conditionally records payment state and resumes entitlement work. Only Stripe failure
 // notifications select the terminal payment-failure transition; other failure
 // callbacks are ignored before lookup.
@@ -187,7 +187,8 @@ func ParseLegacyPaymentOrderID(orderID string, notFound bool) (int64, bool) {
 // ordinary audit before returning. Snapshot metadata validation separately has
 // its own absent/unrecognized-key rules and is not implied by a successful key
 // comparison. The caller retains signature verification ownership before this
-// order association stage. EasyPay, EPUSDT EPay and NOWPayments observations must retain a saved
+// order association stage. EasyPay, EPUSDT, NOWPayments and StarPAY observations
+// must retain a saved
 // transaction number so another external payment cannot replace that binding.
 // The initial EasyPay merchant-number echo can be corrected before payment only
 // when adapter-owned confirmation metadata explicitly permits that order.
@@ -223,6 +224,8 @@ func (s *Fulfillment) ValidatePaymentNotificationOrder(ctx context.Context, o *O
 
 // validatePaymentTradeNumber preserves a previously bound EasyPay, EPUSDT or
 // NOWPayments transaction. Other adapters own their reference transitions. Empty references
+// validatePaymentTradeNumber preserves a previously bound EasyPay, EPUSDT or StarPAY
+// transaction. Other adapters own their reference transitions. Empty references
 // and exact matches use ordinary confirmation, whose caller still verifies money
 // and merchant identity before changing persistent state.
 //
@@ -232,7 +235,7 @@ func (s *Fulfillment) ValidatePaymentNotificationOrder(ctx context.Context, o *O
 // reloads keeps an established transaction binding immutable.
 func validatePaymentTradeNumber(order *Order, providerKey, tradeNo string, metadata map[string]string) error {
 	isEasyPay := GetBasePaymentType(providerKey) == TypeEasyPay
-	if (!isEasyPay && providerKey != TypeEPUSDT && providerKey != TypeNOWPayments) || order.PaymentTradeNo == "" || order.PaymentTradeNo == tradeNo {
+	if (!isEasyPay && providerKey != TypeEPUSDT && providerKey != TypeNOWPayments && providerKey != TypeStarPay) || order.PaymentTradeNo == "" || order.PaymentTradeNo == tradeNo {
 		return nil
 	}
 	if isEasyPay && order.PaidAt == nil && order.OutTradeNo != "" &&
@@ -373,11 +376,27 @@ func IsValidProviderAmount(amount float64) bool {
 	return amount > 0 && !math.IsNaN(amount) && !math.IsInf(amount, 0)
 }
 
-// ValidateProviderNotificationMetadata delegates saved merchant comparison to
-// ValidateProviderSnapshotMetadata. Its nil/absent metadata and recognized-key
-// rules remain with that helper; callers verify the provider observation
-// before this association check.
+// ValidateProviderNotificationMetadata checks the observed merchant and saved charge.
+// StarPAY requires a complete local snapshot and exact integer CNY cents, together
+// with the business number verified by its platform query. Other adapters retain
+// ValidateProviderSnapshotMetadata's legacy missing-metadata behavior.
+//
+// The StarPAY comparison precedes shared amount tolerance because its signed
+// decimal amount and queried integer charge must identify the same purchase.
+// Callers authenticate the provider observation before invoking this function;
+// these local comparisons alone do not authenticate a callback or grant rights.
 func ValidateProviderNotificationMetadata(order *Order, providerKey string, metadata map[string]string) error {
+	if providerKey == TypeStarPay {
+		if order == nil || PsOrderProviderSnapshot(order) == nil || !IsValidProviderAmount(order.PayAmount) {
+			return fmt.Errorf("starpay saved payment snapshot is missing or invalid")
+		}
+		// StarPAY's integer charge must match the business order exactly. Preserve
+		// that boundary before the shared confirmation path applies legacy currency tolerances.
+		cents, err := AmountToMinorUnit(FormatAmountForCurrency(order.PayAmount, "CNY"), "CNY")
+		if err != nil || metadata["merchant_order_id"] != order.OutTradeNo || metadata["amount_cents"] != strconv.FormatInt(cents, 10) {
+			return fmt.Errorf("starpay business order or exact payment amount does not match")
+		}
+	}
 	return ValidateProviderSnapshotMetadata(order, providerKey, metadata)
 }
 
@@ -417,7 +436,7 @@ func ExpectedNotificationProviderKey(registry *Registry, orderPaymentType string
 // paid and recharging delegate fulfillment directly, so that branch does not
 // rewrite payment time/trade. Completed/refunded and other unhandled states
 // return nil. Grants still use their own replay and completion conditions.
-// EasyPay transaction identity is checked again after each order reread, so a
+// Bound transaction identity is checked again after each order reread, so a
 // concurrent paid transition cannot make a conflicting reference acceptable.
 func (s *Fulfillment) ToPaid(ctx context.Context, o *Order, tradeNo string, paid float64, pk string, metadata map[string]string) error {
 	// Keep the supplied observation's pi_ reference when the incoming Stripe

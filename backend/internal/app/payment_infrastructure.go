@@ -1,8 +1,10 @@
 package app
 
 import (
+	"database/sql"
 	"log/slog"
 
+	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
 	"github.com/TokenFlux/TokenRouter/internal/payment"
@@ -20,9 +22,15 @@ import (
 // share the registry, instance selector, configuration, and plans assembled for
 // checkout and administration.
 
-// providePaymentHTTP binds checkout and plan reads to user payment HTTP.
-func providePaymentHTTP(runtime *payment.Runtime, cfg *payment.ConfigService, plans *billing.Plans) *paymenthttp.PaymentHandler {
-	return paymenthttp.NewPaymentHandler(runtime, cfg, plans)
+// providePaymentHTTP binds buyer payment and optional digital invoice workflows.
+// Invalid enabled invoice configuration fails assembly before HTTP is served.
+// The lifecycle manager owns recovery worker startup and shutdown with shared storage.
+func providePaymentHTTP(runtime *payment.Runtime, cfg *payment.ConfigService, plans *billing.Plans, db *sql.DB, manager *lifecycle.Manager) (*paymenthttp.PaymentHandler, error) {
+	invoices, err := provideTaxInvoices(db, manager)
+	if err != nil {
+		return nil, err
+	}
+	return paymenthttp.NewPaymentHandler(runtime, cfg, plans, invoices), nil
 }
 
 // providePaymentAdminHTTP binds payment administration with the shared

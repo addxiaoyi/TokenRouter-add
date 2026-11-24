@@ -61,6 +61,31 @@ function orderFactory(overrides: Partial<PaymentOrder> = {}): PaymentOrder {
 }
 
 describe('admin order currency display', () => {
+  // StarPAY refunds return the entire original charge to the buyer's merchant wallet.
+  // The administrator cannot enter a partial amount, and submission retains the full local entitlement quantity.
+  it('locks StarPAY balance refunds to the complete original payment', async () => {
+    const wrapper = mount(AdminRefundDialog, {
+      props: {
+        show: true,
+        order: orderFactory({
+          order_type: 'balance',
+          payment_type: 'starpay',
+          currency: 'CNY',
+          refund_amount: 0,
+        }),
+        userBalance: 200,
+      },
+      global: { stubs: { BaseDialog: BaseDialogStub } },
+    })
+    expect(wrapper.find('input[type="number"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="subscription-refund-amount"]').text()).toBe('¥108.00')
+    await wrapper.get('textarea').setValue('Customer request')
+    await wrapper.get('form').trigger('submit')
+    expect(wrapper.emitted('confirm')).toEqual([
+      [{ amount: 100, reason: 'Customer request', deduct_balance: true, force: false }],
+    ])
+    wrapper.unmount()
+  })
   // An administrator can keep a subscription while refunding the complete charge.
   // The form displays the channel amount and submits the full subscription price.
   it('shows the full paid amount and lets the administrator keep the subscription', async () => {

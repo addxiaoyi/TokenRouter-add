@@ -74,6 +74,25 @@ const tokenPricing: MarketplaceModelPricing = {
   output_price_per_token: 0.000002,
 }
 
+// Request prices already include the group rate and need their own unit label.
+// Opening details preserves small amounts and never substitutes zero token rows.
+it.each([0, 0.0001, 0.02])('shows request unit pricing at %s', async (price) => {
+  const wrapper = mountPanel(
+    marketplaceModel('request-model', {
+      pricing_mode: 'per_request',
+      price_status: 'priced',
+      price_per_request: price,
+    }),
+  )
+  await wrapper.get('[data-testid="model-pricing-toggle"]').trigger('click')
+  const text = wrapper.get('[data-testid="pricing-rows"]').text()
+  expect(text).toContain('marketplace.perRequest')
+  expect(text).toContain(price.toFixed(4))
+  expect(text).not.toContain('marketplace.input')
+  expect(wrapper.find('[data-testid="pricing-fast-switch"]').exists()).toBe(false)
+  wrapper.unmount()
+})
+
 // fastPricing extends the standard quote with distinct fast-mode amounts so
 // tests can detect a selector that leaves ordinary price rows visible.
 const fastPricing: MarketplaceModelPricing = {
@@ -84,6 +103,24 @@ const fastPricing: MarketplaceModelPricing = {
   fast_input_price_per_token: 0.000005,
   fast_output_price_per_token: 0.000006,
 }
+
+// Closed model cards must not create detailed quote controls before inspection.
+// Opening, selecting a speed tier, and reopening still preserves the selected quote.
+it('mounts pricing details on demand and retains quote selections', async () => {
+  const wrapper = mountPanel(marketplaceModel('gpt', fastPricing))
+  expect(wrapper.find('[data-testid="pricing-rows"]').exists()).toBe(false)
+  expect(wrapper.find('[data-testid="pricing-fast-switch"]').exists()).toBe(false)
+  await wrapper.get('[data-testid="model-pricing-toggle"]').trigger('click')
+  await wrapper.get('[data-testid="pricing-fast-switch"]').findAll('button')[1].trigger('click')
+  const quote = wrapper.get('[data-testid="pricing-rows"]').text()
+  await wrapper.get('[data-testid="model-pricing-toggle"]').trigger('click')
+  await wrapper.get('[data-testid="model-pricing-toggle"]').trigger('click')
+  expect(wrapper.get('[data-testid="pricing-rows"]').text()).toBe(quote)
+  expect(
+    wrapper.get('[data-testid="pricing-fast-switch"]').findAll('button')[1].classes(),
+  ).toContain('segmented-item-active')
+  wrapper.unmount()
+})
 
 // intervalPricing supplies a bounded context range and an open-ended successor
 // with distinct prices, exposing both range labels and selected-row replacement.
@@ -440,7 +477,7 @@ describe('ModelPricingPanel', () => {
 
 // A priced image quote explicitly sets one resolution to zero and omits the others.
 // The declared free resolution remains in the content without unpriced size labels.
-it('显示明确免费的图片尺寸，省略未定价尺寸', () => {
+it('显示明确免费的图片尺寸，省略未定价尺寸', async () => {
   const wrapper = mountPanel(
     marketplaceModel('free-image-size', {
       pricing_mode: 'image',
@@ -448,6 +485,7 @@ it('显示明确免费的图片尺寸，省略未定价尺寸', () => {
       image_price_1k: 0,
     }),
   )
+  await wrapper.get('[data-testid="model-pricing-toggle"]').trigger('click')
   expect(wrapper.text()).toContain('1K')
   expect(wrapper.text()).not.toContain('2K')
   expect(wrapper.text()).not.toContain('4K')

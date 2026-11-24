@@ -8,13 +8,16 @@
         {{ t('profile.balanceNotify.description') }}
       </p>
     </div>
-    <div class="px-6 py-6 space-y-6">
+    <div class="space-y-5 px-6 py-5">
       <!-- Enable toggle -->
-      <div class="flex items-center justify-between">
-        <label class="input-label mb-0">{{ t('profile.balanceNotify.enabled') }}</label>
+      <div class="flex items-center justify-between gap-3">
+        <span class="text-sm font-medium text-gray-700 dark:text-dark-200">{{
+          t('profile.balanceNotify.enabled')
+        }}</span>
         <label class="relative inline-flex items-center cursor-pointer">
           <Toggle
             v-model="notifyEnabled"
+            :aria-label="t('profile.balanceNotify.enabled')"
             variant="flush"
             off-tone="soft"
             @update:model-value="handleToggle"
@@ -24,21 +27,22 @@
 
       <template v-if="notifyEnabled">
         <!-- Custom threshold with save button -->
-        <div>
-          <label class="input-label">
+        <div class="grid gap-3 sm:grid-cols-[8rem_minmax(0,1fr)] sm:items-start">
+          <label for="balance-notify-threshold" class="input-label mb-0 sm:pt-2">
             {{ t('profile.balanceNotify.threshold') }}
-            <span class="text-xs text-gray-400 ml-2">{{
+            <span class="mt-1 block text-xs font-normal leading-5 text-gray-400">{{
               t('profile.balanceNotify.thresholdHint')
             }}</span>
           </label>
-          <div class="flex items-center gap-2">
+          <div class="flex min-w-0 flex-wrap items-center gap-2">
             <span class="text-gray-500">{{ balanceUnitSymbol }}</span>
             <input
+              id="balance-notify-threshold"
               v-model.number="customThreshold"
               type="number"
               min="0"
               step="0.01"
-              class="input flex-1"
+              class="input min-w-0 flex-1 basis-28"
               :placeholder="
                 systemDefaultThreshold > 0
                   ? `${t('profile.balanceNotify.systemDefault')} ${formatBalanceAmount(systemDefaultThreshold, { fractionDigits: 2 })}`
@@ -46,6 +50,7 @@
               "
             />
             <button
+              type="button"
               @click="handleThresholdUpdate"
               :disabled="savingThreshold"
               class="btn btn-primary btn-sm whitespace-nowrap"
@@ -63,26 +68,27 @@
           </p>
 
           <!-- Saved email entries -->
-          <div v-if="emailEntries.length > 0" class="space-y-2 mb-3">
+          <div v-if="emailEntries.length > 0" class="mb-3 space-y-2">
             <div
               v-for="(entry, idx) in emailEntries"
               :key="idx"
-              class="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-dark-700 rounded-control"
+              class="grid gap-2 rounded-control bg-gray-50 px-3 py-3 dark:bg-dark-700"
             >
-              <div class="flex items-center gap-2 min-w-0 flex-1">
-                <label class="relative inline-flex items-center cursor-pointer shrink-0">
+              <div class="min-w-0">
+                <span class="min-w-0 break-all text-sm text-gray-700 dark:text-gray-300">{{
+                  entry.email
+                }}</span>
+              </div>
+              <div class="flex min-w-0 flex-wrap items-center justify-end gap-x-3 gap-y-2">
+                <label class="relative mr-auto inline-flex shrink-0 cursor-pointer items-center">
                   <Toggle
                     :model-value="!entry.disabled"
+                    :aria-label="entry.email"
                     size="sm"
                     off-tone="soft"
                     @update:model-value="handleEmailToggle(entry)"
                   />
                 </label>
-                <span class="text-sm text-gray-700 dark:text-gray-300 truncate">{{
-                  entry.email
-                }}</span>
-              </div>
-              <div class="flex items-center gap-2 shrink-0">
                 <template v-if="!entry.verified">
                   <!-- Inline verify flow for saved unverified emails -->
                   <template v-if="verifyingEmail === entry.email">
@@ -90,13 +96,15 @@
                       v-model="verifyCode"
                       type="text"
                       maxlength="6"
-                      class="input min-h-0 w-20 rounded-compact px-2 py-1 text-xs"
+                      class="input w-24 shrink-0 text-sm"
+                      :aria-label="t('profile.balanceNotify.codePlaceholder')"
                       :placeholder="t('profile.balanceNotify.codePlaceholder')"
                     />
                     <button
+                      type="button"
                       @click="verifySavedEmail(entry.email)"
                       :disabled="!verifyCode || verifyCode.length !== 6 || verifyingSaved"
-                      class="text-xs text-primary-600 hover:text-primary-700"
+                      class="min-h-8 text-xs text-primary-600 hover:text-primary-700"
                     >
                       {{ t('profile.balanceNotify.verify') }}
                     </button>
@@ -105,24 +113,27 @@
                     >
                     <button
                       v-else
+                      type="button"
                       @click="sendCodeForSaved(entry.email)"
                       :disabled="sendingSavedCode"
-                      class="text-xs text-gray-500 hover:text-gray-700"
+                      class="min-h-8 text-xs text-gray-500 hover:text-gray-700"
                     >
                       {{ t('profile.balanceNotify.resend') }}
                     </button>
                     <button
+                      type="button"
                       @click="verifyingEmail = ''"
-                      class="text-xs text-gray-400 hover:text-gray-600"
+                      class="min-h-8 text-xs text-gray-400 hover:text-gray-600"
                     >
                       {{ t('common.cancel') }}
                     </button>
                   </template>
                   <template v-else>
                     <button
+                      type="button"
                       @click="sendCodeForSaved(entry.email)"
                       :disabled="sendingSavedCode"
-                      class="text-xs text-primary-600 hover:text-primary-700"
+                      class="min-h-8 text-xs text-primary-600 hover:text-primary-700"
                     >
                       {{ t('profile.balanceNotify.verify') }}
                     </button>
@@ -135,8 +146,9 @@
                   t('profile.balanceNotify.verified')
                 }}</span>
                 <button
+                  type="button"
                   @click="handleRemoveEmail(entry.email)"
-                  class="text-red-500 hover:text-red-700 text-xs"
+                  class="min-h-8 text-xs text-red-500 hover:text-red-700"
                 >
                   {{ t('profile.balanceNotify.removeEmail') }}
                 </button>
@@ -145,40 +157,49 @@
           </div>
 
           <!-- Pending (unverified) emails in verification flow -->
-          <div v-if="pendingEmails.length > 0" class="space-y-2 mb-3">
+          <div v-if="pendingEmails.length > 0" class="mb-3 space-y-2">
             <div
               v-for="(pe, idx) in pendingEmails"
               :key="pe.email"
-              class="flex items-center gap-2 px-3 py-2 bg-yellow-50 dark:bg-yellow-900/10 rounded-control border border-yellow-200 dark:border-yellow-800"
+              class="grid gap-2 rounded-control border border-yellow-200 bg-yellow-50 px-3 py-3 dark:border-yellow-800 dark:bg-yellow-900/10"
             >
-              <span class="flex-1 text-sm text-gray-700 dark:text-gray-300">{{ pe.email }}</span>
-              <div v-if="!pe.codeSent" class="flex items-center gap-1">
+              <span class="min-w-0 break-all text-sm text-gray-700 dark:text-gray-300">{{
+                pe.email
+              }}</span>
+              <div
+                v-if="!pe.codeSent"
+                class="flex flex-wrap items-center justify-end gap-x-3 gap-y-2"
+              >
                 <button
+                  type="button"
                   @click="sendCodeFor(idx)"
                   :disabled="pe.sending"
-                  class="text-xs text-primary-600 hover:text-primary-700"
+                  class="min-h-8 text-xs text-primary-600 hover:text-primary-700"
                 >
                   {{ t('profile.balanceNotify.sendCode') }}
                 </button>
                 <button
+                  type="button"
                   @click="pendingEmails.splice(idx, 1)"
-                  class="text-xs text-red-500 hover:text-red-700 ml-1"
+                  class="min-h-8 text-xs text-red-500 hover:text-red-700"
                 >
                   {{ t('profile.balanceNotify.removeEmail') }}
                 </button>
               </div>
-              <div v-else class="flex items-center gap-1">
+              <div v-else class="flex min-w-0 flex-wrap items-center justify-end gap-x-3 gap-y-2">
                 <input
                   v-model="pe.code"
                   type="text"
                   maxlength="6"
-                  class="input min-h-0 w-20 rounded-compact px-2 py-1 text-xs"
+                  class="input w-24 shrink-0 text-sm"
+                  :aria-label="t('profile.balanceNotify.codePlaceholder')"
                   :placeholder="t('profile.balanceNotify.codePlaceholder')"
                 />
                 <button
+                  type="button"
                   @click="verifyPending(idx)"
                   :disabled="!pe.code || pe.code.length !== 6 || pe.verifying"
-                  class="text-xs text-primary-600 hover:text-primary-700"
+                  class="min-h-8 text-xs text-primary-600 hover:text-primary-700"
                 >
                   {{ t('profile.balanceNotify.verify') }}
                 </button>
@@ -187,9 +208,10 @@
                 >
                 <button
                   v-else
+                  type="button"
                   @click="sendCodeFor(idx)"
                   :disabled="pe.sending"
-                  class="text-xs text-gray-500 hover:text-gray-700"
+                  class="min-h-8 text-xs text-gray-500 hover:text-gray-700"
                 >
                   {{ t('profile.balanceNotify.resend') }}
                 </button>
@@ -198,15 +220,17 @@
           </div>
 
           <!-- Add new email input (hidden when at limit) -->
-          <div v-if="canAddMore" class="flex gap-2">
+          <div v-if="canAddMore" class="flex min-w-0 flex-wrap gap-2">
             <input
               v-model="newEmail"
               type="email"
-              class="input flex-1"
+              class="input min-w-0 flex-1 basis-40"
+              :aria-label="t('profile.balanceNotify.extraEmails')"
               :placeholder="t('profile.balanceNotify.emailPlaceholder')"
               @keyup.enter="addPendingEmail"
             />
             <button
+              type="button"
               @click="addPendingEmail"
               :disabled="!newEmail"
               class="btn btn-secondary whitespace-nowrap"

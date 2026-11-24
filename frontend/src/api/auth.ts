@@ -41,7 +41,7 @@ export type LoginResponse = AuthResponse | TotpLoginResponse
  * login-start endpoints.
  */
 export type OAuthLoginProvider =
-  'github' | 'google' | 'linuxdo' | 'dingtalk' | 'wechat' | 'oidc' | 'qq'
+  'github' | 'google' | 'linuxdo' | 'dingtalk' | 'wechat' | 'oidc' | 'qq' | 'telegram' | 'discord'
 
 /**
  * OAuthLoginStart pairs the selected provider with query parameters retained

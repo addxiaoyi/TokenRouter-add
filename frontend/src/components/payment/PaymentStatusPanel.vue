@@ -83,7 +83,7 @@
         {{ t('payment.qr.expired') }}
       </p>
       <p class="mt-1 text-sm text-gray-500 dark:text-dark-400">{{
-        isEPUSDT ? t('payment.crypto.expiredHint') : t('payment.qr.expiredDesc')
+        isHostedCashier ? t(`${hostedCopy}.expiredHint`) : t('payment.qr.expiredDesc')
       }}</p>
       <button class="btn btn-primary mt-6 w-full" @click="handleDone">
         {{ t('common.confirm') }}
@@ -282,8 +282,8 @@
       </div>
     </div>
 
-    <!-- GMPay confirms fiat order amounts while the hosted cashier owns token selection and transfer instructions. -->
-    <div v-else-if="isEPUSDT" class="card p-6 sm:p-8">
+    <!-- Hosted cashiers own payment authorization while this panel checks the saved local order for confirmed fulfillment. -->
+    <div v-else-if="isHostedCashier" class="card p-6 sm:p-8">
       <div class="text-center">
         <Icon
           name="recharge"
@@ -292,10 +292,10 @@
           :animate-on-hover="false"
         />
         <h2 class="mt-4 text-lg font-semibold text-gray-900 dark:text-white">{{
-          payUrl ? t('payment.crypto.waiting') : t('payment.result.processing')
+          payUrl ? t(`${hostedCopy}.waiting`) : t('payment.result.processing')
         }}</h2>
         <p class="mt-2 text-sm leading-6 text-gray-500 dark:text-dark-300">{{
-          payUrl ? t('payment.crypto.waitingHint') : t('payment.crypto.creationUnconfirmed')
+          payUrl ? t(`${hostedCopy}.waitingHint`) : t(`${hostedCopy}.creationUnconfirmed`)
         }}</p>
         <p class="mt-6 text-2xl font-semibold tabular-nums text-gray-900 dark:text-white">{{
           displayPaymentAmount
@@ -303,11 +303,11 @@
       </div>
       <div class="mt-6 grid gap-2 sm:grid-cols-2">
         <button v-if="payUrl" class="btn btn-primary" @click="reopenPopup"
-          >{{ t('payment.crypto.continue')
+          >{{ t(`${hostedCopy}.continue`)
           }}<Icon name="externalLink" size="sm" :animate-on-hover="false"
         /></button>
         <button class="btn btn-secondary" @click="pollStatus">{{
-          t('payment.crypto.checkStatus')
+          t(`${hostedCopy}.checkStatus`)
         }}</button>
       </div>
       <dl class="mt-6 space-y-3 border-t border-gray-100 pt-4 text-xs dark:border-dark-700">
@@ -328,7 +328,7 @@
       </dl>
       <p
         class="mt-4 rounded-control bg-gray-50 p-4 text-xs leading-6 text-gray-500 dark:bg-dark-950 dark:text-dark-300"
-        >{{ t('payment.crypto.confirmationHint') }}</p
+        >{{ t(`${hostedCopy}.confirmationHint`) }}</p
       >
       <button class="btn btn-secondary mt-4 w-full" :disabled="cancelling" @click="handleCancel">{{
         cancelling ? t('common.processing') : t('payment.qr.cancelOrder')
@@ -519,7 +519,12 @@ const VERIFY_RETRY_MAX_ATTEMPTS = 6
 
 // Wallet identity controls instruction text and artwork, while the deep-link marker decides
 // when a mobile Alipay QR becomes visible.
-const isEPUSDT = computed(() => props.paymentType === 'epusdt')
+const isHostedCashier = computed(() => ['epusdt', 'starpay'].includes(props.paymentType))
+// hostedCopy keeps merchant-wallet instructions separate from cryptocurrency transfer
+// guidance while both methods share the same saved-order recovery controls.
+const hostedCopy = computed(() =>
+  props.paymentType === 'starpay' ? 'payment.starpay' : 'payment.crypto',
+)
 const isAlipay = computed(() => isBuiltInAlipayMethod(props.paymentType))
 const isWxpay = computed(() => isBuiltInWxpayMethod(props.paymentType))
 const isMobileAlipayDeepLink = computed(
@@ -609,12 +614,12 @@ function upstreamVerificationOutTradeNo(): string {
 
 /**
  * reopenPopup opens the configured checkout destination for the current order.
- * Mobile GMPay checkout navigates in the current browser. Other presentations use
+ * Mobile GMPay and StarPAY checkout navigate in the current browser. Other presentations use
  * the shared payment popup, with current-page navigation when that popup is blocked.
  */
 function reopenPopup() {
   if (props.payUrl) {
-    if (isEPUSDT.value && isMobileDevice()) {
+    if (isHostedCashier.value && isMobileDevice()) {
       // Mobile buyers continue in the current browser so returning from their wallet
       // retains the existing checkout recovery record and its merchant order identity.
       window.location.href = props.payUrl
@@ -791,14 +796,14 @@ async function verifyOrderWithUpstream(outTradeNo: string): Promise<PaymentOrder
 
 /**
  * tryRecoverPendingOrder supplements a local pending wallet order with upstream
- * verification. It accepts Alipay, WeChat, and GMPay methods with a trade reference, applies both
+ * verification. It accepts Alipay, WeChat, GMPay, and StarPAY with a trade reference, applies both
  * a time interval and a maximum attempt count, and records the attempt before awaiting the
  * provider. A failed or empty verification retains the local order. This bounds recovery
  * traffic while allowing a missing callback to be observed through provider status without
  * discarding the server state already fetched.
  */
 async function tryRecoverPendingOrder(order: PaymentOrder | null): Promise<PaymentOrder | null> {
-  if (!order || (!isWxpay.value && !isAlipay.value && !isEPUSDT.value)) return order
+  if (!order || (!isWxpay.value && !isAlipay.value && !isHostedCashier.value)) return order
   const outTradeNo = String(order.out_trade_no || props.outTradeNo || '').trim()
   if (!outTradeNo) return order
   if (

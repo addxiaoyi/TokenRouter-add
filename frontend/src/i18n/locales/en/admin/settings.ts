@@ -464,6 +464,22 @@ export default {
       quickSetCopy: 'Generate & Copy (current site)',
       redirectUrlSetAndCopied: 'Redirect URL generated and copied to clipboard',
     },
+    social: {
+      enable: 'Enable {provider} login and binding',
+      telegramHint:
+        'Get the Client ID and Client Secret in BotFather Login Widget. Add the callback below to Redirect URIs and the site origin to Trusted Origins. Keep RS256 signing.',
+      discordHint:
+        'Create an application in Discord Developer Portal, obtain its OAuth2 client credentials, and add the callback below to Redirects. Only identify and email scopes are requested.',
+      secretSaved: 'Configured; leave blank to keep the secret',
+      secretNeeded: 'Enter the platform Client Secret',
+      secretHint: 'Secrets are stored on the server. This input clears after saving.',
+      callback: 'Provider callback URL',
+      copyCallback: 'Copy URL',
+      callbackCopied: 'Callback URL copied',
+      callbackHint:
+        'Leave blank to use the current site API address. Register the complete URL shown here with the provider. Production requires HTTPS.',
+      setupLink: 'Open platform setup and documentation',
+    },
     qq: {
       title: 'QQ Connect Login',
       description: 'Configure QQ Connect OAuth for TokenRouter end-user login',
@@ -1079,6 +1095,12 @@ export default {
       providerStripe: 'Stripe',
       providerAirwallex: 'Airwallex',
       providerEPUSDT: 'EPUSDT / GMPay (EPay protocol)',
+      providerStarPay: 'StarPAY merchant balance',
+      field_pkey: 'EPay signing key',
+      field_starpayApiBaseHint:
+        'StarPAY payment base URL, normally https://star-web.top/pay. Uses CNY merchant balances and supports full refunds to the original payer only.',
+      field_starpayKeyHint:
+        'Enter the receiving merchant’s EPay MD5 signing key. The balance protocol signs requests with HMAC-SHA256; the key stays on the backend.',
       field_epusdtApiBaseHint:
         'Enter the EPUSDT HTTPS base URL, such as https://pay.example.com. Uses the EPay submit.php flow with MD5 signatures and the merchant API key secret.',
       providerNOWPayments: 'NOWPayments',

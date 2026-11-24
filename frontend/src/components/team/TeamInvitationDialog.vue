@@ -3,8 +3,12 @@
     :show="show"
     :title="t('team.inviteActionTitle')"
     width="narrow"
+    trap-focus
     @close="emit('close')"
   >
+    <template #header-icon>
+      <Icon name="users" size="md" class="text-primary-600 dark:text-primary-400" />
+    </template>
     <div v-if="error && !loading" class="py-4" data-testid="invitation-error">
       <div
         class="flex items-start gap-3 rounded-control bg-red-50 p-4 text-red-700 dark:bg-red-950/30 dark:text-red-300"
@@ -20,16 +24,9 @@
       :aria-busy="loading"
     >
       <span v-if="loading" class="sr-only" role="status">{{ t('common.loading') }}</span>
-      <div class="pb-5 text-center">
-        <div
-          class="mx-auto flex h-12 w-12 items-center justify-center rounded-control bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400"
-        >
-          <Icon name="users" size="lg" />
-        </div>
-        <p class="mt-3 text-sm leading-6 text-gray-500 dark:text-gray-400">
-          {{ t('team.inviteActionDescription') }}
-        </p>
-      </div>
+      <p class="mb-4 text-sm leading-6 text-gray-500 dark:text-gray-400">
+        {{ t('team.inviteActionDescription') }}
+      </p>
 
       <!-- A description list keeps invitation source labels with their values while allowing natural wrapping on narrow screens. -->
       <dl

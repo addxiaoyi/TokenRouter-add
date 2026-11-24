@@ -68,13 +68,15 @@ export interface MarketplaceTimePricing {
 // MarketplaceModelPricing carries group-adjusted prices and optional token pricing
 // modifiers.
 export interface MarketplaceModelPricing {
+  // price_per_request includes the group multiplier. Omission or null means unavailable;
+  // zero is an explicit free request and must remain visible.
+  price_per_request?: number | null // Group-adjusted request unit price.
   // video_prices includes quoted resolutions only; zero declares free video seconds. Each
   // amount already includes the group multiplier used by this public quote.
   video_prices?: Record<string, number> // Prices by video resolution.
   // video_price_per_second is the explicit default for unlisted resolutions; absence
   // means unavailable and zero remains a valid free default.
   video_price_per_second?: number // Video price per second.
-  price_per_request?: number // Group-adjusted USD per request.
   pricing_mode: MarketplacePricingMode // Public quote billing unit.
   price_status: MarketplacePriceStatus // Public quote availability.
   input_price_per_token?: number // Input price per token.

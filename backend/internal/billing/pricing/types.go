@@ -180,6 +180,9 @@ type CostBreakdown struct {
 // respective Fast units. Both sets include the caller's rate multiplier;
 // configured effort and time controls are carried separately.
 type ModelDisplayPricing struct {
+	// PricePerRequest is the multiplied fixed request quote. Nil means no fixed
+	// amount is available, while zero remains an explicitly free request.
+	PricePerRequest                *float64
 	CacheWrite5mPricePerToken      *float64               // USD per five-minute write token
 	CacheWrite1hPricePerToken      *float64               // USD per hourly cache-write token
 	CacheWrite30mPricePerToken     *float64               // USD per thirty-minute write token

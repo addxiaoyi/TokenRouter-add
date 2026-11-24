@@ -31,7 +31,7 @@ describe('application authentication guard', () => {
   // Public destinations remain reachable before a browser session has been
   // restored. Their registered metadata grants access without redirecting
   // visitors to the login page.
-  it.each(['/login', '/home', '/models', '/legal/privacy', '/payment/result'])(
+  it.each(['/login', '/home', '/models', '/pricing', '/docs', '/legal/privacy', '/payment/result'])(
     'allows public route %s',
     async (path) => {
       expect(getRouter().resolve(path).meta.requiresAuth).toBe(false)
@@ -65,6 +65,9 @@ describe('application authentication guard', () => {
     ['/dashboard', true, undefined],
     ['/admin/dashboard', false, '/dashboard'],
     ['/admin/users', false, '/dashboard'],
+    ['/admin/permissions', false, '/dashboard'],
+    ['/permissions', false, '/dashboard'],
+    ['/permissions', true, undefined],
     ['/admin/dashboard', true, undefined],
   ])('enforces %s for administrator=%s', async (path, isAdmin, target) => {
     authStore.isAuthenticated = true
@@ -149,6 +152,8 @@ describe('backend mode public access', () => {
     '/key-usage',
     '/setup',
     '/models',
+    '/pricing',
+    '/docs',
     '/legal/privacy',
     '/payment/result',
     '/payment/airwallex',

@@ -1,11 +1,13 @@
-import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useStepUp } from '@/composables/useStepUp'
 import TotpStepUpDialog from '@/components/auth/TotpStepUpDialog.vue'
 
 // TotpStepUpDialog.spec.ts checks a complete autofilled OTP delivered to the first
 // visible cell. A deferred step-up endpoint keeps verification pending long enough
 // to inspect digit distribution before success closes the supplied controller.
+
+enableAutoUnmount(afterEach)
 
 // These fixtures provide controllable dependencies and component handles for the
 // cases below. Each test configures the responses it needs and inspects calls or
@@ -66,6 +68,8 @@ describe('TotpStepUpDialog', () => {
     controller.visible.value = true
     const wrapper = mount(TotpStepUpDialog, {
       props: { controller },
+      // Content lookup stays inline here; dialogMotion covers the real teleported shell.
+      global: { stubs: { teleport: true } },
     })
 
     const visibleInputs = wrapper.findAll('[data-testid="totp-digit-input"]')

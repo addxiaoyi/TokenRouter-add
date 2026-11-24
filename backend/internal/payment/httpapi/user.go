@@ -37,6 +37,7 @@ type PaymentHandler struct {
 	paymentService *payment.Runtime       // buyer payment runtime
 	configService  *payment.ConfigService // checkout configuration service
 	plans          *billing.Plans         // sale plan lookup
+	taxInvoices    *payment.TaxInvoices   // owned digital invoice workflow
 }
 
 // UserCheckoutInfoResponse combines selected checkout configuration, available
@@ -327,13 +328,19 @@ type PaymentOrderResult struct {
 
 // NewPaymentHandler retains the supplied runtime, configuration and plan
 // services for buyer endpoints. Callers mount its handlers with authentication
-// guards and supply the dependencies required by each invoked operation.
-func NewPaymentHandler(paymentService *payment.Runtime, configService *payment.ConfigService, plans *billing.Plans) *PaymentHandler {
-	return &PaymentHandler{
+// guards and supply the dependencies required by each invoked operation. The
+// first optional invoice service enables owned digital-invoice routes; omitting
+// it retains their disabled response for existing handler fixtures.
+func NewPaymentHandler(paymentService *payment.Runtime, configService *payment.ConfigService, plans *billing.Plans, invoices ...*payment.TaxInvoices) *PaymentHandler {
+	handler := &PaymentHandler{
 		paymentService: paymentService,
 		configService:  configService,
 		plans:          plans,
 	}
+	if len(invoices) > 0 {
+		handler.taxInvoices = invoices[0]
+	}
+	return handler
 }
 
 // GetPaymentConfig writes the current checkout configuration returned by

@@ -56,6 +56,9 @@ func (s TestStreamOutput) Gemini(c *TestRun, body io.Reader) error {
 		// discarded, and Gemini completes through its separate EOF rule.
 		if err != nil {
 			if err == io.EOF {
+				if c.Constraints.Complete {
+					return s.Error(c, "Assessment stream ended before completion")
+				}
 				s.SendEvent(c, providercore.TestEvent{Type: "test_complete", Success: true})
 				return nil
 			}
@@ -78,6 +81,9 @@ func (s TestStreamOutput) Gemini(c *TestRun, body io.Reader) error {
 		// event. Completion still follows this parser's separate terminal or EOF
 		// rule.
 		if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
+			if c.Constraints.Complete {
+				return s.Error(c, "Invalid assessment response event")
+			}
 			continue
 		}
 
@@ -116,6 +122,9 @@ func (s TestStreamOutput) Gemini(c *TestRun, body io.Reader) error {
 				}
 
 				if finishReason, ok := candidate["finishReason"].(string); ok && finishReason != "" {
+					if c.Constraints.Complete && finishReason != "STOP" {
+						return s.Error(c, "Assessment response was not completed")
+					}
 					s.SendEvent(c, providercore.TestEvent{Type: "test_complete", Success: true})
 					return nil
 				}
@@ -148,6 +157,9 @@ func (s TestStreamOutput) Anthropic(c *TestRun, body io.Reader) error {
 		// discarded, and ordinary Anthropic completes through its separate EOF rule.
 		if err != nil {
 			if err == io.EOF {
+				if c.Constraints.Complete {
+					return s.Error(c, "Assessment stream ended before completion")
+				}
 				s.SendEvent(c, providercore.TestEvent{Type: "test_complete", Success: true})
 				return nil
 			}
@@ -170,12 +182,21 @@ func (s TestStreamOutput) Anthropic(c *TestRun, body io.Reader) error {
 		// event. Completion still follows this parser's separate terminal or EOF
 		// rule.
 		if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
+			if c.Constraints.Complete {
+				return s.Error(c, "Invalid assessment response event")
+			}
 			continue
 		}
 
 		eventType, _ := data["type"].(string)
 
 		switch eventType {
+		case "message_delta":
+			if delta, ok := data["delta"].(map[string]any); ok && c.Constraints.Complete {
+				if reason, _ := delta["stop_reason"].(string); reason != "" && reason != "end_turn" && reason != "stop_sequence" {
+					return s.Error(c, "Assessment response was not completed")
+				}
+			}
 		case "content_block_delta":
 			if delta, ok := data["delta"].(map[string]any); ok {
 				if text, ok := delta["text"].(string); ok {
@@ -329,6 +350,9 @@ func (s TestStreamOutput) ChatCompletions(c *TestRun, body io.Reader) error {
 				}
 			}
 			if finishReason, ok := choice["finish_reason"].(string); ok && finishReason != "" {
+				if c.Constraints.Complete && finishReason != "stop" {
+					return s.Error(c, "Assessment response was not completed")
+				}
 				seenFinish = true
 			}
 		}
@@ -369,6 +393,9 @@ func (s TestStreamOutput) Responses(c *TestRun, body io.Reader) error {
 		// event. Completion still follows this parser's separate terminal or EOF
 		// rule.
 		if err := json.Unmarshal([]byte(jsonStr), &data); err != nil {
+			if c.Constraints.Complete {
+				return s.Error(c, "Invalid assessment response event")
+			}
 			continue
 		}
 
@@ -380,6 +407,11 @@ func (s TestStreamOutput) Responses(c *TestRun, body io.Reader) error {
 				s.SendEvent(c, providercore.TestEvent{Type: "content", Text: delta})
 			}
 		case "response.completed", "response.done":
+			if response, ok := data["response"].(map[string]any); ok && c.Constraints.Complete {
+				if status, _ := response["status"].(string); status != "" && status != "completed" {
+					return s.Error(c, "Assessment response was not completed")
+				}
+			}
 			s.SendEvent(c, providercore.TestEvent{Type: "test_complete", Success: true})
 			return nil
 		case "response.failed":

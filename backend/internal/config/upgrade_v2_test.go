@@ -506,6 +506,7 @@ func TestUpgradeV2WeChatLegacyModes(t *testing.T) {
 // preventing accidental orphan fields.
 func TestUpgradeV2CurrentKeysHaveSources(t *testing.T) {
 	sources := map[string]bool{
+		"model_catalog.prefer_catalog_pricing":       true,
 		"config_version":                             true,
 		"auth.oauth.qq.enabled":                      true,
 		"auth.oauth.qq.client_id":                    true,

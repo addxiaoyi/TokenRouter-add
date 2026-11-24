@@ -90,21 +90,13 @@
             </h2>
           </div>
 
-          <!-- Within the two-column layout, limited column width stacks avatar and username controls again. -->
-          <div
-            class="flex flex-col gap-6 px-6 py-6 md:flex-row md:items-center md:gap-8 xl:flex-col xl:items-stretch xl:gap-6"
-          >
-            <ProfileAvatarCard :user="user" embedded class="shrink-0" />
-
-            <!-- The separator follows the layout, becoming horizontal for stacked controls and vertical for adjacent controls. -->
-            <div
-              class="h-px w-full bg-gray-100 dark:bg-dark-700 md:h-auto md:w-px md:self-stretch xl:h-px xl:w-full xl:self-auto"
-            />
-
+          <!-- Settings rows retain the same label column when the surrounding profile changes between one and two columns. -->
+          <div class="divide-y divide-gray-100 px-6 dark:divide-dark-700">
+            <ProfileAvatarCard :user="user" embedded class="py-5" />
             <ProfileEditForm
               :initial-username="user?.username || ''"
               embedded
-              class="min-w-0 flex-1"
+              class="min-w-0 py-5"
             />
           </div>
         </section>
@@ -115,6 +107,8 @@
           :user="user"
           :linuxdo-enabled="linuxdoEnabled"
           :qq-enabled="qqEnabled"
+          :telegram-enabled="telegramEnabled"
+          :discord-enabled="discordEnabled"
           :sms-login-enabled="smsLoginEnabled"
           :dingtalk-enabled="dingtalkEnabled"
           :oidc-enabled="oidcEnabled"
@@ -185,6 +179,8 @@ const props = withDefaults(
   defineProps<{
     user: User | null // Current account profile.
     linuxdoEnabled?: boolean // Linux DO binding availability.
+    telegramEnabled?: boolean // Telegram binding availability.
+    discordEnabled?: boolean // Discord binding availability.
     qqEnabled?: boolean // QQ binding availability.
     smsLoginEnabled?: boolean // SMS code login availability.
     dingtalkEnabled?: boolean // DingTalk binding availability.
@@ -196,6 +192,8 @@ const props = withDefaults(
   }>(),
   {
     linuxdoEnabled: false, // Linux DO binding availability.
+    telegramEnabled: false, // Telegram binding availability.
+    discordEnabled: false, // Discord binding availability.
     qqEnabled: false, // QQ binding availability.
     smsLoginEnabled: false, // SMS code login availability.
     dingtalkEnabled: false, // DingTalk binding availability.
@@ -297,6 +295,8 @@ const providerLabels = computed<Record<UserAuthProvider, string>>(() => ({
   wechat: t('profile.authBindings.providers.wechat'),
   github: 'GitHub',
   google: 'Google',
+  telegram: 'Telegram',
+  discord: 'Discord',
   qq: t('profile.authBindings.providers.qq'),
   phone: t('profile.authBindings.providers.phone'),
 }))
@@ -313,7 +313,9 @@ function normalizeProvider(value: string): UserAuthProvider | null {
     normalized === 'github' ||
     normalized === 'google' ||
     normalized === 'qq' ||
-    normalized === 'phone'
+    normalized === 'phone' ||
+    normalized === 'telegram' ||
+    normalized === 'discord'
   ) {
     return normalized
   }

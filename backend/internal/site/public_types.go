@@ -99,6 +99,8 @@ type (
 
 		LinuxDoOAuthEnabled      bool // LinuxDo login availability
 		QQOAuthEnabled           bool // QQ login availability
+		TelegramOAuthEnabled     bool // Telegram login availability
+		DiscordOAuthEnabled      bool // Discord login availability
 		SMSLoginEnabled          bool // SMS code login availability
 		DingTalkOAuthEnabled     bool // DingTalk login availability
 		WeChatOAuthEnabled       bool // WeChat login availability

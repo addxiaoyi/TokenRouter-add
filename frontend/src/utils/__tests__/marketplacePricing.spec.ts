@@ -9,6 +9,17 @@ import { pricingKind, videoPricingEntries } from '../marketplacePricing'
  */
 
 describe('video marketplace prices', () => {
+  // Request quotes retain fractional group rates and free amounts. Absent,
+  // negative, or nonfinite values remain unpriced instead of becoming a free quote.
+  it('classifies explicit request prices without inventing missing amounts', () => {
+    const base = { pricing_mode: 'per_request' as const, price_status: 'priced' as const }
+    for (const price of [0, 0.0001, 0.02]) {
+      expect(pricingKind({ ...base, price_per_request: price })).toBe('per_request')
+    }
+    for (const price of [undefined, null, -1, Infinity, NaN]) {
+      expect(pricingKind({ ...base, price_per_request: price })).toBe('unpriced')
+    }
+  })
   /**
    * A video quote combines named resolutions, a free resolution, and a free default.
    * All rows remain visible with distinct keys and the default appears last.

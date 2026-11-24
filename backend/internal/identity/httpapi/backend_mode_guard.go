@@ -72,6 +72,8 @@ func backendModeAllowsAuthPath(path string) bool {
 		"/auth/oauth/wechat/callback",
 		"/auth/oauth/wechat/payment/callback",
 		"/auth/oauth/oidc/callback",
+		"/auth/oauth/telegram/callback",
+		"/auth/oauth/discord/callback",
 		"/auth/oauth/github/callback",
 		"/auth/oauth/google/callback",
 		"/auth/oauth/dingtalk/callback",

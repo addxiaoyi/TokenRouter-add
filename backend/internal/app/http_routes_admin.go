@@ -7,11 +7,13 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/apikey/httpapi/dto"
 	routeaudit "github.com/TokenFlux/TokenRouter/internal/audit/httpapi"
 	routebackup "github.com/TokenFlux/TokenRouter/internal/backup/httpapi"
+	batchhttp "github.com/TokenFlux/TokenRouter/internal/batchimage/httpapi"
 	routebilling "github.com/TokenFlux/TokenRouter/internal/billing/httpapi"
 	routecreative "github.com/TokenFlux/TokenRouter/internal/creative/httpapi"
 	routeegress "github.com/TokenFlux/TokenRouter/internal/egress/httpapi"
 	routegateway "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi"
 	routeidentity "github.com/TokenFlux/TokenRouter/internal/identity/httpapi"
+	qualityhttp "github.com/TokenFlux/TokenRouter/internal/modelquality/httpapi"
 	routemoderation "github.com/TokenFlux/TokenRouter/internal/moderation/httpapi"
 	routenotification "github.com/TokenFlux/TokenRouter/internal/notification/httpapi"
 	routeops "github.com/TokenFlux/TokenRouter/internal/ops/httpapi"
@@ -27,6 +29,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/server/middleware"
 	routesettings "github.com/TokenFlux/TokenRouter/internal/settings/httpapi"
 	routesite "github.com/TokenFlux/TokenRouter/internal/site/httpapi"
+	supporthttp "github.com/TokenFlux/TokenRouter/internal/support/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/team/httpapi"
 	routeusageadmin "github.com/TokenFlux/TokenRouter/internal/usage/httpapi/admin"
 )
@@ -93,6 +96,9 @@ func provideAdminRouteMount(eAdminTLSFingerprintProfile *routeegress.TLSFingerpr
 	eAdminOps *routeops.OpsHandler,
 	ePlugins *routeplugin.Handler,
 	eSearch *routesearch.Handler,
+	eSupport *supporthttp.Handler,
+	eQuality *qualityhttp.Handler,
+	eTaskHistory *batchhttp.HistoryHandler,
 ) adminRouteMount {
 	return func(v1 *gin.RouterGroup, security httpRouteSecurity, protocolCatalog gin.HandlerFunc) {
 		admin := v1.Group("/admin")
@@ -102,6 +108,9 @@ func provideAdminRouteMount(eAdminTLSFingerprintProfile *routeegress.TLSFingerpr
 		// Audit runs after authentication and records administrative mutations and sensitive reads.
 		admin.Use(security.Audit)
 		admin.Use(middleware.ProviderTerminology())
+		supporthttp.RegisterAdmin(admin, eSupport)
+		qualityhttp.RegisterAdmin(admin, eQuality)
+		batchhttp.RegisterAdminHistory(admin, eTaskHistory, security.Panel.Heavy())
 		{
 			// Provider and group forms share this read-only capability catalogue.
 			adminapi.Register(admin, ManagementOperations["protocol_capabilities.list"], protocolCatalog)

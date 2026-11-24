@@ -121,7 +121,7 @@ func PsSnapshotIntValue(value any) int {
 // selects no comparison branch.
 //
 // Recorded attributes generally compare trimmed text case-insensitively.
-// EPUSDT requires an exact nonempty PID and compares fiat currency
+// EPUSDT and StarPAY require an exact nonempty PID and compare fiat currency
 // case-insensitively. The checked fields depend on the provider, and supplied
 // WeChat or Airwallex success-status metadata is checked when present.
 // Callers separately establish notification
@@ -179,12 +179,12 @@ func ValidateProviderSnapshotMetadata(order *Order, providerKey string, metadata
 				return fmt.Errorf("alipay app_id mismatch: expected %s, got %s", expected, actual)
 			}
 		}
-	case TypeEPUSDT:
+	case TypeEPUSDT, TypeStarPay:
 		if metadata["pid"] == "" || metadata["pid"] != snapshot.MerchantID {
-			return fmt.Errorf("epusdt merchant PID does not match the order")
+			return fmt.Errorf("%s merchant PID does not match the order", providerKey)
 		}
 		if metadata["currency"] == "" || !strings.EqualFold(metadata["currency"], snapshot.Currency) {
-			return fmt.Errorf("epusdt fiat currency does not match the order")
+			return fmt.Errorf("%s fiat currency does not match the order", providerKey)
 		}
 	case TypeNOWPayments:
 		if expected := strings.TrimSpace(snapshot.Currency); expected != "" {

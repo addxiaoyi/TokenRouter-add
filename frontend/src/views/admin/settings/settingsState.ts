@@ -50,6 +50,8 @@ export type SettingsForm = Omit<
   tencent_captcha_cloud_secret_key: string // Tencent cloud secret
   aliyun_captcha_access_key_secret: string // Aliyun access secret
   linuxdo_connect_client_secret: string // LinuxDo client secret
+  telegram_oauth_client_secret: string // Write-only authorization secret draft.
+  discord_oauth_client_secret: string // Write-only authorization secret draft.
   qq_connect_client_secret: string // QQ client secret
   sms_juhe_key: string // Juhe SMS key
   dingtalk_connect_client_secret: string // DingTalk client secret
@@ -250,6 +252,16 @@ export function createSettingsForm() {
     linuxdo_connect_client_secret: '',
     linuxdo_connect_client_secret_configured: false,
     linuxdo_connect_redirect_url: '',
+    telegram_oauth_enabled: false,
+    telegram_oauth_client_id: '',
+    telegram_oauth_client_secret: '',
+    telegram_oauth_client_secret_configured: false,
+    telegram_oauth_redirect_url: '',
+    discord_oauth_enabled: false,
+    discord_oauth_client_id: '',
+    discord_oauth_client_secret: '',
+    discord_oauth_client_secret_configured: false,
+    discord_oauth_redirect_url: '',
     qq_connect_enabled: false,
     qq_connect_client_id: '',
     qq_connect_client_secret: '',

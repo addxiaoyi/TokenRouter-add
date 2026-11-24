@@ -45,7 +45,15 @@
         @select-all-models="selectAllModelsListItems(modelsListState)"
         @invert-models="invertModelsListSelection(modelsListState)"
         @move-model="(from, to) => moveModelsListItem(modelsListState, from, to)"
-      />
+      >
+        <template v-if="show && mode === 'create'" #draft-tools>
+          <GroupTemplateControls
+            :draft="form"
+            :disabled="submitting"
+            @apply="Object.assign(form, $event)"
+          />
+        </template>
+      </GroupSettingsForm>
     </form>
 
     <template #footer>
@@ -118,6 +126,7 @@ import { useKeyedDebouncedSearch } from '@/composables/useKeyedDebouncedSearch'
 import { SEARCH_DEBOUNCE_MS } from '@/constants/ui'
 import { extractApiErrorMessage } from '@/utils/apiError'
 import { createStableObjectKeyResolver } from '@/utils/stableObjectKey'
+import GroupTemplateControls from './GroupTemplateControls.vue'
 import {
   buildAvailabilityProbeConfig,
   buildCreateGroupRequest,

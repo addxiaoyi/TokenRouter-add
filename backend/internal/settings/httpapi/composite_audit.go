@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"reflect"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -260,6 +261,30 @@ func DiffSettings(before *composite.Snapshot, after *composite.Snapshot, beforeA
 	}
 	if before.QQConnectEnabled != after.QQConnectEnabled {
 		changed = append(changed, "qq_connect_enabled")
+	}
+	if before.TelegramOAuthEnabled != after.TelegramOAuthEnabled {
+		changed = append(changed, "telegram_oauth_enabled")
+	}
+	if before.TelegramOAuthClientID != after.TelegramOAuthClientID {
+		changed = append(changed, "telegram_oauth_client_id")
+	}
+	if strings.TrimSpace(req.TelegramOAuthClientSecret) != "" {
+		changed = append(changed, "telegram_oauth_client_secret")
+	}
+	if before.TelegramOAuthRedirectURL != after.TelegramOAuthRedirectURL {
+		changed = append(changed, "telegram_oauth_redirect_url")
+	}
+	if before.DiscordOAuthEnabled != after.DiscordOAuthEnabled {
+		changed = append(changed, "discord_oauth_enabled")
+	}
+	if before.DiscordOAuthClientID != after.DiscordOAuthClientID {
+		changed = append(changed, "discord_oauth_client_id")
+	}
+	if strings.TrimSpace(req.DiscordOAuthClientSecret) != "" {
+		changed = append(changed, "discord_oauth_client_secret")
+	}
+	if before.DiscordOAuthRedirectURL != after.DiscordOAuthRedirectURL {
+		changed = append(changed, "discord_oauth_redirect_url")
 	}
 	if before.QQConnectClientID != after.QQConnectClientID {
 		changed = append(changed, "qq_connect_client_id")

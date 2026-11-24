@@ -460,6 +460,7 @@ func (s *OrderLifecycle) RequeryPaidOrderOnce(ctx context.Context, prov Provider
 // number. This precedence keeps query resources distinct from the order's
 // local numeric ID and refund identifier; selecting a reference does not
 // itself validate the saved merchant or its current credentials.
+// StarPAY requires its platform ID and keeps a missing ID unresolved.
 func PaymentOrderQueryReference(order *Order, prov Provider) string {
 	if order == nil {
 		return ""
@@ -486,6 +487,8 @@ func PaymentOrderQueryReference(order *Order, prov Provider) string {
 	// session/invoice/intent precedence preserves its hosted progress identity
 	// across queries.
 	switch GetBasePaymentType(providerKey) {
+	case TypeStarPay:
+		return strings.TrimSpace(order.PaymentTradeNo)
 	case TypeAlipay, TypeEasyPay, TypeWxpay:
 		return strings.TrimSpace(order.OutTradeNo)
 	case TypeStripe:

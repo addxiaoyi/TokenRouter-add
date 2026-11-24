@@ -96,6 +96,23 @@ describe('opsDiagnosis and useOpsRealtimeTraffic', () => {
     ])
   })
 
+  // A quiet gateway can still have an unhealthy database or a nearly full disk.
+  // The report must preserve those alerts even without traffic samples for SLA.
+  it('shows infrastructure problems during an idle request window', () => {
+    const snapshot = {
+      system_metrics: { db_ok: false, disk_usage_percent: 96 },
+      sla: 0,
+      request_count_total: 0,
+    } as OpsDashboardOverview
+
+    const report = buildOpsDiagnosisReport(snapshot, null, true, (key) => key)
+    expect(report.map((item) => item.message)).toEqual([
+      'admin.ops.diagnosis.dbDown',
+      'admin.ops.diagnosis.diskCritical',
+      'admin.ops.diagnosis.idle',
+    ])
+  })
+
   // Changing platform while an earlier realtime request is pending aborts the
   // stale request and publishes the newest response instead of dropping the update.
   it('aborts superseded realtime traffic requests and publishes the latest filter', async () => {

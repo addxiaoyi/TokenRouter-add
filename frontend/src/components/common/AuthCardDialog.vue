@@ -1,31 +1,30 @@
 <template>
-  <!--
-    The card stays in its caller DOM location, with zIndex choosing its layer when
-    nested inside BaseDialog.
-  -->
-  <MotionTransition name="modal" appear @after-leave="handleAfterLeave">
-    <div
-      v-if="show"
-      :inert="!show || undefined"
-      role="dialog"
-      aria-modal="true"
-      class="fixed inset-0 z-modal overflow-y-auto"
-      :style="zIndexStyle"
-      @click.self="handleOverlay"
-    >
-      <div class="flex min-h-full items-center justify-center p-4">
-        <div class="fixed inset-0 bg-[var(--overlay-bg)]" @click="handleOverlay"></div>
+  <!-- Escape transformed and clipped settings cards so the overlay covers the viewport and every authentication step remains reachable. -->
+  <Teleport to="body">
+    <MotionTransition name="modal" appear @after-leave="handleAfterLeave">
+      <div
+        v-if="show"
+        :inert="!show || undefined"
+        role="dialog"
+        aria-modal="true"
+        class="fixed inset-0 z-modal overflow-y-auto"
+        :style="zIndexStyle"
+        @click.self="handleOverlay"
+      >
+        <div class="flex min-h-full items-center justify-center p-4">
+          <div class="fixed inset-0 bg-[var(--overlay-bg)]" @click="handleOverlay"></div>
 
-        <div
-          ref="dialogRef"
-          tabindex="-1"
-          class="auth-dialog-content relative w-full max-w-md transform rounded-surface bg-white p-6 shadow-xl dark:bg-dark-900 sm:rounded-dialog"
-        >
-          <slot />
+          <div
+            ref="dialogRef"
+            tabindex="-1"
+            class="auth-dialog-content relative w-full max-w-md transform rounded-surface bg-white p-6 shadow-xl dark:bg-dark-900 sm:rounded-dialog"
+          >
+            <slot />
+          </div>
         </div>
       </div>
-    </div>
-  </MotionTransition>
+    </MotionTransition>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -35,8 +34,10 @@ import { useDialogLifecycle } from '@/composables/useDialogLifecycle'
 import { Z_INDEX } from '@/constants/overlay'
 
 // AuthCardDialog.vue renders the centered card shell for authentication and elevation
-// flows. The caller supplies the card contents and controls visibility, while the
-// shared dialog lifecycle manages focus and scrolling through the leave transition.
+// flows at the document body, outside clipped or transformed parent cards. The caller
+// supplies contents and visibility, while the shared dialog lifecycle manages focus
+// and scrolling through the leave transition. Nested flows select their overlay layer
+// through zIndex rather than relying on their original DOM ancestry.
 
 // props holds parent-supplied component options consumed by the rendering and
 // interaction handlers below.

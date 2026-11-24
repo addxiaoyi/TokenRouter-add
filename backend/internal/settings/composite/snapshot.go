@@ -7,6 +7,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/creative"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/promptpolicy"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/ws"
+	"github.com/TokenFlux/TokenRouter/internal/identity"
 	"github.com/TokenFlux/TokenRouter/internal/identity/contact"
 	"github.com/TokenFlux/TokenRouter/internal/provider"
 	"github.com/TokenFlux/TokenRouter/internal/settings"
@@ -33,6 +34,7 @@ import (
 // value transfers retain slice, map, and pointer references unless a helper
 // performs its own copy.
 type Snapshot struct {
+	identity.SocialOAuthSettings // internal social provider credentials
 	// ResponsesWS keeps override JSON separate from ResponsesWSEffective. Parse
 	// retains valid overrides even after resolution fails, then selects deployed or
 	// current runtime parameters for the effective field.

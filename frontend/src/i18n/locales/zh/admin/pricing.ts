@@ -430,6 +430,7 @@ export default {
         actions: '操作',
       },
       keys: {
+        per_request_price: '按次基础价',
         input: '输入',
         output: '输出',
         cache_read: '缓存读取',

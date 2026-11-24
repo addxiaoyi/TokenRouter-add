@@ -1,4 +1,3 @@
-import monitoring from './monitoring'
 import landing from './landing'
 import common from './common'
 import dashboard from './dashboard'
@@ -8,6 +7,14 @@ import misc from './misc'
 import team from './team'
 import requests from './requests'
 import plugins from './plugins'
+import support from './support'
+import monitoring from './monitoring'
+import chat from './chat'
+import quality from './quality'
+import taskHistory from './taskHistory'
+import apiDocs from './apiDocs'
+import groupTemplates from './groupTemplates'
+import permissions from './permissions'
 
 // index.ts assembles the Simplified Chinese interface catalog from domain
 // dictionaries and shared legal and localization messages. Named request and
@@ -15,6 +22,13 @@ import plugins from './plugins'
 // determines the value retained if domain modules define the same key.
 
 export default {
+  groupTemplates,
+  apiDocs,
+  permissions,
+  quality,
+  taskHistory,
+  chat,
+  support,
   monitoring,
   plugins,
   requests,

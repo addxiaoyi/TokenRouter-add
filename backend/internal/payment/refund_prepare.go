@@ -100,6 +100,7 @@ func (s *RefundWorkflow) ValidateRefundRequest(ctx context.Context, oid, uid int
 // order description. When deduction is requested, PrepDeduct can return a
 // warning result with nil error; callers inspect that result before
 // ExecuteRefund.
+// StarPAY requires a saved platform reference and a full reversal for either order type.
 func (s *RefundWorkflow) PrepareRefund(ctx context.Context, oid int64, amt float64, reason string, force, deduct bool) (*RefundPlan, *RefundResult, error) {
 	o, err := s.store.Order(ctx, oid)
 	if err != nil {
@@ -130,6 +131,14 @@ func (s *RefundWorkflow) PrepareRefund(ctx context.Context, oid int64, amt float
 	}
 	if amt <= 0 {
 		amt = o.Amount
+	}
+	if inst.ProviderKey == TypeStarPay {
+		if strings.TrimSpace(o.PaymentTradeNo) == "" {
+			return nil, nil, infraerrors.BadRequest("REFUND_TRADE_REFERENCE_MISSING", "StarPAY order is missing its payment reference")
+		}
+		if amt != o.Amount {
+			return nil, nil, infraerrors.BadRequest("REFUND_FULL_ONLY", "StarPAY merchant balance payments require a full refund")
+		}
 	}
 	orderCurrency := PaymentOrderCurrency(o)
 	if o.OrderType == OrderTypeSubscription {

@@ -510,10 +510,10 @@ import {
 // requests.
 
 // defaultPaymentMode returns the initial mode for the selected provider key. EasyPay
-// starts with QR checkout, GMPay uses hosted checkout, and other providers use the
+// starts with QR checkout, GMPay and StarPAY use hosted checkout, and other providers use the
 // empty mode interpreted by their own checkout implementation.
 function defaultPaymentMode(providerKey: string): string {
-  if (providerKey === 'epusdt') return PAYMENT_MODE_POPUP
+  if (providerKey === 'epusdt' || providerKey === 'starpay') return PAYMENT_MODE_POPUP
   if (providerKey === 'easypay') return PAYMENT_MODE_QRCODE
   return ''
 }
@@ -525,10 +525,10 @@ function providerSupportsPaymentMode(providerKey: string): boolean {
 }
 
 // isValidPaymentMode checks a stored mode against the selected provider's supported
-// choices. Empty mode is accepted for Alipay and providers without mode controls, while
-// EasyPay requires a named mode, while GMPay always uses hosted popup mode.
+// choices. Empty mode is accepted for Alipay and providers without mode controls.
+// EasyPay requires a named mode, while GMPay and StarPAY use hosted popup mode.
 function isValidPaymentMode(providerKey: string, mode: string): boolean {
-  if (providerKey === 'epusdt') return mode === PAYMENT_MODE_POPUP
+  if (providerKey === 'epusdt' || providerKey === 'starpay') return mode === PAYMENT_MODE_POPUP
   if (providerKey === 'easypay') {
     return mode === PAYMENT_MODE_QRCODE || mode === PAYMENT_MODE_POPUP
   }
@@ -967,7 +967,7 @@ function handleSave() {
     supported_types: form.supported_types,
     enabled: form.enabled,
     payment_mode:
-      form.provider_key === 'epusdt'
+      form.provider_key === 'epusdt' || form.provider_key === 'starpay'
         ? PAYMENT_MODE_POPUP
         : supportsPaymentMode.value
           ? form.payment_mode

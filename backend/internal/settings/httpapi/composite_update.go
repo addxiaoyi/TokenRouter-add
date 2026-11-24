@@ -154,11 +154,12 @@ func (h *Handler) ensureActorTotpForStepUp(c *gin.Context) bool {
 // buildSettingKeyByJSONName collects tagged non-pointer request JSON names used
 // by participant omission filtering. It skips pointers because UpdateSettings
 // handles those fields through separate prior-value merging, and ignores fields
-// with no usable JSON name.
+// with no usable JSON name. Embedded provider fields follow the same omission
+// rules as direct fields so unrelated saves cannot overwrite their switches.
 func buildSettingKeyByJSONName() map[string]struct{} {
 	t := reflect.TypeFor[UpdateSettingsRequest]()
 	out := make(map[string]struct{}, t.NumField())
-	for field := range t.Fields() {
+	for _, field := range reflect.VisibleFields(t) {
 		if field.Type.Kind() == reflect.Pointer {
 			continue
 		}
@@ -1317,6 +1318,7 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 	// preparation. Nil pointer closures retain prior values; raw-presence filtering
 	// later prevents omitted non-pointer zero values from becoming registered writes.
 	settings := &composite.Snapshot{
+		SocialOAuthSettings:          req.SocialOAuthSettings,
 		ProviderSchedulingThresholds: req.ProviderSchedulingThresholds,
 
 		RegistrationEnabled:                 req.RegistrationEnabled,

@@ -155,6 +155,10 @@ export default {
     footer: {
       allRightsReserved: '保留所有权利。',
       description: '一个入口连接多种 AI 模型，集中管理调用、额度与用量。',
+      googleSignIn:
+        'Google 基本个人资料用于登录与账户管理，不会出售或用于广告，也不会授权访问 Gmail 或 Google Drive。',
+      acceptableUse:
+        '使用政策禁止未经同意的私密图像、涉及未成年人的性内容，以及侵犯个人隐私的用途。',
       navigation: '页脚导航',
       product: '探索',
       account: '账户',

@@ -36,8 +36,8 @@ type SessionHTTPSettings interface {
 	// IsBackendModeEnabled reports whether panel login is restricted to
 	// administrator accounts.
 	IsBackendModeEnabled(context.Context) bool
-	// IsTotpEnabled reports whether password login can request the account
-	// authenticator challenge.
+	// IsTotpEnabled reports whether password and supported social login flows
+	// require the account's enabled local authenticator challenge.
 	IsTotpEnabled(context.Context) bool
 	// IsPromoCodeEnabled reports whether signup promotion validation is enabled
 	// for panel clients.

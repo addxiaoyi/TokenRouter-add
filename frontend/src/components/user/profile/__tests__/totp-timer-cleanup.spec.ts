@@ -1,5 +1,5 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { enableAutoUnmount, mount } from '@vue/test-utils'
 import TotpSetupModal from '@/components/user/profile/TotpSetupModal.vue'
 import TotpDisableDialog from '@/components/user/profile/TotpDisableDialog.vue'
 
@@ -7,6 +7,11 @@ import TotpDisableDialog from '@/components/user/profile/TotpDisableDialog.vue'
 // dialogs with controlled verification APIs. Interval spies isolate resend cooldown
 // ownership from animation scheduling, while additional cases inspect error notifications
 // and full-code autofill distribution into confirmation cells.
+
+// Content tests keep teleport inline while dialogMotion covers document-body
+// placement; every mounted shell releases its lifecycle state after the case.
+const dialogOptions = { global: { stubs: { teleport: true } } }
+enableAutoUnmount(afterEach)
 
 // Hoisted verification and mutation mocks provide deterministic TOTP responses while
 // notification spies capture the production dialogs' user-facing result handling.
@@ -102,7 +107,7 @@ describe('TOTP 弹窗定时器清理', () => {
   // test protects cleanup of its one-second resend interval by matching the stored timer
   // handle.
   it('TotpSetupModal 卸载时清理倒计时定时器', async () => {
-    const wrapper = mount(TotpSetupModal)
+    const wrapper = mount(TotpSetupModal, dialogOptions)
     await flushPromises()
 
     const sendButton = wrapper
@@ -129,7 +134,7 @@ describe('TOTP 弹窗定时器清理', () => {
   // test protects cleanup of its one-second resend interval independently from dialog motion
   // scheduling.
   it('TotpDisableDialog 卸载时清理倒计时定时器', async () => {
-    const wrapper = mount(TotpDisableDialog)
+    const wrapper = mount(TotpDisableDialog, dialogOptions)
     await flushPromises()
 
     const sendButton = wrapper
@@ -161,7 +166,7 @@ describe('TOTP 弹窗定时器清理', () => {
       response: { data: { message: 'setup failed' } },
     })
 
-    const wrapper = mount(TotpSetupModal)
+    const wrapper = mount(TotpSetupModal, dialogOptions)
     await flushPromises()
 
     await wrapper.get('input[type="password"]').setValue('correct horse battery staple')
@@ -179,7 +184,7 @@ describe('TOTP 弹窗定时器清理', () => {
   it('TotpSetupModal 会拆分写入首格的完整 autofill 验证码', async () => {
     mocks.getVerificationMethod.mockResolvedValue({ method: 'password' })
 
-    const wrapper = mount(TotpSetupModal)
+    const wrapper = mount(TotpSetupModal, dialogOptions)
     await flushPromises()
 
     await wrapper.get('input[type="password"]').setValue('correct horse battery staple')
@@ -230,7 +235,7 @@ describe('TOTP 弹窗定时器清理', () => {
       response: { data: { message: 'disable failed' } },
     })
 
-    const wrapper = mount(TotpDisableDialog)
+    const wrapper = mount(TotpDisableDialog, dialogOptions)
     await flushPromises()
 
     await wrapper.get('input[type="password"]').setValue('correct horse battery staple')

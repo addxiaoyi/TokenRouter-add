@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -12,6 +13,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/app/lifecycle"
 	"github.com/TokenFlux/TokenRouter/internal/batchimage"
 	batchhttp "github.com/TokenFlux/TokenRouter/internal/batchimage/httpapi"
+	batchpostgres "github.com/TokenFlux/TokenRouter/internal/batchimage/postgres"
 	batchimageprovider "github.com/TokenFlux/TokenRouter/internal/batchimage/provider"
 	"github.com/TokenFlux/TokenRouter/internal/billing"
 	"github.com/TokenFlux/TokenRouter/internal/config"
@@ -34,6 +36,7 @@ import (
 // lets lifecycle shutdown reject new task calls and wait for existing responses
 // before worker and cleanup hooks stop. Provider resolution for downloads and
 // cleanup uses the supplied registry together with the persisted provider store.
+// Panel history uses a separate metadata-only reader and needs no provider client.
 
 // creativeManagedKeys adapts the application's KeyStore for creative managed keys.
 type creativeManagedKeys struct {
@@ -122,6 +125,11 @@ func provideBatchHTTP(s *batchimage.Public, d *batchimage.Download, c *batchimag
 	h := batchhttp.NewBatchImageHandler(s, d, c, batchImageAccessPorts())
 	h.BindActivity(activity.Enter)
 	return h
+}
+
+// provideBatchHistoryHTTP reads persisted task summaries for authenticated panels.
+func provideBatchHistoryHTTP(db *sql.DB) *batchhttp.HistoryHandler {
+	return batchhttp.NewHistoryHandler(batchpostgres.NewHistoryStore(db))
 }
 
 // provideBatchDownload constructs provider-backed downloads with the supplied limiter.

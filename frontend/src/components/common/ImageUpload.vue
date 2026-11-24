@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-start gap-4" :class="{ 'flex-col sm:flex-row': wide }">
+  <div class="flex min-w-0 flex-wrap items-start gap-4" :class="{ 'flex-col sm:flex-row': wide }">
     <!-- Preview Box -->
     <div class="flex-shrink-0">
       <div
@@ -32,8 +32,11 @@
     </div>
 
     <!-- Controls -->
-    <div class="flex-1 space-y-2">
-      <div class="flex items-center gap-2">
+    <div
+      class="min-w-0 flex-1 space-y-2"
+      :class="wide ? 'w-full sm:w-auto sm:basis-48' : 'basis-48'"
+    >
+      <div class="flex flex-wrap items-center gap-2">
         <label
           class="btn btn-secondary btn-sm"
           :class="disabled ? 'cursor-not-allowed' : 'cursor-pointer'"
@@ -46,7 +49,7 @@
             class="hidden"
             @change="handleUpload"
           />
-          <Icon name="upload" size="sm" class="mr-1.5" :stroke-width="2" />
+          <Icon name="upload" size="sm" :stroke-width="2" />
           {{ resolvedUploadLabel }}
         </label>
         <button
@@ -56,12 +59,12 @@
           :disabled="disabled"
           @click="removeImage"
         >
-          <Icon name="trash" size="sm" class="mr-1.5" :stroke-width="2" />
+          <Icon name="trash" size="sm" :stroke-width="2" />
           {{ resolvedRemoveLabel }}
         </button>
       </div>
-      <p v-if="hint" class="text-xs text-gray-500 dark:text-gray-400">{{ hint }}</p>
-      <p v-if="error" class="text-xs text-red-500">{{ error }}</p>
+      <p v-if="hint" class="break-words text-xs text-gray-500 dark:text-gray-400">{{ hint }}</p>
+      <p v-if="error" class="break-words text-xs text-red-500">{{ error }}</p>
     </div>
   </div>
 </template>

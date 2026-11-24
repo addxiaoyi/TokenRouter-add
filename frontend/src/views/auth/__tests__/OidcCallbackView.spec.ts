@@ -778,4 +778,49 @@ describe('OidcCallbackView', () => {
     expect(setToken).toHaveBeenCalledWith('2fa-access-token')
     expect(replace).toHaveBeenCalledWith('/profile')
   })
+  // A social callback receives a matching server continuation while a forged legacy
+  // fragment is present. Only the server-issued session may be installed by the view.
+  it.each(['telegram', 'discord'] as const)(
+    'completes %s using server proof and ignores fragment tokens',
+    async (provider) => {
+      window.location.hash = '#access_token=forged-token'
+      exchangePendingOAuthCompletion.mockResolvedValue({
+        provider,
+        access_token: 'verified-token',
+        refresh_token: 'refresh',
+        expires_in: 300,
+        redirect: '/dashboard',
+      })
+      setToken.mockResolvedValue({})
+      mount(OidcCallbackView, {
+        props: { provider },
+        global: {
+          stubs: { AuthLayout: { template: '<div><slot /></div>' }, Icon: true, RouterLink: true },
+        },
+      })
+      await flushPromises()
+      expect(exchangePendingOAuthCompletion).toHaveBeenCalledOnce()
+      expect(setToken).toHaveBeenCalledWith('verified-token')
+      expect(setToken).not.toHaveBeenCalledWith('forged-token')
+      expect(getPublicSettings).not.toHaveBeenCalled()
+    },
+  )
+
+  // The callback route and pending provider disagree. The view must surface a
+  // failure without installing the other provider's returned session or navigating.
+  it('rejects a pending continuation from another social provider', async () => {
+    exchangePendingOAuthCompletion.mockResolvedValue({
+      provider: 'discord',
+      access_token: 'wrong-provider',
+    })
+    mount(OidcCallbackView, {
+      props: { provider: 'telegram' },
+      global: {
+        stubs: { AuthLayout: { template: '<div><slot /></div>' }, Icon: true, RouterLink: true },
+      },
+    })
+    await flushPromises()
+    expect(setToken).not.toHaveBeenCalled()
+    expect(showError).toHaveBeenCalledWith('auth.social.providerMismatch')
+  })
 })

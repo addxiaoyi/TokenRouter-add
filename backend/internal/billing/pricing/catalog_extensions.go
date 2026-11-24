@@ -28,12 +28,15 @@ import (
 // BillingDefaultsKey is reserved for operation prices in local files, outside the model namespace.
 const BillingDefaultsKey = "_billing_defaults"
 
-// CatalogRules contains verified supplemental media prices and token pricing
+// CatalogRules contains supplemental request and media prices and token pricing
 // factors. FastMultiplier, FlexMultiplier, MaxReasoningEffortMultiplier,
 // CacheWriteMultiplier, and CacheWrite1hMultiplier retain optional rule
 // presence. Nil supplies no additional rule; catalog validation requires a
 // finite positive value for each supplied factor.
 type CatalogRules struct {
+	// CostPerRequest supplies an explicit USD baseline when token and media prices
+	// are unavailable. Nil remains unpriced, and zero is an intentional free request.
+	CostPerRequest    *float64              `json:"cost_per_request,omitempty"`
 	ServiceTierPrices []CatalogServicePrice `json:"service_tier_prices,omitempty"` // directory tier adjustments
 	// ImagePrices holds USD-per-image amounts under exact 1K, 2K, and 4K keys.
 	// Present zero is free; absent dimensions stay unpriced during catalog lookup.
@@ -112,6 +115,7 @@ func copyOptional[T any](value *T) *T {
 // collections and supported pointer fields can be changed independently of the
 // source rule.
 func (r CatalogRules) Clone() CatalogRules {
+	r.CostPerRequest = copyOptional(r.CostPerRequest)
 	r.ImagePrices = maps.Clone(r.ImagePrices)
 	r.VideoPrices = maps.Clone(r.VideoPrices)
 	r.ServiceTierPrices = slices.Clone(r.ServiceTierPrices)
@@ -134,11 +138,14 @@ func (r CatalogRules) Clone() CatalogRules {
 }
 
 // Validate checks media keys, finite amounts, positive factors, and any
-// supplied time rule. Explicit media zero is valid; multiplier zero is
+// supplied time rule. Explicit media or request zero is valid; multiplier zero is
 // rejected. Time rules also require an accepted, loadable zone, even when their
 // periods are empty. Map-based checks report the first encountered invalid
 // field.
 func (r CatalogRules) Validate() error {
+	if r.CostPerRequest != nil && !validAmount(*r.CostPerRequest) {
+		return fmt.Errorf("invalid cost_per_request")
+	}
 	if _, err := NormalizeVideoPrices(r.VideoPrices); err != nil {
 		return err
 	}

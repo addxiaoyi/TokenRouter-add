@@ -204,6 +204,7 @@ const mountView = async () => {
         GroupCapacityBadge: true,
         GroupRateMultipliersModal: true,
         GroupRPMOverridesModal: true,
+        GroupTemplateControls: true,
         VueDraggable: { template: '<div><slot /></div>' },
       },
     },

@@ -14,6 +14,14 @@ import (
 // AuthEndpoints defines the authentication HTTP operations consumed by
 // identity route registration.
 type AuthEndpoints interface {
+	// SocialOAuthStart starts Telegram or Discord authorization using the trusted
+	// route provider. It checks current-user proof for binding before issuing
+	// ceremony cookies or returning the provider authorization URL.
+	SocialOAuthStart(*gin.Context)
+	// SocialOAuthCallback validates the selected provider and browser ceremony
+	// before preparing shared pending authentication. Successful verification
+	// retains the stable external subject and requires account proof for binding.
+	SocialOAuthCallback(*gin.Context)
 	// BindDingTalkOAuthLogin proves an existing account and restricts browser
 	// pending identity to DingTalk. A required TOTP challenge defers binding;
 	// direct completion binds before pair issuance and separate pending

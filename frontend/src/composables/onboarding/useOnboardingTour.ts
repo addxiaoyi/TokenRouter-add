@@ -16,15 +16,17 @@ import {
 // interactive controls, and the shared onboarding store. Steps can require a
 // route change, a visible target, or a successful form action before advancing.
 // A click listener remembers the step that installed it and waits for the
-// interaction to render before checking that an active driver reports the
-// captured step index.
+// interaction to render before checking that the same active driver reports the
+// captured step index. Every popover offers an independent skip action, including
+// the welcome step where driver.js disables backward navigation.
 //
 // The onboarding store keeps the driver across layout instances and exposes
 // form-driven advancement. Step replacement removes local listeners and restores
 // target focus attributes. Driver destruction owns the global keyboard listener,
 // while component unmount clears its auto-start timer and registered control
-// methods. Seen markers are scoped to the user, role, and tour version in
-// browser storage.
+// methods. Completion and skipping share seen markers captured for the starting
+// user and tour. Destruction cancels pending target waits and delayed advancement
+// so a skipped tour cannot resume or move a replacement tour.
 
 // OnboardingOptions configures persisted tour identity and automatic
 // administrator startup for a mounted layout.
@@ -52,17 +54,16 @@ export function useOnboardingTour(options: OnboardingOptions) {
   // delayed administrator startup to complete before the next tour action.
   const TIMING = {
     INTERACTIVE_WAIT_MS: 800, // Default wait time for interactive steps
+    ELEMENT_POLL_MS: 150, // Interval between target visibility checks.
     ELEMENT_TIMEOUT_MS: 8000, // Timeout for element detection
     AUTO_START_DELAY_MS: 1000, // Delay before auto-starting tour
   } as const
 
-  // Helper: Check if a step is interactive (only close button shown)
-  // isInteractiveStep reports whether a step exposes only its close button.
+  // isInteractiveStep recognizes the close-only configuration marking required interaction.
   const isInteractiveStep = (step: DriveStep): boolean => {
     return step.popover?.showButtons?.length === 1 && step.popover.showButtons[0] === 'close'
   }
 
-  // Helper: Clean up click listener
   // cleanupClickListener removes events installed for the active target and
   // restores its previous tabindex. Calling it repeatedly is safe because the
   // tracked listener record is cleared after cleanup.
@@ -92,6 +93,8 @@ export function useOnboardingTour(options: OnboardingOptions) {
   } | null = null
   let autoStartTimer: ReturnType<typeof setTimeout> | null = null
   let globalKeyboardHandler: ((e: KeyboardEvent) => void) | null = null
+  // activeTourAbort cancels delayed form advancement when the owned driver closes.
+  let activeTourAbort: AbortController | null = null
 
   // getStorageKey builds a seen-marker key from the configured prefix, user, role,
   // and tour version. Anonymous sessions use guest identity, and absent role uses
@@ -103,41 +106,65 @@ export function useOnboardingTour(options: OnboardingOptions) {
     return `${baseKey}_${userId}_${role}_${storageVersion}`
   }
 
-  // hasSeen reports whether the current user and role completed this tour.
+  // hasSeen reports whether the current user completed or skipped this tour.
   const hasSeen = () => {
     return localStorage.getItem(getStorageKey()) === 'true'
   }
 
-  // markAsSeen writes the current user and role tour completion marker.
+  // markAsSeen records completion or skipping for the current user and role.
   const markAsSeen = () => {
     localStorage.setItem(getStorageKey(), 'true')
   }
 
-  // clearSeen removes the current user and role tour completion marker.
+  // clearSeen removes the current user's completion or skip marker for replay.
   const clearSeen = () => {
     localStorage.removeItem(getStorageKey())
   }
 
-  // markTeamGuideAsSeen writes the current user's versioned team guide completion
-  // marker.
-  const markTeamGuideAsSeen = () => {
+  // getTeamStorageKey identifies the current user's versioned team guide marker.
+  const getTeamStorageKey = () => {
     const userId = userStore.user?.id ?? 'guest'
-    localStorage.setItem(`team_guide_${userId}_${teamStorageVersion}`, 'true')
+    return `team_guide_${userId}_${teamStorageVersion}`
+  }
+
+  // waitForTour yields until the delay expires or tour cancellation arrives.
+  // Cancellation resolves normally because callers decide whether their captured
+  // driver still owns the work. The first completion removes both the timer and
+  // abort subscription, so skipping releases pending waits immediately rather
+  // than leaving callbacks attached to the closed tour. An already aborted signal
+  // resolves without allocating either resource.
+  const waitForTour = (delay: number, signal?: AbortSignal): Promise<void> => {
+    if (signal?.aborted) return Promise.resolve()
+    return new Promise((resolve) => {
+      // releaseWait removes both completion sources before resolving, keeping
+      // expiration and cancellation idempotent when they arrive close together.
+      const releaseWait = () => {
+        clearTimeout(timer)
+        signal?.removeEventListener('abort', releaseWait)
+        resolve()
+      }
+      const timer = setTimeout(releaseWait, delay)
+      signal?.addEventListener('abort', releaseWait, { once: true })
+    })
   }
 
   // ensureElement waits for a selector to resolve to an element with positive
   // height. It polls until the supplied timeout and returns false when a visible
-  // target never appears.
-  const ensureElement = async (selector: string, timeout = 5000): Promise<boolean> => {
+  // target never appears or the owning tour is cancelled.
+  const ensureElement = async (
+    selector: string,
+    timeout = 5000,
+    signal?: AbortSignal,
+  ): Promise<boolean> => {
     const startTime = Date.now()
-    while (Date.now() - startTime < timeout) {
+    while (!signal?.aborted && Date.now() - startTime < timeout) {
       const element = document.querySelector(selector)
       if (element && element.getBoundingClientRect().height > 0) {
         return true
       }
       // Poll briefly so asynchronously mounted or revealed targets can become
       // visible before the tour timeout expires.
-      await new Promise((resolve) => setTimeout(resolve, 150))
+      await waitForTour(TIMING.ELEMENT_POLL_MS, signal)
     }
     return false
   }
@@ -148,12 +175,17 @@ export function useOnboardingTour(options: OnboardingOptions) {
   // destination page before locating its element, while interactive advancement
   // remembers its bound step across the delay. Completion marks the selected flow
   // as seen before driver destruction removes listeners and clears shared driver
-  // ownership.
+  // ownership. Skipping uses the same persisted marker and cleanup without moving
+  // through the remaining steps; explicit replay can start the flow again.
   const startTour = async (
     startIndex = 0,
     flow: 'default' | 'team' = 'default',
     teamOptions?: TeamGuideOptions,
   ) => {
+    if (autoStartTimer) {
+      clearTimeout(autoStartTimer)
+      autoStartTimer = null
+    }
     // Resolve current role and membership when starting so the tour uses the
     // controls available to this user now.
     const isAdmin = userStore.user?.role === 'admin'
@@ -163,8 +195,69 @@ export function useOnboardingTour(options: OnboardingOptions) {
         : isAdmin
           ? getAdminSteps(t)
           : getUserSteps(t)
-    const driverSteps = steps.map(({ route: _route, ...step }) => step)
-    const markCurrentTourAsSeen = flow === 'team' ? markTeamGuideAsSeen : markAsSeen
+    const driverSteps = steps.map(({ route: _route, ...step }, index) => ({
+      ...step,
+      popover: {
+        ...step.popover,
+        // Skip has its own control; the first step has no backward destination.
+        showButtons: index === 0 ? ['next' as const] : step.popover?.showButtons,
+      },
+    }))
+    const seenKey = flow === 'team' ? getTeamStorageKey() : getStorageKey()
+    const tourAbort = new AbortController()
+    let skipButton: HTMLButtonElement | null = null
+
+    // finishTour persists completion or skipping for this tour's starting user.
+    // It always destroys the captured driver, including when storage rejects the
+    // write; that error propagates without retaining navigation listeners or waits.
+    const finishTour = () => {
+      if (tourAbort.signal.aborted) return
+      try {
+        localStorage.setItem(seenKey, 'true')
+      } finally {
+        try {
+          tourDriver.destroy()
+        } finally {
+          // An immediate welcome-step exit can precede the library's first
+          // animation frame, when driver.js has not registered onDestroyed state.
+          releaseTour()
+        }
+      }
+    }
+
+    // releaseTour cancels pending work and releases this driver's owned listeners.
+    // It runs from destruction and explicit completion because driver.js can omit
+    // onDestroyed before the first highlight frame. Cancellation is recorded first,
+    // making repeated release calls harmless and preventing queued continuations
+    // from attaching targets or advancing a replacement tour. Shared driver state
+    // is cleared only while it still refers to this instance.
+    const releaseTour = () => {
+      if (tourAbort.signal.aborted) return
+      tourAbort.abort()
+      window.removeEventListener('click', activateSkip, { capture: true })
+      skipButton?.remove()
+      skipButton = null
+      cleanupClickListener()
+      if (globalKeyboardHandler) {
+        document.removeEventListener('keydown', globalKeyboardHandler, { capture: true })
+        globalKeyboardHandler = null
+      }
+      if (driverInstance === tourDriver) {
+        driverInstance = null
+        activeTourAbort = null
+        onboardingStore.setDriverInstance(null)
+      }
+    }
+
+    // activateSkip handles clicks on this tour's explicit skip control before
+    // driver.js captures popover events on document. Other clicks keep their
+    // normal dispatch, and destruction removes the window capture subscription.
+    const activateSkip = (event: MouseEvent) => {
+      if (!(event.target instanceof Node) || !skipButton?.contains(event.target)) return
+      event.preventDefault()
+      event.stopPropagation()
+      finishTour()
+    }
 
     // Wait for pending Vue rendering before searching for the first target so
     // mounted form controls can be located.
@@ -185,8 +278,9 @@ export function useOnboardingTour(options: OnboardingOptions) {
 
     // Create the driver with callbacks that coordinate navigation, target
     // interaction, and publication through the shared onboarding store.
-    driverInstance = driver({
+    const tourDriver = driver({
       showProgress: true,
+      progressText: '{{current}} / {{total}}',
       steps: driverSteps,
       animate: true,
       allowClose: false, // Overlay clicks cannot dismiss.
@@ -201,9 +295,7 @@ export function useOnboardingTour(options: OnboardingOptions) {
         // Persist completion before destroying the final step so a subsequent
         // layout mount can observe the finished tour.
         if (state.activeIndex === (config.steps?.length ?? 0) - 1) {
-          markCurrentTourAsSeen()
-          driverInstance?.destroy()
-          onboardingStore.setDriverInstance(null)
+          finishTour()
         } else {
           // If Next is invoked for an interactive control, trigger that control
           // and let its own interaction advance the tour.
@@ -230,15 +322,23 @@ export function useOnboardingTour(options: OnboardingOptions) {
       onPrevClick: async (_el, _step, { state }) => {
         await moveToStep((state.activeIndex ?? 0) - 1)
       },
-      onCloseClick: () => {
-        markCurrentTourAsSeen()
-        driverInstance?.destroy()
-        onboardingStore.setDriverInstance(null)
-      },
+      onCloseClick: finishTour,
 
       // Interactive popovers append a keyboard hint while keeping the driver
       // navigation buttons and progress presentation supplied by its template.
       onPopoverRender: (popover, { state }) => {
+        popover.nextButton.classList.add('btn', 'btn-primary')
+        popover.previousButton.classList.add('btn', 'btn-secondary')
+
+        // Keep Skip separate from driver navigation so it remains enabled on
+        // the first step and on steps waiting for a required form interaction.
+        skipButton?.remove()
+        skipButton = document.createElement('button')
+        skipButton.type = 'button'
+        skipButton.className = 'driver-popover-skip-btn btn btn-ghost'
+        skipButton.textContent = t('onboarding.skip')
+        popover.footerButtons.prepend(skipButton)
+
         try {
           const currentStep = steps[state.activeIndex ?? 0]
 
@@ -269,6 +369,7 @@ export function useOnboardingTour(options: OnboardingOptions) {
 
       // Highlight callbacks prepare target visibility and install interaction listeners.
       onHighlightStarted: async (element, step) => {
+        if (tourAbort.signal.aborted) return
         // Release the previous target listeners and restore its tab index before
         // binding interactions to the newly highlighted target.
         cleanupClickListener()
@@ -277,7 +378,12 @@ export function useOnboardingTour(options: OnboardingOptions) {
         // highlighting starts, so wait for visibility before attaching its
         // interaction handlers.
         if (!element && step.element && typeof step.element === 'string') {
-          const exists = await ensureElement(step.element, 8000)
+          const exists = await ensureElement(
+            step.element,
+            TIMING.ELEMENT_TIMEOUT_MS,
+            tourAbort.signal,
+          )
+          if (tourAbort.signal.aborted) return
           if (!exists) {
             console.warn(`Tour element not found after 8s: ${step.element}`)
             return
@@ -290,7 +396,8 @@ export function useOnboardingTour(options: OnboardingOptions) {
         if (element) {
           element.dispatchEvent(new Event('onboarding-reveal', { bubbles: true }))
           await nextTick()
-          driverInstance?.refresh()
+          if (tourAbort.signal.aborted) return
+          tourDriver.refresh()
         }
 
         if (isInteractiveStep(step) && element) {
@@ -334,8 +441,8 @@ export function useOnboardingTour(options: OnboardingOptions) {
           // before waiting, preventing click, keyboard, or input events sharing
           // this closure from scheduling another transition. After the delay,
           // the current driver must be active and report the captured step index.
-          // This check compares indexes, so a replacement driver at the same
-          // index can still pass and receive the requested next-step transition.
+          // Driver identity and cancellation also prevent delayed work from a
+          // skipped tour from advancing a replay at the same step index.
           const clickHandler = async () => {
             // Prevent duplicate execution
             if (hasExecuted) {
@@ -345,10 +452,14 @@ export function useOnboardingTour(options: OnboardingOptions) {
 
             // Delay advancement until the target action has time to render
             // feedback, then recheck the bound step before moving.
-            await new Promise((resolve) => setTimeout(resolve, TIMING.INTERACTIVE_WAIT_MS))
+            await waitForTour(TIMING.INTERACTIVE_WAIT_MS, tourAbort.signal)
 
             // Verify driver is still active and not destroyed
-            if (!driverInstance || !driverInstance.isActive()) {
+            if (
+              tourAbort.signal.aborted ||
+              driverInstance !== tourDriver ||
+              !tourDriver.isActive()
+            ) {
               return
             }
 
@@ -413,19 +524,12 @@ export function useOnboardingTour(options: OnboardingOptions) {
         }
       },
 
-      onDestroyed: () => {
-        cleanupClickListener()
-        // Driver destruction owns keyboard cleanup so a tour kept across layout
-        // unmounts retains its shortcuts until it actually closes.
-        if (globalKeyboardHandler) {
-          document.removeEventListener('keydown', globalKeyboardHandler, { capture: true })
-          globalKeyboardHandler = null
-        }
-        onboardingStore.setDriverInstance(null)
-      },
+      onDestroyed: releaseTour,
     })
 
-    onboardingStore.setDriverInstance(driverInstance)
+    driverInstance = tourDriver
+    activeTourAbort = tourAbort
+    onboardingStore.setDriverInstance(tourDriver)
 
     // The capture listener routes navigation keys while leaving editing keys
     // available inside supported form controls.
@@ -435,11 +539,13 @@ export function useOnboardingTour(options: OnboardingOptions) {
       if (e.key === 'Escape') {
         e.preventDefault()
         e.stopPropagation()
-        markCurrentTourAsSeen()
-        driverInstance.destroy()
-        onboardingStore.setDriverInstance(null)
+        finishTour()
         return
       }
+
+      // Native buttons need Enter and Space to reach their click behavior;
+      // intercepting Enter here would advance the tour instead of activating Skip.
+      if ((e.target as HTMLElement)?.closest('.driver-popover-skip-btn')) return
 
       if (e.key === 'ArrowRight') {
         const target = e.target as HTMLElement
@@ -523,6 +629,9 @@ export function useOnboardingTour(options: OnboardingOptions) {
     }
 
     document.addEventListener('keydown', globalKeyboardHandler, { capture: true })
+    // Window capture receives explicit Skip before the library's document-level
+    // popover delegation suppresses native events on its generated button classes.
+    window.addEventListener('click', activateSkip, { capture: true })
     driverInstance.drive(startIndex)
 
     // moveToStep navigates to the target step route before waiting for its
@@ -533,37 +642,49 @@ export function useOnboardingTour(options: OnboardingOptions) {
     // active after those asynchronous waits.
     async function moveToStep(targetIndex: number): Promise<void> {
       const targetStep = steps[targetIndex]
-      if (!targetStep || !driverInstance?.isActive()) return
+      if (!targetStep || tourAbort.signal.aborted || !tourDriver.isActive()) return
 
       if (targetStep.route) {
         const targetRoute = router.resolve(targetStep.route)
         if (router.currentRoute.value.fullPath !== targetRoute.fullPath) {
           await router.push(targetStep.route)
           await nextTick()
+          if (tourAbort.signal.aborted) return
         }
       }
 
       if (targetStep.element && typeof targetStep.element === 'string') {
-        const exists = await ensureElement(targetStep.element, TIMING.ELEMENT_TIMEOUT_MS)
+        const exists = await ensureElement(
+          targetStep.element,
+          TIMING.ELEMENT_TIMEOUT_MS,
+          tourAbort.signal,
+        )
+        if (tourAbort.signal.aborted) return
         if (!exists) {
           console.warn(`Onboarding: Target step element not found: ${targetStep.element}`)
           return
         }
       }
 
-      if (driverInstance?.isActive()) driverInstance.moveTo(targetIndex)
+      if (driverInstance === tourDriver && tourDriver.isActive()) tourDriver.moveTo(targetIndex)
     }
   }
 
   // nextStep advances the active driver after an optional delay in milliseconds.
   // Form handlers call it after successful actions; its initial active check
-  // returns immediately when no tour is running.
+  // returns immediately when no tour is running. Skipping cancels the delay, and
+  // a replacement driver cannot receive advancement requested by an older tour.
+  // The driver and cancellation signal are captured before waiting because replay
+  // can publish another active instance at the same step during that interval.
   const nextStep = async (delay = 300) => {
-    if (!driverInstance?.isActive()) return
+    const currentDriver = driverInstance
+    const signal = activeTourAbort?.signal
+    if (!currentDriver?.isActive()) return
     if (delay > 0) {
-      await new Promise((resolve) => setTimeout(resolve, delay))
+      await waitForTour(delay, signal)
     }
-    driverInstance.moveNext()
+    if (signal?.aborted || driverInstance !== currentDriver || !currentDriver.isActive()) return
+    currentDriver.moveNext()
   }
 
   // isCurrentStep reports whether the active highlighted element matches the
@@ -609,7 +730,8 @@ export function useOnboardingTour(options: OnboardingOptions) {
 
     if (!options.autoStart || hasSeen()) return
     autoStartTimer = setTimeout(() => {
-      void startTour()
+      autoStartTimer = null
+      if (!hasSeen() && !onboardingStore.isDriverActive()) void startTour()
     }, TIMING.AUTO_START_DELAY_MS)
   })
 

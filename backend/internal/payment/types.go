@@ -42,6 +42,7 @@ const (
 	TypeEPUSDT      PaymentType = "epusdt"  // EPUSDT EPay cryptocurrency checkout
 	// NOWPayments hosted cryptocurrency checkout adapter identity.
 	TypeNOWPayments PaymentType = "nowpayments"
+	TypeStarPay     PaymentType = "starpay" // StarPAY merchant balance checkout
 	// Airwallex checkout adapter identity.
 	TypeAirwallex PaymentType = "airwallex"
 
@@ -292,10 +293,13 @@ type PaymentDocumentResponse struct {
 // RefundRequest carries stored order references and formatted gateway refund
 // money.
 type RefundRequest struct {
-	TradeNo string // stored upstream payment reference
-	OrderID string // stored merchant order number
-	Amount  string // formatted gateway refund amount
-	Reason  string // supplied provider refund explanation
+	// RequestID identifies the persisted local preparation before submission.
+	// StarPAY uses this value for its full-refund idempotency key across retries.
+	RequestID string
+	TradeNo   string // stored upstream payment reference
+	OrderID   string // stored merchant order number
+	Amount    string // formatted gateway refund amount
+	Reason    string // supplied provider refund explanation
 }
 
 // RefundQueryRequest identifies an existing provider refund and its query

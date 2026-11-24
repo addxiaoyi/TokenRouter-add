@@ -21,8 +21,8 @@
       />
     </button>
 
-    <!-- Retain pricing selections when the panel closes, and let Collapse coordinate its height during exit. -->
-    <Collapse :open="expanded">
+    <!-- Mount detailed rows only while inspected; selection refs stay in this component and survive Collapse releasing its children after exit. -->
+    <Collapse :open="expanded" unmount-on-hide>
       <div class="pt-3">
         <!-- Keep context, speed, effort, and time controls together so their selections update the same displayed quote. -->
         <div
@@ -176,9 +176,11 @@ import type {
 // and video rows retain their own units and zero-price handling.
 //
 // Selection state belongs to the mounted panel and survives collapsing its
-// content. Available intervals and periods clamp stale selection indexes when
-// pricing data changes. The default time choice samples the configured timezone
-// when its computed dependencies update; no timer continuously advances that
+// content. Detailed controls mount on expansion and unmount after closing, leaving
+// collapsed cards free of hidden quote rows. Available intervals and periods clamp
+// stale selection indexes when pricing data changes. The default time choice
+// samples the configured timezone when its computed dependencies update; no timer
+// continuously advances that
 // choice. Explicit user selections take precedence over the sampled default,
 // and only token rows apply the time and reasoning multipliers.
 
@@ -458,8 +460,20 @@ const activeSource = computed<MarketplaceModelPricing | MarketplacePricingInterv
 )
 
 // standardRows dispatches to the quote's billing mode before applying token
-// fallback rules; named video dimensions and image resolutions keep separate rows.
+// fallback rules; request amounts, video dimensions, and image resolutions keep their units.
 const standardRows = computed<PricingRow[]>(() => {
+  if (
+    pricingKind(props.model.pricing) === 'per_request' &&
+    props.model.pricing.price_per_request != null
+  ) {
+    return [
+      {
+        key: 'request',
+        label: t('marketplace.requestPricing'),
+        value: `${formatPrice(props.model.pricing.price_per_request)} ${t('marketplace.perRequest')}`,
+      },
+    ]
+  }
   if (pricingKind(props.model.pricing) === 'video') {
     return videoPricingRows(props.model.pricing)
   }

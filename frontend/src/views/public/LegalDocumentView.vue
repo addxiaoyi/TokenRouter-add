@@ -63,27 +63,21 @@
       </section>
 
       <article v-else>
-        <div class="mb-8 border-b border-gray-200 pb-6 dark:border-dark-700">
-          <div class="flex items-start gap-4">
-            <span
-              class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-control bg-primary-50 text-primary-700 dark:bg-primary-500/10 dark:text-primary-300"
-            >
-              <Icon :name="documentIcon" size="md" />
-            </span>
-            <div class="min-w-0">
-              <p class="text-sm font-medium text-primary-700 dark:text-primary-300">{{
-                t('legal.title')
-              }}</p>
-              <h1
-                class="mt-2 break-words text-2xl font-bold tracking-normal text-gray-950 dark:text-white sm:text-3xl"
-              >
-                {{ currentDocument.title }}
-              </h1>
-              <p v-if="updatedAt" class="mt-3 text-sm text-gray-500 dark:text-dark-400">
-                {{ t('legal.updatedAt', { date: updatedAt }) }}
-              </p>
-            </div>
-          </div>
+        <div class="mb-6 min-w-0 border-b border-gray-200 pb-6 dark:border-dark-700">
+          <p
+            class="flex items-center gap-2 text-xs font-medium text-primary-700 dark:text-primary-300"
+          >
+            <Icon :name="documentIcon" size="sm" :animate-on-hover="false" />
+            {{ t('legal.title') }}
+          </p>
+          <h1
+            class="mt-3 break-words text-2xl font-semibold tracking-normal text-gray-950 dark:text-white"
+          >
+            {{ currentDocument.title }}
+          </h1>
+          <p v-if="updatedAt" class="mt-2 text-sm text-gray-500 dark:text-dark-400">
+            {{ t('legal.updatedAt', { date: updatedAt }) }}
+          </p>
         </div>
 
         <div

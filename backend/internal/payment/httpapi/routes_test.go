@@ -21,6 +21,7 @@ type routePlansStub struct{}
 // pass-through guards and inspects Gin's route table. It requires
 // checkout-info, force-expire and draft-provider test routes. EPUSDT EPay accepts
 // GET and POST callbacks, and the payment channels route remains absent.
+// StarPAY balance callbacks expose POST only because their signature covers JSON bodies.
 func TestPaymentRoutesDoNotExposeAIChannels(t *testing.T) {
 	router := gin.New()
 	passThrough := func(c *gin.Context) { c.Next() }
@@ -41,6 +42,8 @@ func TestPaymentRoutesDoNotExposeAIChannels(t *testing.T) {
 
 	require.True(t, registered[http.MethodPost+" /api/v1/payment/webhook/epusdt"])
 	require.True(t, registered[http.MethodGet+" /api/v1/payment/webhook/epusdt"])
+	require.True(t, registered[http.MethodPost+" /api/v1/payment/webhook/starpay"])
+	require.False(t, registered[http.MethodGet+" /api/v1/payment/webhook/starpay"])
 	require.False(t, registered[http.MethodGet+" /api/v1/payment/channels"])
 	require.True(t, registered[http.MethodGet+" /api/v1/payment/checkout-info"])
 	require.True(t, registered[http.MethodPost+" /api/v1/admin/payment/orders/:id/force-expire"])

@@ -433,6 +433,22 @@ export default {
       quickSetCopy: '使用当前站点生成并复制',
       redirectUrlSetAndCopied: '已使用当前站点生成回调地址并复制到剪贴板',
     },
+    social: {
+      enable: '启用 {provider} 登录与绑定',
+      telegramHint:
+        '在 BotFather 的 Login Widget 中取得 Client ID 和 Client Secret，将下方回调地址填入 Redirect URIs，本站来源填入 Trusted Origins，签名算法保留 RS256。',
+      discordHint:
+        '在 Discord Developer Portal 创建应用，取得 OAuth2 Client ID 和 Client Secret，将下方地址加入 Redirects。授权只使用 identify 和 email。',
+      secretSaved: '已配置，留空保留原密钥',
+      secretNeeded: '请输入平台提供的 Client Secret',
+      secretHint: '密钥仅保存到后端，保存后输入框会清空。',
+      callback: '平台回调地址',
+      copyCallback: '复制地址',
+      callbackCopied: '回调地址已复制',
+      callbackHint:
+        '留空沿用当前站点 API 地址。请将显示的完整地址原样登记到平台，生产环境须使用 HTTPS。',
+      setupLink: '打开平台配置与文档',
+    },
     qq: {
       title: 'QQ 互联登录',
       description: '配置 QQ 互联 OAuth，用于 TokenRouter 用户登录',
@@ -1010,6 +1026,12 @@ export default {
       providerStripe: 'Stripe',
       providerAirwallex: 'Airwallex',
       providerEPUSDT: 'EPUSDT / GMPay（EPay 协议）',
+      providerStarPay: 'StarPAY 商户余额',
+      field_pkey: 'EPay 签名密钥',
+      field_starpayApiBaseHint:
+        'StarPAY 支付基础地址，默认 https://star-web.top/pay。使用人民币商户余额付款，仅支持全额原路退款。',
+      field_starpayKeyHint:
+        '填写收款商户的 EPay MD5 签名密钥。余额支付协议使用 HMAC-SHA256，密钥仅由后端保存。',
       field_epusdtApiBaseHint:
         '填写 EPUSDT HTTPS 基础地址，例如 https://pay.example.com。使用 EPay submit.php 跳转协议和 MD5 签名，密钥填写商户 API Key 的 secret。',
       providerNOWPayments: 'NOWPayments',

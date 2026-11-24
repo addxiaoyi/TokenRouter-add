@@ -19,6 +19,48 @@ import (
 // imageTokenCatalog supplies token prices for the specified image model.
 type imageTokenCatalog struct{}
 
+// requestCatalog supplies a fixed catalog baseline for media completion tests.
+type requestCatalog struct{}
+
+// GetModelPricing supplies an explicit request baseline without native media
+// units. The returned entry belongs to the caller, allowing fixtures to resolve
+// the same price for text, image, video, and audio output.
+func (requestCatalog) GetModelPricing(string) *pricing.CatalogModelPricing {
+	price := 0.01
+	return &pricing.CatalogModelPricing{CatalogRules: pricing.CatalogRules{CostPerRequest: &price}, TokenPricingAbsent: true}
+}
+
+// ForceUpdate retains the request fixture without contacting an external catalog.
+func (requestCatalog) ForceUpdate() error { return nil }
+
+// TestCatalogRequestMediaCounts applies request metadata to image, video, and
+// audio completions. Files remain countable outputs while frame counts, video
+// seconds, and continuous audio units cannot inflate a request baseline.
+func TestCatalogRequestMediaCounts(t *testing.T) {
+	calculator := billing.NewCalculator(requestCatalog{}, billing.CalculatorOptions{PreferCatalogPricing: true})
+	resolver := billing.NewPriceResolver(nil, calculator, nil, nil)
+	recorder := NewRecorder(Dependencies{Calculator: calculator, Prices: resolver}, RecorderOptions{})
+	id := int64(66)
+	key := &KeySnapshot{GroupID: &id, Group: &GroupSnapshot{ID: id}}
+	for _, tc := range []struct {
+		name   string  // completion fixture label
+		output *Result // observed completed media usage
+		want   float64 // expected base request charge
+	}{
+		{"image", &Result{Model: "request", ImageCount: 2, ImageFrameCount: 50}, 0.02},
+		{"video", &Result{Model: "request", VideoCount: 2, VideoDurationSeconds: 60, VideoResolution: "720p"}, 0.02},
+		{"audio", &Result{Model: "request", AudioUsage: &AudioUsage{Mode: "tts", DurationOrUnits: 120}}, 0.01},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cost, err := recorder.CalculateOpenAIRecordUsageCostAt(context.Background(), tc.output, key, []string{"request"}, 2, 2, 2, 2, UsageTokens{}, "", time.Now())
+			require.NoError(t, err)
+			require.Equal(t, "per_request", cost.BillingMode)
+			require.InDelta(t, tc.want, cost.TotalCost, 1e-12)
+			require.InDelta(t, tc.want*2, cost.ActualCost, 1e-12)
+		})
+	}
+}
+
 // GetModelPricing supplies fixed ordinary-input and image-output token prices
 // for gpt-image-2. Other models return nil; the fixture has no per-image price,
 // so positive token evidence selects exact token billing in the tested paths.

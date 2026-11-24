@@ -103,6 +103,7 @@ func (s *NativeProtocolTest) Execute(
 		payload = openai.TestChatCompletionsPayload(testModelID, prompt)
 	}
 	if object, ok := payload.(map[string]any); ok {
+		applyTestOutputBudget(c, string(providercore.TestProtocolID(protocol)), object)
 		if err := applyProbeSampling(c, s.Attributes, value, testModelID, string(c.ProtocolRoute.UpstreamProtocol), object); err != nil {
 			return (TestStreamOutput{}).Error(c, err.Error())
 		}

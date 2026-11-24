@@ -316,6 +316,9 @@ storage:
   # separate setup, logging, backup, and plugin fallback rules.
   dir: "./data"
 model_catalog:
+  # Prefer usable catalog prices over custom cards, then apply the group rate.
+  # Models without catalog prices can still use their configured cards.
+  prefer_catalog_pricing: false
   # Configure custom selling prices in the admin pricing settings and
   # associate them with the relevant groups.
   # Catalog check interval (minutes): synchronize the remote catalog with

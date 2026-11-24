@@ -9,7 +9,7 @@
         {{ t('profile.totp.description') }}
       </p>
     </div>
-    <div class="px-6 py-6">
+    <div class="px-6 py-5">
       <!-- Loading state -->
       <div
         v-if="loading && !status"
@@ -19,8 +19,8 @@
         aria-busy="true"
         data-loading-skeleton
       >
-        <div class="flex min-w-0 items-center gap-4" aria-hidden="true">
-          <Skeleton variant="circle" :width="48" :height="48" class="shrink-0" />
+        <div class="flex min-w-0 items-center gap-3" aria-hidden="true">
+          <Skeleton variant="circle" :width="20" :height="20" class="shrink-0" />
           <div class="min-w-0 space-y-2">
             <Skeleton :width="98" :height="16" class="max-w-full" />
             <Skeleton :width="126" :height="14" class="max-w-full" />
@@ -30,23 +30,32 @@
       </div>
 
       <!-- 2FA Enabled -->
-      <div v-else-if="status?.enabled" class="flex items-center justify-between">
-        <div class="flex items-center gap-4">
-          <div class="flex-shrink-0 rounded-full bg-green-100 p-3 dark:bg-green-900/30">
-            <Icon name="shield" size="lg" class="h-6 w-6 text-green-600 dark:text-green-400" />
-          </div>
-          <div>
-            <p class="font-medium text-gray-900 dark:text-white">
+      <div
+        v-else-if="status?.enabled"
+        class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+      >
+        <div class="flex min-w-0 items-start gap-3">
+          <Icon
+            name="shieldCheck"
+            size="md"
+            :animate-on-hover="false"
+            class="mt-0.5 shrink-0 text-green-600 dark:text-green-400"
+          />
+          <div class="min-w-0 space-y-1">
+            <p class="text-sm font-medium text-gray-900 dark:text-white">
               {{ t('profile.totp.enabled') }}
             </p>
-            <p v-if="status.enabled_at" class="text-sm text-gray-500 dark:text-gray-400">
+            <p
+              v-if="status.enabled_at"
+              class="break-words text-xs leading-5 text-gray-500 dark:text-gray-400"
+            >
               {{ t('profile.totp.enabledAt') }}: {{ formatDate(status.enabled_at) }}
             </p>
           </div>
         </div>
         <button
           type="button"
-          class="btn btn-outline-danger"
+          class="btn btn-outline-danger justify-self-end"
           :disabled="loading"
           @click="showDisableDialog = true"
         >
@@ -55,23 +64,26 @@
       </div>
 
       <!-- 2FA Not Enabled -->
-      <div v-else-if="status" class="flex items-center justify-between">
-        <div class="flex items-center gap-4">
-          <div class="flex-shrink-0 rounded-full bg-gray-100 p-3 dark:bg-dark-700">
-            <Icon name="shield" size="lg" class="h-6 w-6 text-gray-400" />
-          </div>
-          <div>
-            <p class="font-medium text-gray-700 dark:text-gray-300">
+      <div v-else-if="status" class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+        <div class="flex min-w-0 items-start gap-3">
+          <Icon
+            name="shield"
+            size="md"
+            :animate-on-hover="false"
+            class="mt-0.5 shrink-0 text-gray-400"
+          />
+          <div class="min-w-0 space-y-1">
+            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">
               {{ t('profile.totp.notEnabled') }}
             </p>
-            <p class="text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-xs leading-5 text-gray-500 dark:text-gray-400">
               {{ t('profile.totp.notEnabledHint') }}
             </p>
           </div>
         </div>
         <button
           type="button"
-          class="btn btn-primary"
+          class="btn btn-primary justify-self-end"
           :disabled="loading"
           @click="showSetupModal = true"
         >

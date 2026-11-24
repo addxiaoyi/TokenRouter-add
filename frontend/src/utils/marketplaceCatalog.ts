@@ -42,7 +42,7 @@ export function compareMarketplaceGroups(left: MarketplaceGroup, right: Marketpl
 
 // ModelPriceSummary condenses a model's cheapest public quote for one-line display.
 // Amounts are group-adjusted balance units: token prices per token, image prices per
-// image, and video prices per second. A token side is null when no group quotes it.
+// image, request prices per request, and video prices per second. A token side is null when no group quotes it.
 // varies reports that another group quotes a different amount for the same kind.
 export type ModelPriceSummary =
   | { kind: 'token'; input: number | null; output: number | null; varies: boolean }
@@ -105,6 +105,10 @@ function tokenQuote(pricing: MarketplaceModelPricing): PricedQuote {
 // quotes the cheapest per-second entry, which is the "from" price a row displays.
 function quoteFor(pricing: MarketplaceModelPricing): PricedQuote | null {
   const kind = pricingKind(pricing)
+  if (kind === 'per_request' && isQuoteAmount(pricing.price_per_request)) {
+    const amount = pricing.price_per_request
+    return { kind, amount, primary: amount }
+  }
   if (kind === 'token') {
     return tokenQuote(pricing)
   }

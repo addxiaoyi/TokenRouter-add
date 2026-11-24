@@ -31,7 +31,8 @@
 //   - pending*.go and oauth_*.go describe browser state, account choice,
 //     provider subjects, and profile-adoption rules.
 //   - dingtalk_*.go, wechat_oauth.go, linuxdo_oauth.go, oidc_oauth.go, and
-//     email_oauth.go contain provider-specific identity data and login rules.
+//     email_oauth.go, and social_oauth.go contain provider-specific identity data
+//     and login rules. social_settings.go owns Telegram and Discord runtime settings.
 //   - email_*.go and registration_email_*.go handle challenge state, email
 //     normalization, and registration policy.
 //   - captcha.go, aliyun_captcha_service.go, tencent_captcha_service.go,

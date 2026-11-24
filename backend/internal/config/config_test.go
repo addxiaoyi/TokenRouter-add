@@ -9,6 +9,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestLoadCatalogPreference preserves the default card-first policy and loads
+// an explicit catalog-first setting. Both values must survive typed configuration
+// decoding without introducing unknown-key or migration errors.
+func TestLoadCatalogPreference(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		fixture := newConfigFixture(t)
+		fixture.SetValue("config_version", 2)
+		fixture.SetValue("model_catalog.prefer_catalog_pricing", enabled)
+		cfg, err := fixture.LoadForBootstrap()
+		require.NoError(t, err)
+		require.Equal(t, enabled, cfg.ModelCatalog.PreferCatalogPricing)
+	}
+}
+
 // TestLoadTimezonePrecedence combines a file zone with TIMEZONE, TZ, and absent
 // values. The decoded zone must follow standard TZ, legacy environment, file,
 // and default precedence in the supplied cases.

@@ -1,10 +1,10 @@
-import { nextMotionFrame } from '@/__tests__/helpers/motion'
+import { finishMotion, nextMotionFrame } from '@/__tests__/helpers/motion'
 import { defineComponent, h } from 'vue'
-import { flushPromises, mount } from '@vue/test-utils'
+import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import LoginView from '@/views/auth/LoginView.vue'
 import RegisterView from '@/views/auth/RegisterView.vue'
-import { LOGIN_AGREEMENT_STORAGE_KEY } from '@/utils/loginAgreement'
+import { hasAcceptedLoginAgreement, LOGIN_AGREEMENT_STORAGE_KEY } from '@/utils/loginAgreement'
 
 // LoginAgreementGate.spec.ts checks consent gating across password, passkey, and
 // provider actions on login and registration pages. Real agreement controls and
@@ -129,7 +129,7 @@ async function mountPage(page: 'login' | 'register') {
     global: {
       stubs: {
         AuthLayout: { template: '<div><slot /><slot name="footer" /></div>' },
-        RouterLink: { template: '<a><slot /></a>' },
+        RouterLink: { name: 'RouterLink', props: ['to'], template: '<a><slot /></a>' },
         GoogleOneTap: OneTapStub,
         TurnstileWidget: CaptchaStub,
         Icon: true,
@@ -313,16 +313,98 @@ describe.each(['login', 'register'] as const)('%s 协议提交门禁', (page) =>
     )
   })
 
-  // Public settings select modal agreement presentation with missing consent.
-  // Entering the page must show that dialog and keep authentication actions gated
-  // until acceptance occurs.
-  it('条款弹窗模式仍在进入页面时显示并保持原有门禁', async () => {
-    mocks.settings.mockResolvedValue({ ...baseSettings, login_agreement_mode: 'modal' })
+  // Modal consent renders its linked legal documents and keeps form controls
+  // locked. Accepting records the current revision and releases both login and
+  // registration controls before their normal submission flow resumes.
+  it('条款弹窗展示文档并在同意后解除门禁', async () => {
+    mocks.settings.mockResolvedValue({
+      ...baseSettings,
+      login_agreement_mode: 'modal',
+      login_agreement_documents: [
+        { id: 'terms', title: '服务条款', content: '测试条款' },
+        { id: '', title: '隐私政策', content: '测试隐私政策' },
+        { id: 'blank', title: ' ', content: '' },
+      ],
+    })
     const view = await mountPage(page)
-    expect(document.body.textContent).toContain('legal.updateNotice')
+    const dialog = new DOMWrapper(document.body).get('[role="dialog"][aria-modal="true"]')
+    const titleId = dialog.attributes('aria-labelledby')
+    expect(titleId).toBeTruthy()
+    expect(document.getElementById(titleId)?.textContent).toContain('legal.updateNotice')
     expect(view.get('#email').attributes('disabled')).toBeDefined()
     expect(view.get('#password').attributes('disabled')).toBeDefined()
     expect(view.find('#login-agreement-consent').exists()).toBe(false)
+
+    const documentLinks = view.findAllComponents({ name: 'RouterLink' }).filter((link) => {
+      const route = link.props('to')
+      return typeof route === 'object' && route?.name === 'LegalDocument'
+    })
+    expect(documentLinks.map((link) => link.props('to'))).toEqual([
+      { name: 'LegalDocument', params: { documentId: 'terms' } },
+      { name: 'LegalDocument', params: { documentId: '隐私政策' } },
+    ])
+    expect(documentLinks[0].text()).toContain('服务条款')
+    expect(documentLinks[1].text()).toContain('隐私政策')
+    for (const link of documentLinks) {
+      expect(link.element.tagName).toBe('A')
+      expect(link.attributes('target')).toBe('_blank')
+      expect(link.attributes('rel')).toBe('noopener noreferrer')
+    }
+
+    await dialog.trigger('click')
+    expect(new DOMWrapper(document.body).find('[role="dialog"]').exists()).toBe(true)
+    expect(hasAcceptedLoginAgreement('current-revision')).toBe(false)
+
+    const acceptButton = dialog
+      .findAll('button')
+      .find((button) => button.text() === 'legal.accept')!
+    await acceptButton.trigger('click')
+    await flushPromises()
+    expect(hasAcceptedLoginAgreement('current-revision')).toBe(true)
+    expect(view.get('#email').attributes('disabled')).toBeUndefined()
+    expect(view.get('#password').attributes('disabled')).toBeUndefined()
+
+    await view.get('#email').setValue('test@example.com')
+    await view.get('#password').setValue('test-password')
+    await view.get('form').trigger('submit')
+    await flushPromises()
+    expect(page === 'login' ? mocks.login : mocks.register).toHaveBeenCalledTimes(1)
+  })
+
+  // Each modal dismissal path withdraws consent instead of accepting it. The
+  // dialog closes with a warning while authentication controls remain locked and
+  // submitting the form cannot start authentication or captcha work.
+  it.each(['reject', 'close', 'escape'] as const)('%s 不绕过条款弹窗门禁', async (action) => {
+    mocks.settings.mockResolvedValue({ ...baseSettings, login_agreement_mode: 'modal' })
+    const view = await mountPage(page)
+    const dialog = new DOMWrapper(document.body).get('[role="dialog"][aria-modal="true"]')
+
+    if (action === 'escape') {
+      dialog.element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    } else if (action === 'close') {
+      await dialog.get('button[aria-label="Close modal"]').trigger('click')
+    } else {
+      const rejectButton = dialog
+        .findAll('button')
+        .find((button) => button.text() === 'legal.reject')!
+      await rejectButton.trigger('click')
+    }
+    await flushPromises()
+
+    // The closing overlay remains mounted and isolated until its leave finishes;
+    // complete that transition before checking DOM removal and scroll-lock release.
+    expect(dialog.element.hasAttribute('inert')).toBe(true)
+    await finishMotion(dialog.element)
+    expect(new DOMWrapper(document.body).find('[role="dialog"]').exists()).toBe(false)
+    expect(document.body.classList.contains('modal-open')).toBe(false)
+    expect(hasAcceptedLoginAgreement('current-revision')).toBe(false)
+    expect(mocks.warning).toHaveBeenCalledWith('auth.agreementRequired')
+    expect(view.get('#email').attributes('disabled')).toBeDefined()
+    expect(view.get('#password').attributes('disabled')).toBeDefined()
+    await view.get('form').trigger('submit')
+    expect(mocks.login).not.toHaveBeenCalled()
+    expect(mocks.register).not.toHaveBeenCalled()
+    expect(mocks.verify).not.toHaveBeenCalled()
   })
 
   if (page === 'login') {

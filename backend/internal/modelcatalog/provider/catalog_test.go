@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 )
 
 // catalog_test.go verifies catalog publication, missing-field supplements, and concurrent reads.
@@ -67,6 +69,26 @@ func TestPricingConcurrentReadAndReload(t *testing.T) {
 	require.False(t, inconsistent.Load())
 	service.Stop()
 	require.NotNil(t, service.GetModelPricing("model"))
+}
+
+// TestRequestSupplementYieldsToPublishedTokenPrices loads a request baseline
+// for an unpriced model and then publishes native prices. Native amounts win,
+// while an invalid replacement supplement preserves the last valid publication.
+func TestRequestSupplementYieldsToPublishedTokenPrices(t *testing.T) {
+	dir := t.TempDir()
+	supplement := filepath.Join(dir, "requests.json")
+	require.NoError(t, os.WriteFile(supplement, []byte(`{"model":{"cost_per_request":0.01}}`), 0o600))
+	service := NewService(Options{DataDir: dir, FallbackFile: supplement}, nil)
+	require.NoError(t, service.publishModelsCatalog([]byte(`{"openai":{"id":"openai","models":{"model":{"id":"model","type":"chat","capabilities":{}}}}}`), time.Now(), false))
+	raw := service.GetModelPricing("model")
+	require.NotNil(t, raw)
+	require.Equal(t, pricing.BillingModePerRequest, pricing.ResolveCatalogPricing("model", raw, true).Mode)
+	priced := []byte(`{"openai":{"id":"openai","models":{"model":{"id":"model","type":"chat","capabilities":{},"cost":{"text":{"input":{"price":1},"output":{"price":2}}}}}}}`)
+	require.NoError(t, service.publishModelsCatalog(priced, time.Now(), false))
+	require.Equal(t, pricing.BillingModeToken, pricing.ResolveCatalogPricing("model", service.GetModelPricing("model"), true).Mode)
+	require.NoError(t, os.WriteFile(supplement, []byte(`{"model":{"cost_per_request":-1}}`), 0o600))
+	require.Error(t, service.publishModelsCatalog(priced, time.Now(), false))
+	require.Equal(t, 0.01, *service.GetModelPricing("model").CostPerRequest)
 }
 
 // TestModelAttributesCanonicalFallbackKeepsPricing supplies services sharing a

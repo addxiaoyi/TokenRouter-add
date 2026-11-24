@@ -16,6 +16,7 @@ import "github.com/TokenFlux/TokenRouter/internal/identity"
 // come from the separate identity read-result conversion.
 func (s *Snapshot) IdentityAdminSettings() identity.AdminSettings {
 	return identity.AdminSettings{
+		SocialOAuthSettings:                    s.SocialOAuthSettings,
 		AliyunCaptchaAccessKeyID:               s.AliyunCaptchaAccessKeyID,
 		AliyunCaptchaAccessKeySecret:           s.AliyunCaptchaAccessKeySecret,
 		AliyunCaptchaEnabled:                   s.AliyunCaptchaEnabled,
@@ -128,6 +129,7 @@ func (s *Snapshot) IdentityAdminSettings() identity.AdminSettings {
 // value, and existing configured-secret flags are outside this update-value
 // transfer and remain as previously read.
 func (s *Snapshot) ApplyIdentityAdminSettings(value identity.AdminSettings) {
+	s.SocialOAuthSettings = value.SocialOAuthSettings
 	s.AliyunCaptchaAccessKeyID = value.AliyunCaptchaAccessKeyID
 	s.AliyunCaptchaAccessKeySecret = value.AliyunCaptchaAccessKeySecret
 	s.AliyunCaptchaEnabled = value.AliyunCaptchaEnabled
@@ -239,6 +241,7 @@ func (s *Snapshot) ApplyIdentityAdminSettings(value identity.AdminSettings) {
 // slice remains shared with that result; the HTTP response later selects public
 // credential metadata from the combined Snapshot.
 func (s *Snapshot) ApplyIdentityAdminReadSettings(value *identity.AdminReadSettings) {
+	s.SocialOAuthSettings = value.SocialOAuthSettings
 	s.AliyunCaptchaAccessKeyID = value.AliyunCaptchaAccessKeyID
 	s.AliyunCaptchaAccessKeySecret = value.AliyunCaptchaAccessKeySecret
 	s.AliyunCaptchaAccessKeySecretConfigured = value.AliyunCaptchaAccessKeySecretConfigured

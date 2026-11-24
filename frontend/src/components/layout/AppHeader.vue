@@ -115,6 +115,15 @@
             <Icon name="book" size="md" class="md:hidden" />
             <span class="hidden md:inline">{{ t('nav.docs') }}</span>
           </a>
+          <router-link
+            v-else
+            to="/docs"
+            class="header-nav-link hidden sm:flex"
+            :aria-label="t('nav.docs')"
+          >
+            <Icon name="book" size="md" class="md:hidden" />
+            <span class="hidden md:inline">{{ t('nav.docs') }}</span>
+          </router-link>
 
           <HeaderContactSupport />
 

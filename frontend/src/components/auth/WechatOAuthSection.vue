@@ -6,11 +6,7 @@
       class="btn btn-secondary w-full"
       @click="startLogin"
     >
-      <span
-        class="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-green-100 text-xs font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-300"
-      >
-        W
-      </span>
+      <AuthProviderIcon provider="wechat" class="h-5 w-5" />
       {{ t('auth.oidc.signIn', { providerName }) }}
     </button>
 
@@ -39,6 +35,7 @@ import { useI18n } from 'vue-i18n'
 import { resolveWeChatOAuthStart, type OAuthLoginStart } from '@/api/auth'
 import { useAppStore } from '@/stores'
 import { resolveAffiliateCode, storeOAuthAffiliateCode } from '@/utils/oauthAffiliate'
+import AuthProviderIcon from './AuthProviderIcon.vue'
 
 // WechatOAuthSection.vue presents the WeChat sign-in entry and emits its start
 // request to the parent authentication gate. Public capability settings and

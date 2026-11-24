@@ -37,7 +37,9 @@ type PublicAuthSettings struct {
 	// QQ follows the LinuxDo switch rule: a supplied stored switch decides,
 	// and a missing key falls back to the startup default. QQ: advertised
 	// QQ login.
-	QQ bool
+	QQ       bool
+	Telegram bool // configured Telegram login availability
+	Discord  bool // configured Discord login availability
 	// SMSLogin follows the runtime switch exactly: only a stored true
 	// advertises phone code login. SMSLogin: advertised SMS code login.
 	SMSLogin bool
@@ -111,7 +113,9 @@ func (s *OAuthSettings) PublicSettingsFromValues(settings map[string]string) Pub
 	}
 
 	return PublicAuthSettings{
-		LinuxDo: linuxDoEnabled, DingTalk: dingTalkEnabled, OIDC: oidcEnabled, OIDCName: oidcProviderName, QQ: qqEnabled, SMSLogin: smsLoginEnabled,
+		Telegram: SocialOAuthPublicEnabled(settings, SocialTelegram),
+		Discord:  SocialOAuthPublicEnabled(settings, SocialDiscord),
+		LinuxDo:  linuxDoEnabled, DingTalk: dingTalkEnabled, OIDC: oidcEnabled, OIDCName: oidcProviderName, QQ: qqEnabled, SMSLogin: smsLoginEnabled,
 		WeChat: weChatEnabled, WeChatOpen: weChatOpenEnabled, WeChatMP: weChatMPEnabled, WeChatMobile: weChatMobileEnabled,
 		GitHub: gitHubOAuthEnabled, Google: googleOAuthEnabled, GoogleOneTap: googleOneTapEnabled, GoogleClientID: googleOAuthClientID,
 		RegistrationSuffixes: ParseRegistrationEmailSuffixWhitelist(settings[SettingKeyRegistrationEmailSuffixWhitelist]), TencentRegion: NormalizeTencentCaptchaRegion(settings[SettingKeyTencentCaptchaRegion]), AliyunRegion: NormalizeAliyunCaptchaRegion(settings[SettingKeyAliyunCaptchaRegion]),

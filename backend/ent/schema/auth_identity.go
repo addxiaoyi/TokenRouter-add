@@ -30,6 +30,10 @@ var authProviderTypes = map[string]struct{}{
 	"oidc":     {},
 	"wechat":   {},
 	"dingtalk": {},
+	"qq":       {},
+	"phone":    {},
+	"telegram": {},
+	"discord":  {},
 }
 
 // AuthIdentity stores the canonical login identity for an account.

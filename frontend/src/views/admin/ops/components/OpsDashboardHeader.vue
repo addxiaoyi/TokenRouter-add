@@ -32,8 +32,8 @@ import { formatMemorySizeMB } from '../utils/opsFormatters'
 // custom mode so the parent can construct a complete request.
 //
 // Health display distinguishes missing observations from measured zero,
-// suppresses diagnostics when the overview appears idle, and uses fixed
-// diagnostic rules alongside configurable metric badge thresholds. Database and
+// skips traffic diagnoses when the selected window is empty, and uses fixed
+// resource rules alongside configurable metric badge thresholds. Database and
 // Redis status combines connectivity with pool utilization, giving failed
 // connectivity precedence. Parent refresh state drives realtime requests, and a
 // busy flag suppresses overlapping traffic reads rather than replacing their
@@ -124,6 +124,8 @@ const adminSettingsStore = useAdminSettingsStore()
 // realtimeWindow selects the short traffic aggregation independently of the
 // dashboard historical interval and its supplied overview.
 const realtimeWindow = ref<RealtimeWindow>('1min')
+// showDiagnosis opens the same diagnostic content for keyboard and touch users.
+const showDiagnosis = ref(false)
 
 // Overview selectors keep absent parent data as null before deriving
 // measurements and system-resource presentation for the header.
@@ -509,25 +511,21 @@ const ttftP50Ms = computed(() => overview.value?.ttft?.p50_ms ?? null)
 const ttftAvgMs = computed(() => overview.value?.ttft?.avg_ms ?? null)
 const ttftMaxMs = computed(() => overview.value?.ttft?.max_ms ?? null)
 
-// Idle detection combines current historical QPS and request error rate,
-// treating an absent overview as idle for health presentation.
+// Idle detection uses the selected overview window, so a zero rate in its
+// latest bucket cannot hide observed traffic or suppress that window's diagnosis.
 const isSystemIdle = computed(() => {
   const ov = overview.value
   if (!ov) return true
-  const qps = ov.qps?.current
-  const errorRate = ov.error_rate ?? 0
-  return (qps ?? 0) === 0 && errorRate === 0
+  return ov.request_count_total === 0 && (ov.qps?.current ?? 0) === 0
 })
 
-// Health score presentation treats unavailable or nonfinite scores as missing
-// and uses idle state before applying score colors.
+// Health score presentation only colors a finite, measured score.
 const healthScoreValue = computed<number | null>(() => {
   const v = overview.value?.health_score
   return typeof v === 'number' && Number.isFinite(v) ? v : null
 })
 
 const healthScoreColor = computed(() => {
-  if (isSystemIdle.value) return '#A1A1AA' // gray-400
   const score = healthScoreValue.value
   if (score == null) return '#A1A1AA'
   if (score >= 90) return '#10b981' // green
@@ -536,7 +534,6 @@ const healthScoreColor = computed(() => {
 })
 
 const healthScoreClass = computed(() => {
-  if (isSystemIdle.value) return 'text-gray-400'
   const score = healthScoreValue.value
   if (score == null) return 'text-gray-400'
   if (score >= 90) return 'text-green-500'
@@ -546,13 +543,12 @@ const healthScoreClass = computed(() => {
 
 // Gauge geometry scales with fullscreen mode; the dash offset clamps measured
 // scores to the visible zero-to-one-hundred range.
-const circleSize = computed(() => (props.fullscreen ? 140 : 100))
-const strokeWidth = computed(() => (props.fullscreen ? 10 : 8))
+const circleSize = computed(() => (props.fullscreen ? 88 : 64))
+const strokeWidth = computed(() => (props.fullscreen ? 8 : 6))
 const radius = computed(() => (circleSize.value - strokeWidth.value) / 2)
 const circumference = computed(() => 2 * Math.PI * radius.value)
 const dashOffset = computed(() => {
-  if (isSystemIdle.value) return 0
-  if (healthScoreValue.value == null) return 0
+  if (healthScoreValue.value == null) return circumference.value
   // Clamp score geometry to the visible gauge circumference.
   const score = Math.max(0, Math.min(100, healthScoreValue.value))
   return circumference.value - (score / 100) * circumference.value
@@ -857,7 +853,7 @@ function handleToolbarRefresh() {
 <template>
   <div
     :class="[
-      'flex flex-col gap-4 rounded-surface bg-white shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-900 dark:ring-dark-700',
+      'ops-summary flex flex-col gap-4 rounded-surface bg-white shadow-sm ring-1 ring-gray-900/5 dark:bg-dark-900 dark:ring-dark-700',
       props.fullscreen ? 'p-8' : 'p-6',
     ]"
   >
@@ -1021,33 +1017,21 @@ function handleToolbarRefresh() {
       </div>
     </div>
 
-    <div v-if="overview" class="grid grid-cols-1 gap-4 lg:grid-cols-12">
+    <div v-if="overview" class="ops-overview">
       <!-- Left: Health + Realtime -->
       <div
-        :class="[
-          'rounded-surface bg-gray-50 dark:bg-dark-950 lg:col-span-5',
-          props.fullscreen ? 'p-6' : 'p-4',
-        ]"
+        :class="['rounded-surface bg-gray-50 dark:bg-dark-950', props.fullscreen ? 'p-6' : 'p-4']"
       >
-        <div class="grid h-full grid-cols-1 gap-4 md:grid-cols-[200px_1fr] md:items-center">
+        <div class="ops-health-grid h-full">
           <!-- 1) Health Score -->
-          <div
-            class="group relative flex cursor-pointer flex-col items-center justify-center rounded-surface py-2 transition hover:bg-white/60 dark:hover:bg-dark-800/60 md:border-r md:border-gray-200 md:pr-6 dark:md:border-dark-700"
-          >
-            <!-- The outer diagnostic overlay owns positioning; its inner surface uses the shared panel palette. -->
-            <div
-              class="pointer-events-none absolute left-1/2 top-full z-50 mt-2 w-72 -translate-x-1/2 opacity-0 transition-opacity duration-normal group-hover:pointer-events-auto group-hover:opacity-100 md:left-full md:top-0 md:ml-2 md:mt-0 md:translate-x-0"
+          <div class="min-w-0 space-y-3 py-2">
+            <BaseDialog
+              :show="showDiagnosis"
+              :title="t('admin.ops.diagnosis.title')"
+              trap-focus
+              @close="showDiagnosis = false"
             >
-              <div
-                class="rounded-surface bg-white p-4 shadow-xl ring-1 ring-black/5 dark:bg-dark-900 dark:ring-dark-600"
-              >
-                <h4
-                  class="mb-3 border-b border-gray-100 pb-2 text-sm font-bold text-gray-900 dark:border-dark-600 dark:text-white flex items-center gap-2"
-                >
-                  <Icon name="brain" size="sm" class="text-blue-500" />
-                  {{ t('admin.ops.diagnosis.title') }}
-                </h4>
-
+              <div>
                 <div class="space-y-3">
                   <div v-for="(item, idx) in diagnosisReport" :key="idx" class="flex gap-3">
                     <div class="shrink-0">
@@ -1067,7 +1051,7 @@ function handleToolbarRefresh() {
                       <Icon name="infoCircle" size="sm" v-else class="h-4 w-4 text-blue-500" />
                     </div>
                     <div class="flex-1">
-                      <div class="text-xs font-semibold text-gray-900 dark:text-white">
+                      <div class="text-sm font-semibold text-gray-900 dark:text-white">
                         {{ item.message }}
                       </div>
                       <div class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
@@ -1090,72 +1074,77 @@ function handleToolbarRefresh() {
                   {{ t('admin.ops.diagnosis.footer') }}
                 </div>
               </div>
-            </div>
+            </BaseDialog>
 
-            <div class="relative flex items-center justify-center">
-              <svg :width="circleSize" :height="circleSize" class="-rotate-90 transform">
-                <circle
-                  :cx="circleSize / 2"
-                  :cy="circleSize / 2"
-                  :r="radius"
-                  :stroke-width="strokeWidth"
-                  fill="transparent"
-                  class="text-gray-200 dark:text-dark-700"
-                  stroke="currentColor"
-                />
-                <circle
-                  :cx="circleSize / 2"
-                  :cy="circleSize / 2"
-                  :r="radius"
-                  :stroke-width="strokeWidth"
-                  fill="transparent"
-                  :stroke="healthScoreColor"
-                  stroke-linecap="round"
-                  :stroke-dasharray="circumference"
-                  :stroke-dashoffset="dashOffset"
-                  class="transition-[stroke,stroke-dashoffset] duration-1000 ease-out"
-                />
-              </svg>
-
-              <div class="absolute flex flex-col items-center">
-                <span
-                  :class="[
-                    props.fullscreen ? 'text-5xl' : 'text-3xl',
-                    'font-black',
-                    healthScoreClass,
-                  ]"
+            <div class="flex flex-wrap items-center gap-3">
+              <div
+                v-if="!isSystemIdle && healthScoreValue !== null"
+                class="relative flex shrink-0 items-center justify-center"
+              >
+                <svg
+                  :width="circleSize"
+                  :height="circleSize"
+                  class="-rotate-90 transform"
+                  aria-hidden="true"
                 >
-                  {{ isSystemIdle ? t('admin.ops.idleStatus') : (overview.health_score ?? '--') }}
+                  <circle
+                    :cx="circleSize / 2"
+                    :cy="circleSize / 2"
+                    :r="radius"
+                    :stroke-width="strokeWidth"
+                    fill="transparent"
+                    class="text-gray-200 dark:text-dark-700"
+                    stroke="currentColor"
+                  />
+                  <circle
+                    :cx="circleSize / 2"
+                    :cy="circleSize / 2"
+                    :r="radius"
+                    :stroke-width="strokeWidth"
+                    fill="transparent"
+                    :stroke="healthScoreColor"
+                    stroke-linecap="round"
+                    :stroke-dasharray="circumference"
+                    :stroke-dashoffset="dashOffset"
+                    class="transition-[stroke,stroke-dashoffset] duration-1000 ease-out"
+                  />
+                </svg>
+                <span class="absolute text-xl font-bold tabular-nums" :class="healthScoreClass">
+                  {{ healthScoreValue }}
                 </span>
-                <span
-                  :class="[
-                    props.fullscreen ? 'text-xs' : 'text-xs',
-                    'font-bold uppercase tracking-wider text-gray-400',
-                  ]"
-                  >{{ t('admin.ops.health') }}</span
-                >
+              </div>
+              <span
+                v-else
+                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-control bg-gray-100 text-gray-600 dark:bg-dark-800 dark:text-gray-300"
+              >
+                <Icon name="monitor" size="sm" />
+              </span>
+              <div class="min-w-0">
+                <h3 class="flex flex-wrap items-center gap-1 text-sm font-semibold">
+                  {{ t('admin.ops.healthCondition') }}
+                  <HelpTooltip :content="t('admin.ops.healthHelp')" />
+                </h3>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  {{
+                    isSystemIdle
+                      ? t('admin.ops.diagnosis.idleImpact')
+                      : healthScoreValue === null
+                        ? t('admin.ops.noData')
+                        : healthScoreValue >= 90
+                          ? t('admin.ops.healthyStatus')
+                          : t('admin.ops.riskyStatus')
+                  }}
+                </p>
               </div>
             </div>
 
-            <div class="mt-4 text-center" v-if="!props.fullscreen">
-              <div class="flex items-center justify-center gap-1 text-xs font-medium text-gray-500">
-                {{ t('admin.ops.healthCondition') }}
-                <HelpTooltip :content="t('admin.ops.healthHelp')" />
-              </div>
-              <div class="mt-1 text-xs font-bold" :class="healthScoreClass">
-                {{
-                  isSystemIdle
-                    ? t('admin.ops.idleStatus')
-                    : typeof overview.health_score === 'number' && overview.health_score >= 90
-                      ? t('admin.ops.healthyStatus')
-                      : t('admin.ops.riskyStatus')
-                }}
-              </div>
-            </div>
+            <button type="button" class="btn btn-secondary" @click="showDiagnosis = true">
+              <Icon name="brain" size="sm" />{{ t('admin.ops.diagnosis.title') }}
+            </button>
           </div>
 
           <!-- 2) Realtime Traffic -->
-          <div class="flex h-full flex-col justify-center py-2">
+          <div class="flex min-w-0 h-full flex-col justify-center py-2">
             <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div class="flex items-center gap-2">
                 <span class="h-3 w-3 shrink-0 rounded-full bg-blue-500" aria-hidden="true"></span>
@@ -1166,11 +1155,16 @@ function handleToolbarRefresh() {
               </div>
 
               <!-- Time Window Selector -->
-              <div class="flex flex-wrap gap-1">
+              <div
+                class="flex flex-wrap gap-1"
+                role="group"
+                :aria-label="t('admin.ops.realtime.title')"
+              >
                 <button
                   v-for="window in availableRealtimeWindows"
                   :key="window"
                   type="button"
+                  :aria-pressed="realtimeWindow === window"
                   class="rounded-compact px-1.5 py-0.5 text-xs font-bold transition-colors sm:px-2 sm:text-xs"
                   :class="
                     realtimeWindow === window
@@ -1209,13 +1203,16 @@ function handleToolbarRefresh() {
                       >QPS</span
                     >
                   </div>
-                  <span
-                    :class="[
-                      props.fullscreen ? 'text-4xl' : 'text-xl sm:text-2xl',
-                      'font-black tabular-nums text-gray-900 dark:text-white',
-                    ]"
-                    >{{ displayRealTimeTps.toFixed(1) }}</span
-                  >
+                  <div class="flex items-baseline gap-1.5">
+                    <span
+                      :class="[
+                        props.fullscreen ? 'text-4xl' : 'text-xl sm:text-2xl',
+                        'font-black tabular-nums text-gray-900 dark:text-white',
+                      ]"
+                      >{{ displayRealTimeTps.toFixed(1) }}</span
+                    >
+                    <span class="text-xs font-bold text-gray-500">TPS</span>
+                  </div>
                 </div>
               </div>
 
@@ -1245,6 +1242,7 @@ function handleToolbarRefresh() {
                     </div>
                     <div class="font-black tabular-nums text-gray-900 dark:text-white">
                       {{ realtimeTpsPeakLabel }}
+                      <span class="text-xs font-medium text-gray-500">TPS</span>
                     </div>
                   </div>
                 </div>
@@ -1273,42 +1271,18 @@ function handleToolbarRefresh() {
                     </div>
                     <div class="font-black tabular-nums text-gray-900 dark:text-white">
                       {{ realtimeTpsAvgLabel }}
+                      <span class="text-xs font-medium text-gray-500">TPS</span>
                     </div>
                   </div>
                 </div>
-              </div>
-
-              <!-- Animated Pulse Line (Heart Beat Animation) -->
-              <div class="h-8 w-full overflow-hidden opacity-50">
-                <svg class="h-full w-full" viewBox="0 0 280 32" preserveAspectRatio="none">
-                  <path
-                    d="M0 16 Q 20 16, 40 16 T 80 16 T 120 10 T 160 22 T 200 16 T 240 16 T 280 16"
-                    fill="none"
-                    stroke="#3b82f6"
-                    stroke-width="2"
-                    vector-effect="non-scaling-stroke"
-                  >
-                    <animate
-                      attributeName="d"
-                      dur="2s"
-                      repeatCount="indefinite"
-                      values="M0 16 Q 20 16, 40 16 T 80 16 T 120 10 T 160 22 T 200 16 T 240 16 T 280 16;
-                              M0 16 Q 20 16, 40 16 T 80 16 T 120 16 T 160 16 T 200 10 T 240 22 T 280 16;
-                              M0 16 Q 20 16, 40 16 T 80 16 T 120 16 T 160 16 T 200 16 T 240 16 T 280 16"
-                      keyTimes="0;0.5;1"
-                    />
-                  </path>
-                </svg>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Right: 6 cards (3 cols x 2 rows) -->
-      <div
-        class="grid h-full grid-cols-1 content-center gap-4 sm:grid-cols-2 lg:col-span-7 lg:grid-cols-3"
-      >
+      <!-- Each metric keeps a readable minimum width beside the health summary. -->
+      <div class="ops-metrics-grid">
         <!-- Card 1: Requests -->
         <div class="rounded-surface bg-gray-50 p-4 dark:bg-dark-950" style="order: 1">
           <div class="flex items-center justify-between">
@@ -1643,7 +1617,7 @@ function handleToolbarRefresh() {
 
     <!-- Integrated: System health (cards) -->
     <div v-if="overview" class="mt-2 border-t border-gray-100 pt-4 dark:border-dark-700">
-      <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-7">
+      <div class="ops-resources-grid">
         <!-- CPU -->
         <div class="rounded-surface bg-gray-50 p-3 dark:bg-dark-950">
           <div class="flex items-center gap-1">

@@ -382,7 +382,7 @@ type UserIdentitySummary struct {
 	Note      string `json:"note,omitempty"`     // relationship explanation display text
 }
 
-// UserIdentitySummarySet holds the five relationship views shown by the
+// UserIdentitySummarySet holds the supported relationship views shown by the
 // profile page.
 type UserIdentitySummarySet struct {
 	Email    UserIdentitySummary `json:"email"`    // local email relationship view
@@ -391,6 +391,8 @@ type UserIdentitySummarySet struct {
 	WeChat   UserIdentitySummary `json:"wechat"`   // WeChat provider relationship view
 	DingTalk UserIdentitySummary `json:"dingtalk"` // DingTalk provider relationship view
 	QQ       UserIdentitySummary `json:"qq"`       // QQ provider relationship view
+	Telegram UserIdentitySummary `json:"telegram"` // Telegram provider relationship view
+	Discord  UserIdentitySummary `json:"discord"`  // Discord provider relationship view
 	Phone    UserIdentitySummary `json:"phone"`    // phone number relationship view
 }
 

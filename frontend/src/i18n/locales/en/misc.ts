@@ -51,7 +51,6 @@ export default {
     catalogModel: 'Model',
     catalogStartingPrice: 'Starting quote',
     catalogPrice: 'Reference price',
-    requestPricing: 'Per request',
     catalogUnit: { image: '/ image', video: '/ second', per_request: '/ request' },
     exclusive: 'Exclusive',
     title: 'Model Marketplace',
@@ -69,6 +68,8 @@ export default {
     pricingFast: 'Fast',
     imagePricing: 'Image Pricing',
     videoPricing: 'Video Pricing',
+    requestPricing: 'Per Request',
+    perRequest: '/ request',
     perSecond: '/ second',
     defaultVideoPrice: 'Other resolutions',
     perImage: '/ image',
@@ -346,6 +347,7 @@ export default {
   },
   // Onboarding Tour
   onboarding: {
+    skip: 'Skip tour',
     restartTour: 'Restart Onboarding Tour',
     dontShowAgain: "Don't show again",
     dontShowAgainTitle: 'Permanently close onboarding guide',
@@ -357,9 +359,9 @@ export default {
     // Admin tour steps
     admin: {
       welcome: {
-        title: 'Welcome to TokenRouter',
+        title: 'Set up your API gateway',
         description:
-          '<div style="line-height: 1.8;"><p style="margin-bottom: 16px;">TokenRouter routes AI requests through connected providers and manages API keys, billing, and quotas.</p><p style="margin-bottom: 12px;"><b>Core Features:</b></p><ul style="margin-left: 20px; margin-bottom: 16px;"><li><b>Group Management</b> - Create service tiers (VIP, Free Trial, etc.)</li><li><b>Provider Pool</b> - Connect multiple upstream AI providers</li><li><b>Key Distribution</b> - Generate independent API Keys for users</li><li><b>Billing Control</b> - Flexible rate and quota management</li></ul><p style="color: var(--tour-action-color); font-weight: 600;">Start by creating a group, connecting a provider, and generating an API key.</p></div>',
+          '<div class="tour-welcome"><p>Connect upstream services behind one API endpoint.</p><ol class="tour-setup-list"><li><strong>Create a group</strong><span>Choose available models and billing rules</span></li><li><strong>Connect a provider</strong><span>Add an upstream service to the group</span></li><li><strong>Generate an API key</strong><span>Give your application a single access credential</span></li></ol><p class="tour-replay-note">Skip for now and reopen this tour from your profile menu.</p></div>',
         nextBtn: 'Start setup',
         prevBtn: 'Skip',
       },
@@ -612,7 +614,22 @@ export default {
       creationUnconfirmed:
         'Order creation is being checked. Please do not submit another order; check your order history for updates.',
     },
+    starpay: {
+      refundHint: 'Full refunds return to the original paying merchant balance.',
+      hint: 'Continue to StarPAY and pay from your own merchant balance. You need sufficient available funds and a merchant account different from the receiver.',
+      waiting: 'Complete payment on StarPAY',
+      waitingHint: 'Confirm the merchant and amount on StarPAY, then return here to check payment.',
+      continue: 'Continue StarPAY payment',
+      checkStatus: 'Check payment status',
+      confirmationHint:
+        'Your purchase is fulfilled after this site verifies payment. If you have paid, wait for the status to update before paying again.',
+      expiredHint:
+        'If you have paid, contact support with this order number and your StarPAY payment record.',
+      creationUnconfirmed:
+        'StarPAY order creation is not yet confirmed. Please do not place another order; check its progress later or contact support.',
+    },
     methods: {
+      starpay: 'StarPAY merchant balance',
       epusdt: 'Cryptocurrency',
       nowpayments: 'USDT (NOWPayments)',
       easypay: 'EasyPay',

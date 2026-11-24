@@ -132,6 +132,7 @@ func (s *AnthropicProviderTest) Execute(c *TestRun, value *providercore.Record, 
 	if err := s.applyModelAttributes(ctx, value, c.GroupID, testModelID, payload); err != nil {
 		return (TestStreamOutput{}).Error(c, err.Error())
 	}
+	applyTestOutputBudget(c, "anthropic_messages", payload)
 	// The probe builder returns JSON-compatible scalar and collection values.
 	// Sampling removal retains that shape, so encoding cannot encounter an
 	// unsupported value type here.

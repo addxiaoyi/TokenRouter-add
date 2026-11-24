@@ -86,7 +86,9 @@ func (s *NativeProtocolTest) probePayload(run *TestRun, value *provider.Record, 
 	var object map[string]any
 	switch route.Protocol {
 	case protocol.ProtocolGeminiGenerateContent:
-		return geminiTestPayload(route.Model, prompt, kind), nil
+		if err := json.Unmarshal(geminiTestPayload(route.Model, prompt, kind), &object); err != nil {
+			return nil, err
+		}
 	case protocol.ProtocolAnthropicMessages:
 		var err error
 		object, err = anthropic.TestPayloadWithPrompt(route.Model, prompt)

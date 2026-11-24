@@ -57,6 +57,8 @@ func (h *PublicHandler) GetPublicSettings(c *gin.Context) {
 
 	zone, offset := h.settingService.ServerTimezone()
 	response.Success(c, dto.PublicSettings{
+		TelegramOAuthEnabled:                settings.TelegramOAuthEnabled,
+		DiscordOAuthEnabled:                 settings.DiscordOAuthEnabled,
 		RegistrationEnabled:                 settings.RegistrationEnabled,
 		EmailVerifyEnabled:                  settings.EmailVerifyEnabled,
 		ForceEmailOnThirdPartySignup:        settings.ForceEmailOnThirdPartySignup,

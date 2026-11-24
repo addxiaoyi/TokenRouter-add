@@ -75,6 +75,29 @@ function mountHome(locale: 'en' | 'zh' = 'en') {
 }
 
 describe('Homepage footer', () => {
+  // A guest visits a Google-enabled deployment using either shipped language catalog.
+  // The public footer must explain profile use and prohibited image content without untranslated keys.
+  it.each(['en', 'zh'] as const)('explains Google sign-in and usage boundaries in %s', (locale) => {
+    state.settings = { google_oauth_enabled: true }
+    const footer = mountHome(locale).get('footer')
+
+    expect(footer.text()).toContain(locale === 'en' ? 'account management' : '账户管理')
+    expect(footer.text()).toContain(locale === 'en' ? 'advertising' : '广告')
+    expect(footer.text()).toContain('Gmail')
+    expect(footer.text()).toContain(locale === 'en' ? 'Non-consensual intimate images' : '私密图像')
+    expect(footer.text()).not.toContain('home.footer.')
+  })
+
+  // A deployment leaves Google sign-in disabled while retaining its public model gateway.
+  // The footer must keep usage boundaries visible without advertising a disabled authentication method.
+  it('omits the Google disclosure when Google sign-in is disabled', () => {
+    state.settings = { google_oauth_enabled: false }
+    const footer = mountHome().get('footer')
+
+    expect(footer.text()).not.toContain('Google profile information')
+    expect(footer.text()).toContain('Non-consensual intimate images')
+  })
+
   // A guest opens the homepage before optional footer settings are configured.
   // Both catalogs must expose working public destinations and only built-in legal document IDs.
   it.each(['en', 'zh'] as const)('renders localized default navigation in %s', (locale) => {

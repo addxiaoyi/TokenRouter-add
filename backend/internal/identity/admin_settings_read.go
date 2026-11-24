@@ -80,6 +80,7 @@ type AdminReadSettings struct {
 func (s *OAuthSettings) ReadAdminSettings(settings map[string]string, defaultConcurrency func() int) *AdminReadSettings {
 	emailVerifyEnabled := settings[SettingKeyEmailVerifyEnabled] == "true"
 	result := &AdminReadSettings{}
+	result.SocialOAuthSettings = SocialOAuthSettingsFromValues(settings)
 	result.RegistrationEnabled = settings[SettingKeyRegistrationEnabled] == "true"
 	result.EmailVerifyEnabled = emailVerifyEnabled
 	result.RegistrationEmailSuffixWhitelist = ParseRegistrationEmailSuffixWhitelist(settings[SettingKeyRegistrationEmailSuffixWhitelist])

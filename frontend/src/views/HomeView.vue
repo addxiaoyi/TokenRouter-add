@@ -714,6 +714,15 @@
             <p class="mt-4 max-w-sm text-sm leading-relaxed text-gray-500 dark:text-dark-400">
               {{ t('home.footer.description') }}
             </p>
+            <p
+              v-if="appStore.cachedPublicSettings?.google_oauth_enabled === true"
+              class="mt-4 max-w-sm text-sm leading-relaxed text-gray-500 dark:text-dark-400"
+            >
+              {{ t('home.footer.googleSignIn') }}
+            </p>
+            <p class="mt-4 max-w-sm text-sm leading-relaxed text-gray-500 dark:text-dark-400">
+              {{ t('home.footer.acceptableUse') }}
+            </p>
           </div>
 
           <nav

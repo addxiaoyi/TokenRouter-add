@@ -291,6 +291,8 @@ func TestAPIContracts(t *testing.T) {
 					"dingtalk_bound": false,
 					"qq_bound": false,
 					"phone_bound": false,
+					"telegram_bound": false,
+					"discord_bound": false,
 					"identities": {
 						"email": {
 							"provider": "email",
@@ -336,7 +338,23 @@ func TestAPIContracts(t *testing.T) {
 							"can_unbind": false,
 							"bind_start_path": "/api/v1/auth/oauth/dingtalk/bind/start?intent=bind_current_user&redirect=%2Fsettings%2Fprofile"
 						},
-						"qq": {
+						"telegram": {
+  "provider": "telegram",
+  "bound": false,
+  "bound_count": 0,
+  "can_bind": true,
+  "can_unbind": false,
+  "bind_start_path": "/api/v1/auth/oauth/telegram/bind/start?intent=bind_current_user&redirect=%2Fsettings%2Fprofile"
+},
+"discord": {
+  "provider": "discord",
+  "bound": false,
+  "bound_count": 0,
+  "can_bind": true,
+  "can_unbind": false,
+  "bind_start_path": "/api/v1/auth/oauth/discord/bind/start?intent=bind_current_user&redirect=%2Fsettings%2Fprofile"
+},
+"qq": {
 							"provider": "qq",
 							"bound": false,
 							"bound_count": 0,
@@ -397,7 +415,23 @@ func TestAPIContracts(t *testing.T) {
 							"can_unbind": false,
 							"bind_start_path": "/api/v1/auth/oauth/dingtalk/bind/start?intent=bind_current_user&redirect=%2Fsettings%2Fprofile"
 						},
-						"qq": {
+						"telegram": {
+  "provider": "telegram",
+  "bound": false,
+  "bound_count": 0,
+  "can_bind": true,
+  "can_unbind": false,
+  "bind_start_path": "/api/v1/auth/oauth/telegram/bind/start?intent=bind_current_user&redirect=%2Fsettings%2Fprofile"
+},
+"discord": {
+  "provider": "discord",
+  "bound": false,
+  "bound_count": 0,
+  "can_bind": true,
+  "can_unbind": false,
+  "bind_start_path": "/api/v1/auth/oauth/discord/bind/start?intent=bind_current_user&redirect=%2Fsettings%2Fprofile"
+},
+"qq": {
 							"provider": "qq",
 							"bound": false,
 							"bound_count": 0,
@@ -458,7 +492,23 @@ func TestAPIContracts(t *testing.T) {
 							"can_unbind": false,
 							"bind_start_path": "/api/v1/auth/oauth/dingtalk/bind/start?intent=bind_current_user&redirect=%2Fsettings%2Fprofile"
 						},
-						"qq": {
+						"telegram": {
+  "provider": "telegram",
+  "bound": false,
+  "bound_count": 0,
+  "can_bind": true,
+  "can_unbind": false,
+  "bind_start_path": "/api/v1/auth/oauth/telegram/bind/start?intent=bind_current_user&redirect=%2Fsettings%2Fprofile"
+},
+"discord": {
+  "provider": "discord",
+  "bound": false,
+  "bound_count": 0,
+  "can_bind": true,
+  "can_unbind": false,
+  "bind_start_path": "/api/v1/auth/oauth/discord/bind/start?intent=bind_current_user&redirect=%2Fsettings%2Fprofile"
+},
+"qq": {
 							"provider": "qq",
 							"bound": false,
 							"bound_count": 0,
@@ -1361,7 +1411,15 @@ func TestAPIContracts(t *testing.T) {
 					"auth_source_default_qq_subscriptions": [],
 					"auth_source_default_qq_grant_on_signup": false,
 					"auth_source_default_qq_grant_on_first_bind": false,
-					"qq_connect_enabled": false,
+					"telegram_oauth_enabled": false,
+"telegram_oauth_client_id": "",
+"telegram_oauth_client_secret_configured": false,
+"telegram_oauth_redirect_url": "",
+"discord_oauth_enabled": false,
+"discord_oauth_client_id": "",
+"discord_oauth_client_secret_configured": false,
+"discord_oauth_redirect_url": "",
+"qq_connect_enabled": false,
 					"qq_connect_client_id": "",
 					"qq_connect_client_secret_configured": false,
 					"qq_connect_redirect_url": "",
@@ -1991,7 +2049,15 @@ func TestAPIContracts(t *testing.T) {
 					"auth_source_default_qq_subscriptions": [],
 					"auth_source_default_qq_grant_on_signup": false,
 					"auth_source_default_qq_grant_on_first_bind": false,
-					"qq_connect_enabled": false,
+					"telegram_oauth_enabled": false,
+"telegram_oauth_client_id": "",
+"telegram_oauth_client_secret_configured": false,
+"telegram_oauth_redirect_url": "",
+"discord_oauth_enabled": false,
+"discord_oauth_client_id": "",
+"discord_oauth_client_secret_configured": false,
+"discord_oauth_redirect_url": "",
+"qq_connect_enabled": false,
 					"qq_connect_client_id": "",
 					"qq_connect_client_secret_configured": false,
 					"qq_connect_redirect_url": "",

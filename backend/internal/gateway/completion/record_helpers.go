@@ -316,9 +316,10 @@ func (s *Recorder) resolveUserGroupRateMultiplier(ctx context.Context, userID, g
 	return s.rates.Resolve(ctx, userID, groupID, fallback)
 }
 
-// resolveConfigPricingForUsage returns a configured card and its catalog identity.
-// It retains reference targets even when no card is configured for that target,
-// allowing media callers to read the matching catalog prices after this lookup.
+// resolveConfigPricingForUsage returns selected cards or catalog unit prices
+// and their lookup identity. Catalog request baselines must reach media callers
+// so duration and frame measurements do not replace request-count billing.
+// Token-only catalog selections retain the existing usage-evidence path.
 func (s *Recorder) resolveConfigPricingForUsage(ctx context.Context, model string, key *KeySnapshot) (*ResolvedPricing, string) {
 	if s.resolver == nil || key == nil || key.Group == nil {
 		return nil, model
@@ -328,7 +329,7 @@ func (s *Recorder) resolveConfigPricingForUsage(ctx context.Context, model strin
 	if resolved.LookupModel != nil {
 		model = *resolved.LookupModel
 	}
-	if resolved.HasConfiguredPricing() {
+	if resolved.HasConfiguredPricing() || resolved.Source == billing.PricingSourceCatalog && resolved.Mode != BillingModeToken {
 		return resolved, model
 	}
 	return nil, model

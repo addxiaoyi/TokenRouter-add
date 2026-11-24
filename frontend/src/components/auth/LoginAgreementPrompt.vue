@@ -74,107 +74,68 @@
     </div>
   </div>
 
-  <Teleport to="body">
-    <MotionTransition name="agreement-fade">
-      <div
-        v-if="dialogVisible"
-        class="fixed inset-0 z-announcement-top flex items-center justify-center overflow-y-auto bg-gray-950/60 p-4 backdrop-blur-sm"
-      >
-        <div
-          class="w-full max-w-[600px] overflow-hidden rounded-surface bg-white shadow-2xl ring-1 ring-black/10 dark:bg-dark-900 dark:ring-white/10 sm:rounded-dialog"
+  <BaseDialog
+    :show="dialogVisible"
+    :title="t('legal.updateNotice')"
+    :z-index="Z_INDEX.ANNOUNCEMENT_TOP"
+    :close-on-click-outside="false"
+    trap-focus
+    @close="emit('reject')"
+  >
+    <p class="text-sm leading-6 text-gray-600 dark:text-dark-300">
+      {{ t('legal.changedNotice', { date: updatedAt || t('legal.recently') }) }}
+    </p>
+
+    <ul
+      :aria-label="t('legal.documents')"
+      class="mt-4 divide-y divide-gray-200 dark:divide-dark-700"
+    >
+      <li v-for="doc in documents" :key="doc.id || doc.title">
+        <RouterLink
+          :to="documentRoute(doc)"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-link-area flex min-h-12 items-center gap-4 rounded-control px-2 py-3 hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 dark:hover:bg-dark-800 dark:focus-visible:outline-primary-500"
         >
-          <div
-            class="border-b border-gray-100 bg-white px-6 py-6 dark:border-dark-800 dark:bg-dark-900"
-          >
-            <div class="flex items-start gap-4">
-              <span
-                class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-control bg-primary-50 text-primary-700 ring-1 ring-primary-100 dark:bg-primary-500/10 dark:text-primary-300 dark:ring-primary-500/20"
-              >
-                <Icon name="shield" size="md" />
-              </span>
-              <div class="min-w-0 flex-1">
-                <div class="flex flex-wrap items-center gap-2">
-                  <h2 class="text-xl font-bold tracking-normal text-gray-950 dark:text-white">
-                    {{ t('legal.updateNotice') }}
-                  </h2>
-                  <span
-                    v-if="updatedAt"
-                    class="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 dark:bg-dark-800 dark:text-dark-300"
-                  >
-                    {{ updatedAt }}
-                  </span>
-                </div>
-                <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-dark-300">
-                  {{ t('legal.changedNotice', { date: updatedAt || t('legal.recently') }) }}
-                </p>
-              </div>
-            </div>
-          </div>
+          <span class="text-link min-w-0 flex-1 break-words text-sm font-medium">
+            {{ doc.title }}
+          </span>
+          <Icon name="externalLink" size="sm" class="shrink-0 text-gray-400 dark:text-dark-400" />
+        </RouterLink>
+      </li>
+    </ul>
 
-          <div class="max-h-[58vh] overflow-y-auto px-6 py-5">
-            <div class="mb-3 flex items-center justify-between gap-3">
-              <p class="text-sm font-semibold text-gray-900 dark:text-white">
-                {{ t('legal.documents') }}
-              </p>
-            </div>
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <RouterLink
-                v-for="(doc, index) in documents"
-                :key="doc.id || doc.title"
-                :to="documentRoute(doc)"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="group text-link-area flex min-h-[72px] w-full items-center gap-3 rounded-surface border border-gray-200 bg-gray-50/70 px-4 py-3 text-left transition hover:-translate-y-0.5 hover:border-black/20 hover:bg-white hover:shadow-sm dark:border-dark-700 dark:bg-dark-800/70 dark:hover:border-primary-500/30 dark:hover:bg-dark-800"
-              >
-                <span
-                  class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-control bg-white text-gray-700 ring-1 ring-gray-200 transition group-hover:bg-primary-50 group-hover:text-primary-700 group-hover:ring-primary-100 dark:bg-dark-900 dark:text-dark-200 dark:ring-dark-700 dark:group-hover:bg-primary-500/10 dark:group-hover:text-primary-200 dark:group-hover:ring-primary-500/20"
-                >
-                  <Icon :name="documentIcon(index, doc.title)" size="sm" />
-                </span>
-                <span class="min-w-0 flex-1">
-                  <span class="text-link block truncate text-sm font-semibold">{{
-                    doc.title
-                  }}</span>
-                </span>
-                <span
-                  class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-gray-400 transition group-hover:bg-primary-50 group-hover:text-primary-600 dark:group-hover:bg-primary-500/10 dark:group-hover:text-primary-300"
-                >
-                  <Icon name="externalLink" size="sm" />
-                </span>
-              </RouterLink>
-            </div>
-          </div>
-
-          <div
-            class="border-t border-gray-100 bg-gray-50/80 px-6 py-4 dark:border-dark-800 dark:bg-dark-950/60"
-          >
-            <div class="grid grid-cols-2 gap-3">
-              <button type="button" class="btn btn-secondary" @click="emit('reject')">
-                {{ t('legal.reject') }}
-              </button>
-              <button type="button" class="btn btn-primary" @click="emit('accept')">
-                {{ t('legal.accept') }}
-              </button>
-            </div>
-          </div>
-        </div>
+    <template #footer>
+      <div class="flex w-full flex-wrap justify-end gap-3">
+        <button type="button" class="btn btn-secondary min-w-20" @click="emit('reject')">
+          {{ t('legal.reject') }}
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary min-w-40 flex-1 sm:flex-none"
+          @click="emit('accept')"
+        >
+          {{ t('legal.accept') }}
+        </button>
       </div>
-    </MotionTransition>
-  </Teleport>
+    </template>
+  </BaseDialog>
 </template>
 
 <script setup lang="ts">
-import MotionTransition from '@/components/common/MotionTransition.vue'
+import BaseDialog from '@/components/common/BaseDialog.vue'
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
 import HelpTooltip from '@/components/common/HelpTooltip.vue'
 import type { LoginAgreementDocument } from '@/api/settings.types'
+import { Z_INDEX } from '@/constants/overlay'
 
 // LoginAgreementPrompt.vue renders checkbox or modal consent controls for
 // configured legal documents. The parent owns acceptance and persistence, while
 // this component filters blank titles, emits user decisions, and focuses the
-// checkbox when an action needs consent.
+// checkbox when an action needs consent. The shared dialog shell owns focus
+// containment and scrolling; dismissing that shell reports rejection to the parent.
 
 // props supplies parent-owned configuration and draft input. emit reports
 // authentication actions back to that owner, which decides whether to submit or
@@ -273,45 +234,4 @@ function handleCheckboxChange(event: Event): void {
     emit('reject')
   }
 }
-
-// documentIcon selects a document symbol from title keywords and list position.
-// Privacy and policy titles take priority, region titles use a globe, and the
-// fourth remaining document uses a cog.
-function documentIcon(index: number, title: string): 'document' | 'shield' | 'globe' | 'cog' {
-  if (title.includes('政策') || title.includes('隐私')) {
-    return 'shield'
-  }
-  if (title.includes('国家') || title.includes('地区')) {
-    return 'globe'
-  }
-  if (index === 3) {
-    return 'cog'
-  }
-  return 'document'
-}
 </script>
-
-<style scoped>
-.agreement-fade-enter-active,
-.agreement-fade-leave-active {
-  transition: opacity var(--motion-fast) var(--motion-ease);
-}
-
-.agreement-fade-enter-from,
-.agreement-fade-leave-to {
-  opacity: 0;
-}
-
-.agreement-fade-enter-active > div,
-.agreement-fade-leave-active > div {
-  transition:
-    transform var(--motion-fast) var(--motion-ease),
-    opacity var(--motion-fast) var(--motion-ease);
-}
-
-.agreement-fade-enter-from > div,
-.agreement-fade-leave-to > div {
-  opacity: 0;
-  transform: translateY(8px) scale(0.98);
-}
-</style>

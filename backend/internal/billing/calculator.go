@@ -71,7 +71,8 @@ type CostInput struct {
 	// UsageUnits replaces RequestCount when positive in per-request, image or
 	// video calculation. Video cards use total output seconds; configured audio
 	// cards use minutes, millions of characters or hours to match their unit
-	// amount. Callers validate finite mode-specific quantities.
+	// amount. Catalog per-request baselines always use RequestCount, ignoring
+	// continuous units. Callers validate finite mode-specific quantities.
 	UsageUnits     float64 // continuous billable unit quantity
 	SizeTier       string  // requested price tier label
 	RateMultiplier float64 // effective user charge factor
@@ -113,9 +114,12 @@ type PriceCatalog interface {
 	ForceUpdate() error
 }
 
-// CalculatorOptions supplies wall-clock observations and configured pricing
-// time-zone resolution.
+// CalculatorOptions supplies price-source preference, wall-clock observations,
+// and configured pricing time-zone resolution.
 type CalculatorOptions struct {
+	// PreferCatalogPricing selects available catalog amounts before configured
+	// cards. False preserves configured overrides; group and funding rates still apply.
+	PreferCatalogPricing bool
 	// Now supplies current catalog time observations. NewCalculator defaults it
 	// to time.Now when nil, and WithPriceCatalog replaces it with one captured
 	// query instant.
@@ -332,10 +336,9 @@ func (s *Calculator) ForceUpdatePricing() error {
 	return fmt.Errorf("pricing service not initialized")
 }
 
-// DisplayPricing returns available video or image unit amounts before attempting
-// catalog token display. A negative user rate becomes zero; unavailable token
-// lookup or buckets yield an unpriced display result, while catalog time rules
-// use the injected clock.
+// DisplayPricing returns catalog video, image, token, or request prices in that
+// order. A negative user rate becomes zero. Models without a usable price remain
+// unpriced, while token catalog time rules use the injected clock.
 func (s *Calculator) DisplayPricing(model string, rateMultiplier float64) ModelDisplayPricing {
 	// A negative effective rate produces zero displayed amounts while keeping
 	// model price availability as a separate display decision.
@@ -352,6 +355,14 @@ func (s *Calculator) DisplayPricing(model string, rateMultiplier float64) ModelD
 
 	pricing, err := s.GetModelPricing(model)
 	if err != nil || pricing == nil || !hasAnyDisplayTokenPricing(pricing) {
+		// A declared request baseline covers models without native prices. It does
+		// not create a price for arbitrary names absent from the catalog.
+		resolved := purepricing.ResolveCatalogPricing(model, s.RawModelPricing(model), true)
+		if resolved != nil && resolved.Mode == purepricing.BillingModePerRequest {
+			if quote, found := displayPricingFromResolved(model, rateMultiplier, resolved); found {
+				return quote
+			}
+		}
 		// Lookup failure or absent token buckets leaves no usable token display;
 		// return the unpriced marker so callers do not show fabricated free amounts.
 		return unknownDisplayPricing()
@@ -608,8 +619,14 @@ func (s *Calculator) DefaultVideoPrice(model string, resolution string) (float64
 // retains its returned location and discards its error; a nil location selects
 // the unit time multiplier. Callers who want load failures to leave amounts
 // unscaled supply a loader that returns nil with its error. Usage and scalar
-// fields retain the supplied request values for mode dispatch and arithmetic.
+// fields retain the supplied request values except catalog per-request baselines,
+// which ignore continuous UsageUnits and charge RequestCount instead.
 func (s *Calculator) ProjectCostInput(input CostInput, resolved *ResolvedPricing) purepricing.CostInput {
+	// Catalog request baselines measure completed outputs, while configured audio
+	// cards retain their continuous operation units. Duration must not inflate the baseline.
+	if resolved != nil && resolved.Source == PricingSourceCatalog && resolved.Mode == purepricing.BillingModePerRequest {
+		input.UsageUnits = 0
+	}
 	var location *time.Location
 	if resolved != nil && resolved.ConfigPricing != nil && resolved.ConfigPricing.TimePricing != nil {
 		// Configured matching uses the companion location even when loading

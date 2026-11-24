@@ -327,6 +327,11 @@ export default {
       completing: '正在完成注册...',
       completeRegistrationFailed: '注册失败，请检查邀请码后重试。',
     },
+    social: {
+      signIn: '使用 {provider} 登录',
+      callbackTitle: '第三方登录',
+      providerMismatch: '登录来源不匹配，请重新发起授权',
+    },
     qq: {
       signIn: '使用 QQ 登录',
       orContinue: '或使用邮箱密码继续',

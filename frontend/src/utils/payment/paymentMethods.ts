@@ -21,6 +21,7 @@ export const METHOD_ORDER = [
   'airwallex',
   'epusdt',
   'nowpayments',
+  'starpay',
 ] as const
 
 /**

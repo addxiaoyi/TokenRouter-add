@@ -143,6 +143,33 @@ func TestSettingsResponsesWSInvalidPatchDoesNotWrite(t *testing.T) {
 	require.JSONEq(t, `{"read_timeout_seconds":45}`, repo.values[ws.SettingKey])
 }
 
+// TestSocialSettingsRoundTrip saves both providers through the assembled HTTP
+// settings pipeline. It protects effective credential validation, response masking,
+// blank-secret preservation, and unrelated partial updates after enablement.
+func TestSocialSettingsRoundTrip(t *testing.T) {
+	for _, provider := range []string{"telegram", "discord"} {
+		t.Run(provider, func(t *testing.T) {
+			prefix := provider + "_oauth_"
+			handler, repo := newStepUpSwitchTestHandler(t, map[string]string{
+				prefix + "client_id":     "client-fixture",
+				prefix + "client_secret": "private-fixture",
+			})
+			response := doUpdateSettings(t, handler, map[string]any{prefix + "enabled": true, prefix + "client_secret": ""}, nil)
+			require.Equal(t, http.StatusOK, response.Code, response.Body.String())
+			require.Equal(t, "true", repo.values[prefix+"enabled"])
+			require.Equal(t, "private-fixture", repo.values[prefix+"client_secret"])
+			require.NotContains(t, response.Body.String(), "private-fixture")
+			require.Contains(t, response.Body.String(), `"`+prefix+`client_secret_configured":true`)
+			response = doUpdateSettings(t, handler, map[string]any{"site_name": "Social test"}, nil)
+			require.Equal(t, http.StatusOK, response.Code, response.Body.String())
+			require.Equal(t, "true", repo.values[prefix+"enabled"])
+			response = doUpdateSettings(t, handler, map[string]any{prefix + "client_id": ""}, nil)
+			require.Equal(t, http.StatusBadRequest, response.Code, response.Body.String())
+			require.Equal(t, "client-fixture", repo.values[prefix+"client_id"])
+		})
+	}
+}
+
 // TestSettingsResponseFieldsAndPaymentErrors serves GET and PUT responses with
 // configured, absent, nil, and failed payment readers. It checks reader order,
 // GET/PUT error differences, omitted secrets, optional fields, and every
@@ -233,16 +260,17 @@ func TestSettingsResponseFieldsAndPaymentErrors(t *testing.T) {
 
 // fillSettingsResponseScalars writes distinct boolean, string, int, and float64
 // sentinels into a pointed struct. The pointer and fields must be usable by
-// reflection; other field kinds remain unchanged for scenario-specific setup.
+// reflection; embedded scalar settings participate in the same sentinels, while
+// other field kinds remain unchanged for scenario-specific setup.
 func fillSettingsResponseScalars(target any) {
 	value := reflect.ValueOf(target).Elem()
-	for i := range value.NumField() {
-		field := value.Field(i)
+	for i, definition := range reflect.VisibleFields(value.Type()) {
+		field := value.FieldByIndex(definition.Index)
 		switch field.Kind() {
 		case reflect.Bool:
 			field.SetBool(true)
 		case reflect.String:
-			field.SetString("fixture." + value.Type().Field(i).Name)
+			field.SetString("fixture." + definition.Name)
 		case reflect.Int:
 			// Index-based sentinels expose conversion from the wrong DTO source field.
 			field.SetInt(int64(i + 10))
@@ -272,8 +300,11 @@ func assertSettingsResponseFields(t *testing.T, data map[string]json.RawMessage,
 	settingsValue := reflect.ValueOf(snapshot).Elem()
 	paymentValue := reflect.ValueOf(payment).Elem()
 	responseType := reflect.TypeFor[settingsdto.SystemSettings]()
-	for field := range responseType.Fields() {
+	for _, field := range reflect.VisibleFields(responseType) {
 		name, _, _ := strings.Cut(field.Tag.Get("json"), ",")
+		if field.Anonymous && name == "" {
+			continue
+		}
 		if (field.Name == "OpenAIFastPolicySettings" && source.fastPolicy == nil) || (field.Name == "ProviderSchedulingThresholds" && method == http.MethodPut) {
 			require.NotContains(t, data, name)
 			continue
@@ -284,6 +315,10 @@ func assertSettingsResponseFields(t *testing.T, data map[string]json.RawMessage,
 			expected = source.fastPolicy
 		case "TotpEncryptionKeyConfigured":
 			expected = true
+		case "TelegramOAuthClientSecretConfigured":
+			expected = snapshot.TelegramOAuthClientSecret != ""
+		case "DiscordOAuthClientSecretConfigured":
+			expected = snapshot.DiscordOAuthClientSecret != ""
 		case "OpsMonitoringEnabled":
 			expected = method == http.MethodPut
 		case "DefaultSubscriptions":
@@ -445,7 +480,7 @@ func newCompositeSettingsHTTPFixture(repo settingscore.Repository, cfg *config.C
 }
 
 // TestSettingsFieldOwnership enumerates static participants and the flattened
-// update request type. It checks unique ownership, all 287 request fields are
+// update request type. It checks unique ownership, all 308 request fields are
 // represented, and no participant declares an extra field outside that request.
 func TestSettingsFieldOwnership(t *testing.T) {
 	defaults := scheduler.DefaultAdminSettingsDefaults()
@@ -469,7 +504,7 @@ func TestSettingsFieldOwnership(t *testing.T) {
 	}
 	input := reflect.TypeFor[settingsdto.UpdateSettingsRequest]()
 	count := 0
-	for field := range input.Fields() {
+	for _, field := range reflect.VisibleFields(input) {
 		name, _, _ := strings.Cut(field.Tag.Get("json"), ",")
 		if name == "" || name == "-" {
 			continue
@@ -478,7 +513,7 @@ func TestSettingsFieldOwnership(t *testing.T) {
 		delete(owners, name)
 		count++
 	}
-	require.Equal(t, 300, count, "HTTP 字段变化需要同步字段登记")
+	require.Equal(t, 308, count, "HTTP 字段变化需要同步字段登记")
 	require.Empty(t, owners, "参与者不应声明不存在的输入字段")
 }
 

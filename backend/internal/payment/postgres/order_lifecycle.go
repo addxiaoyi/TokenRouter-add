@@ -89,7 +89,8 @@ func (s *OrderStore) ExpiredPending(ctx context.Context, now time.Time) ([]*paym
 	return orderValues(rows), err
 }
 
-// PendingReconciliation reads unexpired pending Alipay/WeChat/GMPay/NOWPayments method or
+// PendingReconciliation reads unexpired pending Alipay/WeChat/GMPay/NOWPayments/StarPAY
+// method or
 // provider rows, oldest creation first and bounded by the supplied limit.
 // Canonical or underscore-prefixed labels qualify; lifecycle queries each
 // candidate before deciding payment progress.
@@ -99,6 +100,8 @@ func (s *OrderStore) PendingReconciliation(ctx context.Context, now time.Time, l
 			paymentorder.StatusEQ(payment.OrderStatusPending),
 			paymentorder.ExpiresAtGT(now),
 			paymentorder.Or(
+				paymentorder.ProviderKeyEQ(payment.TypeStarPay),
+				paymentorder.PaymentTypeEQ(payment.TypeStarPay),
 				paymentorder.ProviderKeyEQ(payment.TypeEPUSDT),
 				paymentorder.PaymentTypeEQ(payment.TypeEPUSDT),
 				paymentorder.ProviderKeyEQ(payment.TypeNOWPayments),

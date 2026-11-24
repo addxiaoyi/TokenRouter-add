@@ -1,4 +1,6 @@
 <template>
+  <SocialOAuthSettings provider="telegram" :form="form" />
+  <SocialOAuthSettings provider="discord" :form="form" />
   <SettingsCard
     :title="t('admin.settings.linuxdo.title')"
     :description="t('admin.settings.linuxdo.description')"
@@ -1143,6 +1145,7 @@
 </template>
 
 <script setup lang="ts">
+import SocialOAuthSettings from './SocialOAuthSettings.vue'
 import Collapse from '@/components/common/Collapse.vue'
 import SettingToggleRow from '@/components/common/settings/SettingToggleRow.vue'
 import SettingsCard from '@/components/common/settings/SettingsCard.vue'

@@ -3,23 +3,26 @@ import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils'
 import type { PaymentOrder } from '@/api/payment.types'
 import UserOrdersView from '../UserOrdersView.vue'
 
-// UserOrdersView.spec.ts checks buyer refund eligibility and the amounts shown
-// when a refund is requested. API fixtures provide different purchase kinds,
-// states, and provider eligibility while mounted action slots exercise the page's
-// actual selection, confirmation, and balance-display behavior.
+// UserOrdersView.spec.ts checks buyer refunds, lazy invoice details, and Stripe
+// documents. API fixtures provide different purchase kinds, states, and provider
+// eligibility while mounted action slots exercise the page's actual selection,
+// confirmation, and balance-display behavior without contacting payment services.
 
 enableAutoUnmount(afterEach)
 
 // API replacements keep order loading and refund submission observable without
 // contacting a payment provider or changing an account's stored balance.
-const { getMyOrders, getRefundEligibleProviders, requestRefund } = vi.hoisted(() => ({
-  getMyOrders: vi.fn(),
-  getRefundEligibleProviders: vi.fn(),
-  requestRefund: vi.fn(),
-}))
+const { getMyOrders, getRefundEligibleProviders, requestRefund, getOrderInvoice } = vi.hoisted(
+  () => ({
+    getMyOrders: vi.fn(),
+    getRefundEligibleProviders: vi.fn(),
+    requestRefund: vi.fn(),
+    getOrderInvoice: vi.fn(),
+  }),
+)
 
 vi.mock('@/api/payment', () => ({
-  paymentAPI: { getMyOrders, getRefundEligibleProviders, requestRefund },
+  paymentAPI: { getMyOrders, getRefundEligibleProviders, requestRefund, getOrderInvoice },
 }))
 vi.mock('@/stores', () => ({
   useAppStore: () => ({ showError: vi.fn(), showSuccess: vi.fn() }),
@@ -84,6 +87,10 @@ function mountView() {
         Pagination: true,
         Select: true,
         Icon: true,
+        TaxInvoicePanel: {
+          props: ['orderId'],
+          template: '<div data-testid="tax-invoice-panel">{{ orderId }}</div>',
+        },
       },
     },
   })
@@ -96,6 +103,7 @@ describe('UserOrdersView refund actions', () => {
       .mockReset()
       .mockResolvedValue({ data: { provider_instance_ids: ['eligible'] } })
     requestRefund.mockReset().mockResolvedValue({ data: {} })
+    getOrderInvoice.mockReset().mockResolvedValue({ data: { url: 'https://example.test/receipt' } })
   })
 
   // Completed subscriptions share refundable providers with balance orders but cannot use
@@ -159,5 +167,45 @@ describe('UserOrdersView refund actions', () => {
     const order = orderFixture({ order_type: 'subscription', amount: 10, amount_currency: 'USD' })
     expect(page.formatOrderAmount(10, order)).toBe('$10.00')
     expect(page.formatOrderAmount(10, { ...order, amount_currency: undefined })).toBe('¥10.00')
+  })
+
+  // Loading the list must not mount an invoice reader for every order. Opening
+  // one detail mounts only that order's panel and displays its actual collected currency.
+  it('loads invoice details only for the explicitly selected order', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+    expect(wrapper.find('[data-testid="tax-invoice-panel"]').exists()).toBe(false)
+    await wrapper.get('[aria-label="common.view #42"]').trigger('click')
+    expect(wrapper.get('[data-testid="tax-invoice-panel"]').text()).toBe('42')
+    expect(wrapper.get('[data-testid="dialog"]').text()).toContain('¥20.00')
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'common.close')!
+      .trigger('click')
+    expect(wrapper.find('[data-testid="tax-invoice-panel"]').exists()).toBe(false)
+  })
+
+  // Stripe orders already expose hosted billing documents through a separate API.
+  // Adding Chinese invoice details must preserve that existing document action and URL.
+  it('preserves the Stripe invoice action', async () => {
+    getMyOrders.mockResolvedValue({
+      data: { items: [orderFixture({ payment_type: 'stripe' })], total: 1 },
+    })
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    const wrapper = mountView()
+    await flushPromises()
+    await wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'payment.orders.invoice')!
+      .trigger('click')
+    await flushPromises()
+    expect(getOrderInvoice).toHaveBeenCalledWith(42)
+    expect(open).toHaveBeenCalledWith(
+      'https://example.test/receipt',
+      '_blank',
+      'noopener,noreferrer',
+    )
+    expect(wrapper.find('[data-testid="tax-invoice-panel"]').exists()).toBe(false)
+    open.mockRestore()
   })
 })

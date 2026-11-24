@@ -219,9 +219,12 @@ func TestDefaultBillingModeIgnoresModelSpelling(t *testing.T) {
 func TestPerRequestDisplayRequiresDeclaredImageDimensions(t *testing.T) {
 	zero := 0.0
 	generic := &ResolvedPricing{Mode: BillingModePerRequest, Source: PricingSourceConfig, DefaultPerRequestPricePresent: true}
-	if _, ok := DisplayPricingFromResolved("gpt-image-unregistered", 1, generic); ok {
-		t.Fatal("a model name converted an unlabeled per-request price into image units")
-	}
+	quote, available := DisplayPricingFromResolved("gpt-image-unregistered", 1, generic)
+	require.True(t, available)
+	require.Equal(t, "per_request", quote.PricingMode)
+	require.Empty(t, quote.ImagePriceSizes)
+	require.NotNil(t, quote.PricePerRequest)
+	require.Zero(t, *quote.PricePerRequest)
 	image := &ResolvedPricing{Mode: BillingModePerRequest, Source: PricingSourceConfig, RequestTiers: []PricingInterval{{TierLabel: "1k", PerRequestPrice: &zero}}}
 	result, ok := DisplayPricingFromResolved("canvas", 1, image)
 	if !ok || result.PriceStatus != "priced" || len(result.ImagePriceSizes) != 1 || result.ImagePriceSizes[0] != "1K" || result.ImagePrice1K != 0 {

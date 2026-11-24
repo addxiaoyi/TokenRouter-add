@@ -6,10 +6,11 @@
 
 - [核心实体](#核心实体)：模块归属、实体约束、MCP 凭据与用户查询规则。
 - [认证入口](#authentication_boundaries)：邮箱域名名额、人机验证、Google One Tap 与 JWT 校验。
+- [权限目录](#permissions_reference)：角色基线、资源边界与 MCP 授权入口。
 - [会话生命周期](#会话生命周期)：Token 轮换、多标签页刷新、撤销范围与邮箱挑战。
 - [强认证与敏感操作](#强认证与敏感操作)：TOTP step-up 与 Passkey 流程约束。
 - [外部身份接入](#外部身份接入)：OAuth pending 意图与防重放要求。
-- [登录提供方差异](#登录提供方差异)：九类登录提供方的主体、流程与首次绑定权益。
+- [登录提供方差异](#登录提供方差异)：登录提供方的主体、流程与首次绑定权益。
 - [身份绑定与解绑](#身份绑定与解绑)：第三方绑定、邮箱换绑别名查重与解绑清理。
 - [用户属性与来源](#用户属性与来源)：精确查找、自定义属性定义与外部资料同步。
 - [团队租户](#团队租户)：单层租户模型、报表范围、所有权转移与团队 Key 校验。
@@ -93,6 +94,13 @@ Google One Tap 是 Google 登录的浏览器端凭据入口，身份类型仍为
 - `x-api-key` 管理密钥：代表配置中的第一个实际管理员账户。敏感设置开启 step-up 后，管理密钥无法通过二次验证，须改用带有效 `sid` 的管理员 JWT。
 - WebSocket：可从约定子协议读取 JWT，同样核对当前用户。
 
+<a id="permissions_reference"></a>
+## 权限目录
+
+管理后台的 `/admin/permissions`（旧地址 `/permissions`）提供只读角色与资源参考。全局账户角色和团队成员角色分别展示。导出包含当前界面语言的完整规则，搜索仅筛选页面上的资源。
+
+具体请求的访问范围由服务端根据当前账户、归属、团队成员关系、密钥或分组策略决定。授权 MCP 客户端时使用 [MCP 管理](../interfaces/mcp_management.md#access_tokens)中的操作权限。
+
 ## 会话生命周期
 
 登录成功后签发 access token 和 refresh token。refresh token 原文仅发给客户端，服务端只存摘要，并按用户与 `sid` 维护会话族。
@@ -158,6 +166,8 @@ pending 流程安全要求：
 | OIDC | `provider_key` 为 issuer，`provider_subject` 为该 issuer 下 subject | 支持建号、接纳、绑定已有登录和当前用户 bind；不同 issuer 下同名 subject 为不同人 |
 | GitHub | GitHub user ID；注册须拿到已验证邮箱 | 支持登录和注册完成；个人资料页无自助绑定和解绑 |
 | Google | Google `sub`；注册须拿到已验证邮箱 | OAuth 跳转与 One Tap 共用唯一性、pending 注册和首次绑定权益；个人资料页无自助绑定和解绑 |
+| Telegram | 固定 Telegram issuer 下的数字 `sub`；校验 RS256 ID Token、受众、有效期和 nonce | 授权码与 S256 PKCE；新身份进入显式账号选择，已绑定身份登录仍遵守本地 TOTP；支持当前用户绑定与解绑 |
+| Discord | `/users/@me` 返回的稳定用户 ID；邮箱仅在 `verified=true` 时作为填写建议 | 授权码与 S256 PKCE，校验回调 `iss`；不按邮箱自动合并账号，支持登录、绑定与解绑 |
 | DingTalk | unionID 为稳定 subject，企业与部门信息存为 claims 或用户属性 | 支持组织策略、建号或绑定已有登录、当前用户 bind；跨组织降级仍以 unionID 为主体，企业内 user ID 仅作资料 |
 | QQ | 优先 unionid、无 unionid 时用 openid 作 subject；QQ 互联不返回邮箱 | 支持 start/callback、pending exchange、建号或绑定已有登录、当前用户 bind；建号用 `@qq-connect.invalid` 合成邮箱占位，昵称仅作资料输入 |
 | Phone | 规范化后的 11 位大陆手机号为 subject，`provider_key` 为短信渠道（如 `juhe`） | 无 OAuth 跳转：验证码校验通过即视为持有证明；未绑定走 pending 建号，已有账号在个人资料页用验证码自助绑定；验证码单次有效、限次试错与发送节流由挑战服务统一约束 |
@@ -168,6 +178,7 @@ pending 流程安全要求：
 
 - 注册时合并全局默认值与认证来源默认值，形成一次性创建计划。
 - 第三方身份首次绑定按 `(user, provider, first_bind)` 幂等发放允许的余额、并发或订阅默认值；重新绑定、callback 重放和 profile 更新不重复触发。
+- Telegram 和 Discord 使用全局注册默认值，没有独立的首次绑定赠送配置。
 
 ## 身份绑定与解绑
 
@@ -182,7 +193,7 @@ Email 绑定与换绑规则：
 事务与解绑约束：
 
 - 绑定事务校验外部三元组不属他人、当前用户与会话有效、pending 意图与 provider 一致，然后原子写入 identity、channel 和接纳决定。Email 换绑在同一事务中锁住规范化邮箱和收件箱 alias 复查占用者，再更新邮箱和密码哈希。管理员直接绑定遵守同等唯一约束和标准 `provider_key` 规则。
-- 解绑后用户至少保留一个可登录身份。Email 不走第三方解绑；LinuxDo、OIDC、WeChat、DingTalk、QQ 和 Phone 自助解绑依据当前身份集合判定。
+- 解绑后用户至少保留一个可登录身份。Email 不走第三方解绑；LinuxDo、OIDC、WeChat、DingTalk、QQ、Phone、Telegram 和 Discord 自助解绑依据当前身份集合判定。
 - 解绑成功且认证服务可用时调用 `RevokeAllUserTokens` 清理 refresh 会话，既有 access token 继续按会话校验规则判定。远端授权是否撤销取决于各 provider 实现，仅删本地记录时远端 token 可能仍有效。
 
 ## 用户属性与来源

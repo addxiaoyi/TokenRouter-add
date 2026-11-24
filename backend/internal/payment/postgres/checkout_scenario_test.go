@@ -258,8 +258,8 @@ func TestBuildPaymentOrderProviderSnapshot_IncludesAlipayMerchantIdentity(t *tes
 
 // TestBuildPaymentOrderProviderSnapshot_IncludesEasyPayMerchantIdentity
 // supplies an EasyPay merchant pid and signing secret for visible Alipay. It
-// retains merchant identity and excludes pkey from the resulting provider
-// snapshot.
+// retains merchant identity and the fixed CNY payment currency while excluding
+// pkey from the resulting provider snapshot.
 func TestBuildPaymentOrderProviderSnapshot_IncludesEasyPayMerchantIdentity(t *testing.T) {
 	t.Parallel()
 
@@ -274,6 +274,7 @@ func TestBuildPaymentOrderProviderSnapshot_IncludesEasyPayMerchantIdentity(t *te
 	}, payment.CreateOrderRequest{PaymentType: payment.TypeAlipay})
 
 	require.Equal(t, "easypay-merchant-66", snapshot["merchant_id"])
+	require.Equal(t, "CNY", snapshot["currency"])
 	require.NotContains(t, snapshot, "pkey")
 }
 

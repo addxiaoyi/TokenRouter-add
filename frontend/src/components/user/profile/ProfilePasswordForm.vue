@@ -5,15 +5,15 @@
         {{ t('profile.changePassword') }}
       </h2>
     </div>
-    <div :class="props.embedded ? '' : 'px-6 py-6'">
+    <div :class="props.embedded ? '' : 'px-6 py-5'">
       <form @submit.prevent="handleChangePassword" class="space-y-4">
         <div v-if="props.embedded">
           <p class="text-sm font-semibold text-gray-900 dark:text-white">
             {{ t('profile.changePassword') }}
           </p>
         </div>
-        <div>
-          <label for="old_password" class="input-label">
+        <div class="grid gap-2 sm:grid-cols-[8rem_minmax(0,1fr)] sm:items-center sm:gap-3">
+          <label for="old_password" class="input-label mb-0">
             {{ t('profile.currentPassword') }}
           </label>
           <input
@@ -26,25 +26,27 @@
           />
         </div>
 
-        <div>
-          <label for="new_password" class="input-label">
+        <div class="grid gap-2 sm:grid-cols-[8rem_minmax(0,1fr)] sm:items-start sm:gap-3">
+          <label for="new_password" class="input-label mb-0 sm:pt-2">
             {{ t('profile.newPassword') }}
           </label>
-          <input
-            id="new_password"
-            v-model="form.new_password"
-            type="password"
-            required
-            autocomplete="new-password"
-            class="input"
-          />
-          <p class="input-hint">
-            {{ t('profile.passwordHint') }}
-          </p>
+          <div class="min-w-0">
+            <input
+              id="new_password"
+              v-model="form.new_password"
+              type="password"
+              required
+              autocomplete="new-password"
+              class="input"
+            />
+            <p class="input-hint">
+              {{ t('profile.passwordHint') }}
+            </p>
+          </div>
         </div>
 
-        <div>
-          <label for="confirm_password" class="input-label">
+        <div class="grid gap-2 sm:grid-cols-[8rem_minmax(0,1fr)] sm:items-center sm:gap-3">
+          <label for="confirm_password" class="input-label mb-0">
             {{ t('profile.confirmNewPassword') }}
           </label>
           <input
@@ -57,7 +59,7 @@
           />
         </div>
 
-        <div class="flex justify-end pt-4">
+        <div class="flex justify-end">
           <button type="submit" :disabled="loading" class="btn btn-primary">
             {{ loading ? t('profile.changingPassword') : t('profile.changePasswordButton') }}
           </button>

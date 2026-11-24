@@ -11,8 +11,10 @@ import (
 // billing.
 // Configured cards are searched using the requested full model name before
 // same-model protocol resource candidates. That ordering lets a manual exact
-// or wildcard card retain precedence, including a free amount, while catalog
-// lookup supplies inherited buckets only when the selected card needs them.
+// or wildcard card retain precedence by default, including a free amount.
+// Deployments can instead prefer usable catalog prices while retaining cards
+// for models without catalog amounts. Catalog request baselines participate in
+// both policies, after native token and media prices.
 // Unknown models remain unpriced when neither source establishes usable
 // amounts.
 //
@@ -109,7 +111,8 @@ func NewPriceResolver(pricingConfigs ConfigPrices, calculator *Calculator, looku
 // allowing standalone cards to price uncataloged models. Effective billing
 // settings are read separately even when no model card matches. The pure
 // resolver combines these inputs and retains an unavailable base as unpriced
-// data.
+// data. Catalog preference bypasses card amounts and modifiers when the selected
+// identity has usable catalog prices, while preserving group-level settings.
 // @project-doc docs/domains/routing_and_billing.md#group_model_pricing
 func (r *PriceResolver) Resolve(ctx context.Context, input PricingInput) *ResolvedPricing {
 	var configPricing *ModelPricingEntry
@@ -126,12 +129,21 @@ func (r *PriceResolver) Resolve(ctx context.Context, input PricingInput) *Resolv
 			configPricing = r.LookupConfigPricingNormalized(ctx, *input.GroupID, input.Model)
 		}
 	}
+	settings := r.BillingSettings(ctx, input.GroupID)
+	catalog := purepricing.ResolveCatalogPricing(lookupModel, r.calculator.RawModelPricing(lookupModel), settings.LongContextPricingEnabled)
+	preferCatalog := r.calculator != nil && r.calculator.options.PreferCatalogPricing
+	// Catalog preference selects one complete source before any card amounts or
+	// modifiers apply. An absent catalog selection still permits the saved card.
+	if catalog != nil && (preferCatalog || !purepricing.PriceCardOverrides(configPricing) && catalog.Mode == purepricing.BillingModePerRequest) {
+		catalog.LookupModel = &lookupModel
+		catalog.ConfiguredReference = lookupModel != "" && lookupModel != input.Model
+		return catalog
+	}
 	var base *ModelPricing
 	source := PricingSourceUnpriced
 	if purepricing.PriceCardNeedsBase(configPricing) {
 		base, source = r.ResolveBasePricing(lookupModel)
 	}
-	settings := r.BillingSettings(ctx, input.GroupID)
 	resolved := purepricing.ResolvePriceCards(configPricing, base, source, settings.LongContextPricingEnabled)
 	resolved.LookupModel = &lookupModel
 	// The profile reader retains the supplied identity unless it selects a reference.

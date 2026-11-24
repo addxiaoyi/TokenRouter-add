@@ -190,8 +190,8 @@ func ParsePricingEntries(rawData map[string]json.RawMessage) (map[string]*Catalo
 			continue
 		}
 		// Metadata and cache-only patches do not establish a model price here; retain
-		// them outside the usable-price map unless token or media amounts exist.
-		if entry.InputCostPerToken == nil && entry.OutputCostPerToken == nil && entry.OutputCostPerImage == nil && entry.OutputCostPerImageToken == nil && entry.InputCostPerImageToken == nil && len(entry.ImagePrices) == 0 && len(entry.VideoPrices) == 0 {
+		// them outside the usable-price map unless token, media, or request amounts exist.
+		if entry.InputCostPerToken == nil && entry.OutputCostPerToken == nil && entry.OutputCostPerImage == nil && entry.OutputCostPerImageToken == nil && entry.InputCostPerImageToken == nil && len(entry.ImagePrices) == 0 && len(entry.VideoPrices) == 0 && entry.CostPerRequest == nil {
 			continue
 		}
 

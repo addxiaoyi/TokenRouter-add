@@ -16,10 +16,14 @@ import (
 // billing use cases. These HTTP constructors provide concrete handler types to
 // application route mounting, alongside the Ops handler constructed from
 // OpsService for operational queries.
+
 // nativeHTTPProviders supplies billing, announcement, and Ops HTTP handlers
 // whose use cases are resolved by other application sets.
 var nativeHTTPProviders = wire.NewSet(
+	provideQualityHTTP,
+	provideSupportHTTP,
 	provideUserMonitoringHTTP,
+	provideBatchHistoryHTTP,
 	billinghttp.NewPlanHandler,
 	billinghttp.NewRedeemHandler,
 	billinghttp.NewSubscriptionHandler,

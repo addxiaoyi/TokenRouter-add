@@ -36,6 +36,14 @@ export function buildIdentitySettingsPayload(
     | 'linuxdo_connect_client_id'
     | 'linuxdo_connect_client_secret'
     | 'linuxdo_connect_redirect_url'
+    | 'telegram_oauth_enabled'
+    | 'telegram_oauth_client_id'
+    | 'telegram_oauth_client_secret'
+    | 'telegram_oauth_redirect_url'
+    | 'discord_oauth_enabled'
+    | 'discord_oauth_client_id'
+    | 'discord_oauth_client_secret'
+    | 'discord_oauth_redirect_url'
     | 'qq_connect_enabled'
     | 'qq_connect_client_id'
     | 'qq_connect_client_secret'
@@ -113,6 +121,14 @@ export function buildIdentitySettingsPayload(
   | 'linuxdo_connect_client_id'
   | 'linuxdo_connect_client_secret'
   | 'linuxdo_connect_redirect_url'
+  | 'telegram_oauth_enabled'
+  | 'telegram_oauth_client_id'
+  | 'telegram_oauth_client_secret'
+  | 'telegram_oauth_redirect_url'
+  | 'discord_oauth_enabled'
+  | 'discord_oauth_client_id'
+  | 'discord_oauth_client_secret'
+  | 'discord_oauth_redirect_url'
   | 'qq_connect_enabled'
   | 'qq_connect_client_id'
   | 'qq_connect_client_secret'
@@ -197,6 +213,14 @@ export function buildIdentitySettingsPayload(
 
     linuxdo_connect_redirect_url: form.linuxdo_connect_redirect_url,
 
+    telegram_oauth_enabled: form.telegram_oauth_enabled,
+    telegram_oauth_client_id: form.telegram_oauth_client_id,
+    telegram_oauth_client_secret: form.telegram_oauth_client_secret?.trim() || undefined,
+    telegram_oauth_redirect_url: form.telegram_oauth_redirect_url,
+    discord_oauth_enabled: form.discord_oauth_enabled,
+    discord_oauth_client_id: form.discord_oauth_client_id,
+    discord_oauth_client_secret: form.discord_oauth_client_secret?.trim() || undefined,
+    discord_oauth_redirect_url: form.discord_oauth_redirect_url,
     qq_connect_enabled: form.qq_connect_enabled,
 
     qq_connect_client_id: form.qq_connect_client_id,

@@ -7,6 +7,18 @@ import type { RouteRecordRaw } from 'vue-router'
 // publicRoutes supplies the ordered records for this navigation area to the application router.
 export const publicRoutes: RouteRecordRaw[] = [
   {
+    path: '/docs',
+    name: 'ApiDocs',
+    component: () => import('@/views/public/ApiDocsView.vue'),
+    meta: { requiresAuth: false, titleKey: 'apiDocs.title' },
+  },
+  {
+    path: '/model-quality',
+    name: 'ModelQuality',
+    component: () => import('@/views/ModelQualityView.vue'),
+    meta: { requiresAuth: false, titleKey: 'quality.title', descriptionKey: 'quality.description' },
+  },
+  {
     path: '/setup',
     name: 'Setup',
     component: () => import('@/views/setup/SetupWizardView.vue'),
@@ -27,6 +39,7 @@ export const publicRoutes: RouteRecordRaw[] = [
   },
   {
     path: '/models',
+    alias: '/pricing',
     name: 'ModelMarketplace',
     component: () => import('@/views/ModelMarketplaceView.vue'),
     meta: {
@@ -153,6 +166,20 @@ export const publicRoutes: RouteRecordRaw[] = [
       requiresAuth: false,
       title: 'DingTalk Email Completion',
     },
+  },
+  {
+    path: '/auth/telegram/callback',
+    name: 'telegramOAuthCallback',
+    component: () => import('@/views/auth/OidcCallbackView.vue'),
+    props: { provider: 'telegram' },
+    meta: { requiresAuth: false, title: 'Telegram Login', titleKey: 'auth.social.callbackTitle' },
+  },
+  {
+    path: '/auth/discord/callback',
+    name: 'discordOAuthCallback',
+    component: () => import('@/views/auth/OidcCallbackView.vue'),
+    props: { provider: 'discord' },
+    meta: { requiresAuth: false, title: 'Discord Login', titleKey: 'auth.social.callbackTitle' },
   },
   {
     path: '/auth/oidc/callback',

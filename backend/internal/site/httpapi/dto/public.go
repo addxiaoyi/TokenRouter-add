@@ -20,6 +20,8 @@ type (
 	LoginAgreementDocument = content.LoginAgreementDocument
 	// PublicSettings is the browser API representation of feature choices and display settings.
 	PublicSettings struct {
+		TelegramOAuthEnabled                bool                         `json:"telegram_oauth_enabled"`                  // Telegram login availability
+		DiscordOAuthEnabled                 bool                         `json:"discord_oauth_enabled"`                   // Discord login availability
 		Locale                              string                       `json:"locale"`                                  // selected request language
 		SiteTextOverrides                   []string                     `json:"site_text_overrides"`                     // configured text override keys
 		TextLanguages                       map[string]locale.Resolution `json:"text_languages"`                          // per-field language resolution

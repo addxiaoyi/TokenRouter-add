@@ -6,23 +6,33 @@
       </h2>
     </div>
     <div :class="props.embedded ? '' : 'px-6 py-6'">
-      <form @submit.prevent="handleUpdateProfile" class="space-y-4">
-        <div>
-          <label for="username" class="input-label">
-            {{ t('profile.username') }}
-          </label>
-          <div class="flex flex-col gap-3 sm:flex-row">
-            <input
-              id="username"
-              v-model="username"
-              type="text"
-              class="input min-w-0 flex-1"
-              :placeholder="t('profile.enterUsername')"
-            />
-            <button type="submit" :disabled="loading" class="btn btn-primary shrink-0">
-              {{ loading ? t('profile.updating') : t('profile.updateProfile') }}
-            </button>
-          </div>
+      <form
+        @submit.prevent="handleUpdateProfile"
+        :class="
+          props.embedded
+            ? 'grid gap-3 sm:grid-cols-[8rem_minmax(0,1fr)] sm:items-center'
+            : 'space-y-3'
+        "
+      >
+        <label
+          for="username"
+          :class="
+            props.embedded ? 'text-sm font-medium text-gray-700 dark:text-dark-200' : 'input-label'
+          "
+        >
+          {{ t('profile.username') }}
+        </label>
+        <div class="flex min-w-0 flex-wrap items-center gap-2">
+          <input
+            id="username"
+            v-model="username"
+            type="text"
+            class="input min-w-0 flex-1 basis-40"
+            :placeholder="t('profile.enterUsername')"
+          />
+          <button type="submit" :disabled="loading" class="btn btn-primary ml-auto shrink-0">
+            {{ loading ? t('profile.updating') : t('profile.updateProfile') }}
+          </button>
         </div>
       </form>
     </div>

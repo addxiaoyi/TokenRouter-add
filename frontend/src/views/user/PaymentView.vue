@@ -267,6 +267,12 @@
                     :selected="selectedMethod"
                     @select="selectedMethod = $event"
                   />
+                  <p
+                    v-if="selectedMethod === 'starpay'"
+                    class="mt-4 rounded-control border border-gray-200 bg-gray-50 p-4 text-sm leading-6 text-gray-500 dark:border-dark-600 dark:bg-dark-950 dark:text-dark-300"
+                  >
+                    {{ t('payment.starpay.hint') }}
+                  </p>
                   <div
                     v-if="isEPUSDTSelected"
                     class="mt-4 rounded-control border border-gray-200 bg-gray-50 p-4 dark:border-dark-600 dark:bg-dark-950"

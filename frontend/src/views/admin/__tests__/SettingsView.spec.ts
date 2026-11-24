@@ -1287,7 +1287,7 @@ describe('admin SettingsView payment visible method controls', () => {
     adminSettingsFetch.mockClear()
     await wrapper.get('form').trigger('submit.prevent')
     await flushPromises()
-    const dialog = wrapper.get('[role="dialog"]')
+    const dialog = new DOMWrapper(document.body).get('[role="dialog"]')
     expect(dialog.text()).toContain('stepUp.title')
     await dialog
       .findAll('button')

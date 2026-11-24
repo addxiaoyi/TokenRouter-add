@@ -437,6 +437,44 @@ it('saves GMPay as hosted cryptocurrency checkout with its existing secret omitt
   wrapper.unmount()
 })
 
+// StarPAY uses a dedicated hosted method with a masked EPay key. Saving its public
+// configuration must preserve the balance callback path and permit full-refund configuration.
+it('saves StarPAY merchant balance configuration without exposing its key', async () => {
+  const provider = providerFactory({
+    provider_key: 'starpay',
+    name: 'Merchant balance',
+    supported_types: ['starpay'],
+    payment_mode: 'popup',
+    refund_enabled: true,
+    config: {
+      apiBase: 'https://star-web.top/pay',
+      pid: '1001',
+      notifyUrl: 'https://site.example.com/api/v1/payment/webhook/starpay',
+    },
+  })
+  const wrapper = mountDialog({ editing: provider })
+  ;(
+    wrapper.vm as unknown as {
+      loadProvider: (provider: ProviderInstance) => void /* public draft hydration method */
+    }
+  ).loadProvider(provider)
+  await nextTick()
+  await wrapper.find('form').trigger('submit.prevent')
+  const event = wrapper.emitted('save')?.[0]?.[0] as Record<string, unknown>
+  expect(event).toMatchObject({
+    provider_key: 'starpay',
+    payment_mode: 'popup',
+    supported_types: ['starpay'],
+    refund_enabled: true,
+  })
+  expect(event.config).toMatchObject({
+    pid: '1001',
+    notifyUrl: 'https://site.example.com/api/v1/payment/webhook/starpay',
+  })
+  expect(event.config).not.toHaveProperty('pkey')
+  wrapper.unmount()
+})
+
 describe('PaymentProviderDialog merchant order number compatibility', () => {
   // Existing drafts hydrate the switch from public configuration. Saving either toggle
   // direction emits an explicit string so partial backend merges can also disable it.

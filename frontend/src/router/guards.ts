@@ -41,6 +41,8 @@ export function installRouteGuards(router: Router): void {
     '/key-usage',
     '/setup',
     '/models',
+    '/pricing',
+    '/docs',
     '/payment/result',
     '/payment/airwallex',
     '/legal',

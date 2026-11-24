@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/TokenFlux/TokenRouter/internal/identity"
+	"github.com/TokenFlux/TokenRouter/internal/payment"
 	"github.com/TokenFlux/TokenRouter/internal/settings"
 	"github.com/TokenFlux/TokenRouter/internal/settings/composite"
 	sitedto "github.com/TokenFlux/TokenRouter/internal/site/httpapi/dto"
@@ -417,4 +418,22 @@ func (s *navigationSettingsSource) OIDCSecurityWriteDefaults(context.Context) (b
 func (s *navigationSettingsSource) NormalizeSettingsSnapshot(snapshot *composite.Snapshot) error {
 	s.prepared = snapshot
 	return errors.New("navigation preparation captured")
+}
+
+// TestSocialSettingsOmissionAndResponseMasking checks the embedded provider fields
+// through HTTP normalization and response serialization. Unsubmitted switches remain
+// untouched, while configured secrets are represented only by presence flags.
+func TestSocialSettingsOmissionAndResponseMasking(t *testing.T) {
+	fields := settings.Fields{"telegram_oauth_enabled": json.RawMessage("true")}
+	require.NoError(t, mergeNormalizedSettingsFields(fields, map[string]any{"telegram_oauth_enabled": false, "discord_oauth_enabled": false}, map[string]json.RawMessage{}))
+	require.Equal(t, json.RawMessage("true"), fields["telegram_oauth_enabled"])
+	require.NotContains(t, fields, "discord_oauth_enabled")
+	require.NoError(t, mergeNormalizedSettingsFields(fields, map[string]any{"telegram_oauth_enabled": false}, map[string]json.RawMessage{"telegram_oauth_enabled": json.RawMessage("false")}))
+	require.Equal(t, json.RawMessage("false"), fields["telegram_oauth_enabled"])
+	snapshot := &composite.Snapshot{SocialOAuthSettings: identity.SocialOAuthSettings{TelegramOAuthClientSecret: "secret-fixture", DiscordOAuthClientSecret: "second-secret"}}
+	encoded, err := json.Marshal(buildSystemSettingsResponse(snapshot, &payment.PaymentConfig{}, nil, false))
+	require.NoError(t, err)
+	require.NotContains(t, string(encoded), "secret-fixture")
+	require.NotContains(t, string(encoded), "second-secret")
+	require.Contains(t, string(encoded), `"telegram_oauth_client_secret_configured":true`)
 }

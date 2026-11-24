@@ -34,6 +34,7 @@ import (
 // supplementFields names permitted missing-price and rule additions together
 // with the source labels recorded when supplements fill them.
 var supplementFields = map[string]string{
+	"cost_per_request":     "request",
 	"input_cost_per_token": "input", "output_cost_per_token": "output",
 	"input_cost_per_token_priority": "priority_input", "output_cost_per_token_priority": "priority_output",
 	"cache_read_input_image_token_cost": "image_cache_read",

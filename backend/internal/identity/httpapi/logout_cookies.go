@@ -9,8 +9,8 @@ import (
 // so cleanup calls the same provider helpers with the request HTTPS decision
 // to expire the browser values at their matching paths.
 
-// ClearOAuthLoginCookies expires shared pending cookies and LinuxDo, OIDC, and
-// WeChat callback cookies for this browser. Secure attributes follow
+// ClearOAuthLoginCookies expires shared pending cookies and provider callback
+// cookies, including Telegram and Discord, for this browser. Secure attributes follow
 // IsRequestHTTPS; provider helpers determine each cookie path and emit
 // deletion headers.
 func ClearOAuthLoginCookies(c *gin.Context) {
@@ -19,6 +19,11 @@ func ClearOAuthLoginCookies(c *gin.Context) {
 	ClearOAuthPendingSessionCookie(c, secureCookie)
 	ClearOAuthPendingBrowserCookie(c, secureCookie)
 	ClearOAuthBindAccessTokenCookie(c, secureCookie)
+	for _, provider := range []string{"telegram", "discord"} {
+		for _, field := range []string{"state", "verifier", "nonce", "intent", "target", "redirect", "callback"} {
+			setSocialCookie(c, provider, field, "", -1)
+		}
+	}
 
 	LinuxDoClearCookie(c, LinuxDoOAuthStateCookieName, secureCookie)
 	LinuxDoClearCookie(c, LinuxDoOAuthVerifierCookie, secureCookie)

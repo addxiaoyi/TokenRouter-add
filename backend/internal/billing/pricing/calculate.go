@@ -610,9 +610,9 @@ func ShouldApplySessionLongContextPricing(tokens UsageTokens, pricing *ModelPric
 // displayed base copy. Unpriced gaps are omitted, and configured effort and
 // valid time rules are attached separately.
 //
-// Image and per-request displays require configuration-source prices.
-// Per-request mode also needs explicitly labeled image dimensions, then quotes
-// only fixed available 1K, 2K, and 4K amounts. Video mode exposes configured
+// Per-request mode exposes a fixed default amount unless image dimensions
+// select the compatible image display. Context-only request prices remain
+// unavailable without a context selection. Video mode exposes configured
 // per-second labels and its optional default; unsupported modes return false. Callers supply a finite rate already normalized for display.
 func DisplayPricingFromResolved(model string, rateMultiplier float64, resolved *ResolvedPricing) (ModelDisplayPricing, bool) {
 	if resolved == nil {
@@ -636,9 +636,6 @@ func DisplayPricingFromResolved(model string, rateMultiplier float64, resolved *
 		}
 		return ModelDisplayPricing{}, false
 	case BillingModeImage, BillingModePerRequest:
-		if resolved.Source != PricingSourceConfig {
-			return ModelDisplayPricing{}, false
-		}
 		if resolved.Mode == BillingModePerRequest {
 			imageDimensions := false
 			for _, tier := range resolved.RequestTiers {
@@ -647,7 +644,12 @@ func DisplayPricingFromResolved(model string, rateMultiplier float64, resolved *
 				}
 			}
 			if !imageDimensions {
-				return ModelDisplayPricing{}, false
+				price, found := ResolveRequestUnitPrice(resolved, "", nil)
+				if !found || !validAmount(price) || !validAmount(price*rateMultiplier) {
+					return ModelDisplayPricing{}, false
+				}
+				price *= rateMultiplier
+				return ModelDisplayPricing{PricingMode: "per_request", PriceStatus: "priced", PricePerRequest: &price}, true
 			}
 		}
 		result := ModelDisplayPricing{PricingMode: "image", PriceStatus: "priced"}

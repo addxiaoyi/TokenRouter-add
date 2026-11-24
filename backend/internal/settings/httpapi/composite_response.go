@@ -28,6 +28,7 @@ func buildSystemSettingsResponse(
 	totpConfigured bool,
 ) settingsdto.SystemSettings {
 	return settingsdto.SystemSettings{
+		SocialOAuthView:                                  settings.PublicView(),
 		RegistrationEnabled:                              settings.RegistrationEnabled,
 		EmailVerifyEnabled:                               settings.EmailVerifyEnabled,
 		RegistrationEmailSuffixWhitelist:                 settings.RegistrationEmailSuffixWhitelist,

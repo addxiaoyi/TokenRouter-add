@@ -47,7 +47,7 @@ func (s *UserAdmin) BindUserAuthIdentity(ctx context.Context, userID int64, inpu
 	providerKey := strings.TrimSpace(input.ProviderKey)
 	providerSubject := strings.TrimSpace(input.ProviderSubject)
 	if providerType == "" {
-		return nil, infraerrors.BadRequest("INVALID_INPUT", "provider_type must be one of email, linuxdo, oidc, wechat, or dingtalk")
+		return nil, infraerrors.BadRequest("INVALID_INPUT", "unsupported identity provider type")
 	}
 	if providerKey == "" || providerSubject == "" {
 		return nil, infraerrors.BadRequest("INVALID_INPUT", "provider_type, provider_key, and provider_subject are required")

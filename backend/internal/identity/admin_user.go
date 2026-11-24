@@ -978,7 +978,7 @@ func AdminNormalizeAdminBindChannelInput(input *AdminBindAuthIdentityChannelInpu
 
 // AdminNormalizeAdminAuthIdentityProviderType returns a supported
 // administrative provider label after trimming/lowercasing. Email, LinuxDo,
-// OIDC, WeChat, QQ and DingTalk are accepted; other labels return empty text and
+// OIDC, WeChat, QQ, DingTalk, Telegram, and Discord are accepted; other labels return empty text and
 // are rejected by binding input validation.
 func AdminNormalizeAdminAuthIdentityProviderType(input string) string {
 	switch strings.ToLower(strings.TrimSpace(input)) {
@@ -992,6 +992,10 @@ func AdminNormalizeAdminAuthIdentityProviderType(input string) string {
 		return "wechat"
 	case "qq":
 		return "qq"
+	case SocialTelegram:
+		return SocialTelegram
+	case SocialDiscord:
+		return SocialDiscord
 	case "dingtalk":
 		return "dingtalk"
 	default:

@@ -8,6 +8,7 @@ import (
 	gatewaydto "github.com/TokenFlux/TokenRouter/internal/gateway/httpapi/dto"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/promptpolicy"
 	"github.com/TokenFlux/TokenRouter/internal/gateway/ws"
+	"github.com/TokenFlux/TokenRouter/internal/identity"
 	identitydto "github.com/TokenFlux/TokenRouter/internal/identity/httpapi/dto"
 	"github.com/TokenFlux/TokenRouter/internal/ops"
 	"github.com/TokenFlux/TokenRouter/internal/payment"
@@ -34,6 +35,7 @@ import (
 // Its collection fields can share mapper inputs until serialization; the owning
 // conversion helpers describe their copied outer lists and retained nested values.
 type SystemSettings struct {
+	identity.SocialOAuthView // social settings without credentials
 	// ResponsesWS keeps saved override JSON beside ResponsesWSEffective for
 	// administrator inspection. Parse can select a current runtime effective value
 	// while keeping valid but unresolved override JSON in the response.

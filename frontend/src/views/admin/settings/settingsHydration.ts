@@ -100,6 +100,8 @@ export function createSettingsHydration(
     form.aliyun_captcha_access_key_secret = ''
     form.linuxdo_connect_client_secret = ''
     form.qq_connect_client_secret = ''
+    form.telegram_oauth_client_secret = ''
+    form.discord_oauth_client_secret = ''
     form.sms_juhe_key = ''
     form.dingtalk_connect_client_secret = ''
     form.wechat_connect_app_secret = ''

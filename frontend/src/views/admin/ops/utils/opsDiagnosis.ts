@@ -51,7 +51,9 @@ export function parseDateTimeLocalInputToISO(value: string): string | null {
  * buildOpsDiagnosisReport evaluates resource, TTFT, upstream error rate, request
  * error rate, SLA, and health-score observations in priority order. Configured
  * OpsMetricThresholds override hardcoded defaults so header metric badges and
- * the textual diagnosis report agree on warning and critical cutoffs.
+ * the textual diagnosis report agree on warning and critical cutoffs. An empty
+ * traffic window still reports infrastructure failures, but skips diagnoses
+ * that need request measurements.
  */
 export function buildOpsDiagnosisReport(
   overview: OpsDashboardOverview | null,
@@ -62,15 +64,6 @@ export function buildOpsDiagnosisReport(
   if (!overview) return []
 
   const report: DiagnosisItem[] = []
-  if (isSystemIdle) {
-    report.push({
-      type: 'info',
-      message: t('admin.ops.diagnosis.idle'),
-      impact: t('admin.ops.diagnosis.idleImpact'),
-    })
-    return report
-  }
-
   const sm = overview.system_metrics
   if (sm) {
     if (sm.db_ok === false) {
@@ -140,6 +133,17 @@ export function buildOpsDiagnosisReport(
         action: t('admin.ops.diagnosis.diskHighAction'),
       })
     }
+  }
+
+  // Without traffic samples, zero SLA and latency values do not support a
+  // diagnosis. Keep infrastructure observations, which use independent inputs.
+  if (isSystemIdle) {
+    report.push({
+      type: 'info',
+      message: t('admin.ops.diagnosis.idle'),
+      impact: t('admin.ops.diagnosis.idleImpact'),
+    })
+    return report
   }
 
   // Prefer operator-configured TTFT P99 cutoff (warning at 80% of configured max)

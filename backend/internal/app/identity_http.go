@@ -217,6 +217,7 @@ func provideIdentityHTTP(
 		Session: session, Pending: pending, Bind: bind,
 		LinuxDo: identityhttp.NewLinuxDoHandler(pending, bind, identityadapter.LinuxDoClient{}, runtime.LinuxDo),
 		QQ:      identityhttp.NewQQHandler(pending, bind, identityadapter.QQClient{}, runtime.QQ),
+		Social:  identityhttp.NewSocialHandler(pending, bind, identityadapter.SocialClient{}, settings.oauth.GetSocialOAuthConfig),
 		OIDC:    identityhttp.NewOIDCHandler(pending, bind, identityadapter.OIDCClient{}, runtime.OIDC),
 		Email:   identityhttp.NewEmailOAuthHandler(pending, identityadapter.EmailOAuthClientAdapter{}, runtime.Email),
 		Google:  identityhttp.NewGoogleOneTapHandler(pending, identityadapter.GoogleAPIIDTokenVerifier{}, identityhttp.GoogleOneTapHTTPOptions{LoadConfig: runtime.GoogleOneTap, RegistrationEnabled: settings.IsRegistrationEnabled}),

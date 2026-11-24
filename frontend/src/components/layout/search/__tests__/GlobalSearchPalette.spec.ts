@@ -302,15 +302,15 @@ describe('GlobalSearchPalette keyboard', () => {
 })
 
 describe('GlobalSearchPalette scopes by role', () => {
-  // Guests search public pages only and read the public catalog; account pages and the
-  // create-key and logout actions are absent.
+  // Guests can find the public API guide and model catalog without signing in.
+  // Account pages and the create-key and logout actions remain hidden.
   it('limits guests to public pages', async () => {
     auth.isAuthenticated = false
     auth.user = null
     await mountPalette()
     await press('Tab')
     await press('Tab')
-    expect(optionKeys()).toEqual(['page:/models', 'page:/login', 'page:/register'])
+    expect(optionKeys()).toEqual(['page:/models', 'page:/login', 'page:/register', 'page:/docs'])
     await press('Tab')
     expect(optionKeys()).not.toContain('action:createKey')
     expect(optionKeys()).not.toContain('action:logout')

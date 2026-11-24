@@ -27,6 +27,7 @@ import (
 // TestRun retains cancellation, event output, and per-probe request and
 // execution state.
 type TestRun struct {
+	Constraints   provider.TestConstraints   // immutable assessment completion and output requirements
 	ProtocolRoute provider.TestProtocolRoute // selected group probe route
 	// GroupID selects model attributes for this probe. Zero uses catalogue defaults;
 	// the synchronous executor reads this value after its target initializes it.
@@ -77,7 +78,7 @@ func NewTestRun(ctx context.Context, headers http.Header, sink provider.TestEven
 	if headers == nil {
 		headers = make(http.Header)
 	}
-	return &TestRun{Context: ctx, Cancel: cancel, Headers: headers, sink: sink, ProtocolRoute: provider.TestProtocolRouteFromContext(ctx)}
+	return &TestRun{Context: ctx, Cancel: cancel, Headers: headers, sink: sink, ProtocolRoute: provider.TestProtocolRouteFromContext(ctx), Constraints: provider.TestConstraintsFromContext(ctx)}
 }
 
 // GetHeader returns the current value from the run's request headers.

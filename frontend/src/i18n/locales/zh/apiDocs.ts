@@ -1,0 +1,40 @@
+// apiDocs.ts supplies Chinese copy for the site's public API connection guide.
+// Endpoint and error keys match the sample commands and HTTP status codes
+// rendered by ApiDocsView, keeping translated descriptions separate from request syntax.
+export default {
+  title: 'API 接入指南',
+  intro: '查看网关地址，使用 API 密钥发起第一次请求。',
+  manageKeys: '管理 API 密钥',
+  sections: '指南目录',
+  connect: '接入网关',
+  examples: '请求示例',
+  errors: '常见错误',
+  externalDocs: '外部文档',
+  baseUrl: 'OpenAI 兼容接口地址',
+  copyUrl: '复制地址',
+  stepKey: '为需要使用的分组创建密钥，在服务端通过 API_KEY 环境变量保存。',
+  stepModel: '用该密钥调用 GET /v1/models，将示例中的模型 ID 替换为支持对应接口的可用模型。',
+  stepUsage: '首次调用后，到用量记录核对模型和扣费。',
+  shell: '以下 cURL 示例使用 Bash 语法。运行前请设置 API_KEY。',
+  copyNamed: '复制命令（{name}）',
+  copyCommand: '复制命令',
+  pollVideo: '将 REQUEST_ID 替换为创建视频接口返回的 request_id，再用同一密钥查询，直到任务结束。',
+  endpoint: {
+    models: '查询可用模型',
+    chat: '对话补全',
+    responses: 'Responses 接口',
+    embeddings: '生成文本向量',
+    images: '生成图片',
+    videos: '创建视频任务',
+    videoStatus: '查询视频状态',
+  },
+  error: {
+    400: '检查请求体，以及模型是否支持该接口和参数。',
+    401: '检查 API 密钥和 Bearer 鉴权请求头。',
+    403: '检查密钥及其分组是否允许该请求。',
+    404: '检查接口地址、模型 ID 或请求 ID。',
+    429: '检查限流和剩余额度，等待后有限次重试。',
+    502: '上游未能完成请求，请先查看响应中的错误信息。',
+  },
+  troubleshoot: '联系技术支持时可附上 HTTP 状态码和响应中的 X-Request-ID，请先移除密钥等凭据。',
+}

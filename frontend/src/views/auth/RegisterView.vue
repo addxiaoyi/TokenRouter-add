@@ -302,6 +302,8 @@
         v-if="
           linuxdoOAuthEnabled ||
           qqOAuthEnabled ||
+          telegramOAuthEnabled ||
+          discordOAuthEnabled ||
           wechatOAuthEnabled ||
           oidcOAuthEnabled ||
           githubOAuthEnabled ||
@@ -332,6 +334,22 @@
           :aff-code="formData.aff_code"
           :promo-code="formData.promo_code"
           :show-divider="false"
+          @start="handleOAuthStart"
+        />
+        <SocialOAuthSection
+          v-if="telegramOAuthEnabled"
+          provider="telegram"
+          :disabled="registrationActionDisabled"
+          :aff-code="formData.aff_code"
+          :promo-code="formData.promo_code"
+          @start="handleOAuthStart"
+        />
+        <SocialOAuthSection
+          v-if="discordOAuthEnabled"
+          provider="discord"
+          :disabled="registrationActionDisabled"
+          :aff-code="formData.aff_code"
+          :promo-code="formData.promo_code"
           @start="handleOAuthStart"
         />
         <QQOAuthSection
@@ -380,6 +398,7 @@ import { AuthLayout } from '@/components/layout'
 import EmailOAuthButtons from '@/components/auth/EmailOAuthButtons.vue'
 import LinuxDoOAuthSection from '@/components/auth/LinuxDoOAuthSection.vue'
 import QQOAuthSection from '@/components/auth/QQOAuthSection.vue'
+import SocialOAuthSection from '@/components/auth/SocialOAuthSection.vue'
 import OidcOAuthSection from '@/components/auth/OidcOAuthSection.vue'
 import WechatOAuthSection from '@/components/auth/WechatOAuthSection.vue'
 import LoginAgreementPrompt from '@/components/auth/LoginAgreementPrompt.vue'
@@ -482,6 +501,8 @@ const siteName = computed(() => resolveLocalizedSiteName(publicSettings.value)) 
 // individual methods are configured.
 const linuxdoOAuthEnabled = ref<boolean>(false) // public LinuxDo login enable flag
 const qqOAuthEnabled = ref<boolean>(false) // public QQ login enable flag
+const telegramOAuthEnabled = ref(false) // public Telegram login availability
+const discordOAuthEnabled = ref(false) // public Discord login availability
 const wechatOAuthEnabled = ref<boolean>(false) // public WeChat web-login availability
 const oidcOAuthEnabled = ref<boolean>(false) // public OIDC login enable flag
 // oidcOAuthProviderName supplies the configured display label for the OIDC entry.
@@ -670,6 +691,8 @@ onMounted(async () => {
     publicSettings.value = settings
     linuxdoOAuthEnabled.value = settings.linuxdo_oauth_enabled
     qqOAuthEnabled.value = settings.qq_oauth_enabled === true
+    telegramOAuthEnabled.value = settings.telegram_oauth_enabled === true
+    discordOAuthEnabled.value = settings.discord_oauth_enabled === true
     wechatOAuthEnabled.value = isWeChatWebOAuthEnabled(settings)
     oidcOAuthEnabled.value = settings.oidc_oauth_enabled
     oidcOAuthProviderName.value = settings.oidc_oauth_provider_name || 'OIDC'

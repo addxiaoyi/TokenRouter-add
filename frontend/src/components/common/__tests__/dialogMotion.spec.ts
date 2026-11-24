@@ -40,6 +40,32 @@ function dialog() {
 }
 
 describe('弹窗退出生命周期', () => {
+  // Authentication setup opens from a card with its own clipping and containing block.
+  // The overlay must escape that ancestor while retaining focus and scroll-lock cleanup.
+  it('renders authentication dialogs outside a clipped settings card', async () => {
+    const card = document.createElement('div')
+    card.style.overflow = 'hidden'
+    card.style.transform = 'translateZ(0)'
+    document.body.append(card)
+    const wrapper = mount(AuthCardDialog, {
+      attachTo: card,
+      props: { show: true },
+      slots: { default: '<input aria-label="Current password" /><button>Next</button>' },
+      global: { stubs: { transition: false } },
+    })
+    wrappers.push(wrapper)
+    await nextTick()
+    const overlay = document.querySelector('[role="dialog"]')!
+    expect(card.contains(overlay)).toBe(false)
+    expect(overlay.parentElement).toBe(document.body)
+    expect(document.activeElement).toBe(overlay.querySelector('input'))
+    expect(document.body.classList.contains('modal-open')).toBe(true)
+    await wrapper.setProps({ show: false })
+    await finishMotion(overlay)
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
+    expect(document.body.classList.contains('modal-open')).toBe(false)
+  })
+
   // Two BaseDialog instances are mounted with the shared dialog lifecycle active.
   // Pressing Escape must request dismissal from the topmost instance while the
   // underlying dialog receives no close event.
@@ -108,7 +134,7 @@ describe('弹窗退出生命周期', () => {
     })
     wrappers.push(second)
     await nextTick()
-    const focus = second.get('button').element
+    const focus = document.querySelector('.auth-dialog-content button')!
     await finishMotion(overlay)
     expect(document.activeElement).toBe(focus)
     expect(document.body.classList.contains('modal-open')).toBe(true)

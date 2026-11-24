@@ -333,6 +333,11 @@ export default {
       completeRegistrationFailed:
         'Registration failed. Please check your invitation code and try again.',
     },
+    social: {
+      signIn: 'Continue with {provider}',
+      callbackTitle: 'Social sign-in',
+      providerMismatch: 'The login provider does not match. Start authorization again.',
+    },
     qq: {
       signIn: 'Continue with QQ',
       orContinue: 'or continue with email',

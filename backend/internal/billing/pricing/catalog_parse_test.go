@@ -7,6 +7,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestCatalogRequestPrices preserves standalone request prices and explicit free
+// amounts. Invalid prices reject publication, and cloned metadata cannot mutate
+// the retained catalog through its request-price pointer.
+func TestCatalogRequestPrices(t *testing.T) {
+	entries, err := DecodeCatalogEntries([]byte(`{"request":{"cost_per_request":0.01},"free":{"cost_per_request":0}}`))
+	require.NoError(t, err)
+	prices, diagnostics, err := ParsePricingEntries(entries)
+	require.NoError(t, err)
+	require.NoError(t, diagnostics.ValidationError())
+	require.Equal(t, 0.01, *prices["request"].CostPerRequest)
+	require.Zero(t, *prices["free"].CostPerRequest)
+	require.True(t, prices["request"].TokenPricingAbsent)
+	cloned := CloneCatalogPrice(prices["request"])
+	*cloned.CostPerRequest = 3
+	require.Equal(t, 0.01, *prices["request"].CostPerRequest)
+	entries, err = DecodeCatalogEntries([]byte(`{"invalid":{"cost_per_request":-0.01}}`))
+	require.NoError(t, err)
+	_, diagnostics, _ = ParsePricingEntries(entries)
+	require.ErrorContains(t, diagnostics.ValidationError(), "cost_per_request")
+}
+
 // TestCatalogProviderCompatibility supplies legacy provider names beside
 // absent, populated, empty, and null current fields. Decoding and serialization
 // must use provider, retain its precedence, and remove litellm_provider.

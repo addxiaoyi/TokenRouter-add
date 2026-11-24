@@ -50,7 +50,6 @@ export default {
     catalogModel: '模型',
     catalogStartingPrice: '参考起价',
     catalogPrice: '参考价格',
-    requestPricing: '按次计费',
     catalogUnit: { image: '/ 张', video: '/ 秒', per_request: '/ 次' },
     exclusive: '专属',
     title: '模型广场',
@@ -67,6 +66,8 @@ export default {
     pricingFast: 'Fast',
     imagePricing: '图片计费',
     videoPricing: '视频计费',
+    requestPricing: '按次计费',
+    perRequest: '/ 次',
     perSecond: '/ 秒',
     defaultVideoPrice: '其他分辨率',
     perImage: '/ 张',
@@ -335,6 +336,7 @@ export default {
   },
   // Onboarding Tour
   onboarding: {
+    skip: '跳过引导',
     restartTour: '重新查看新手引导',
     dontShowAgain: '不再提示',
     dontShowAgainTitle: '永久关闭新手引导',
@@ -344,9 +346,9 @@ export default {
     // Admin tour steps
     admin: {
       welcome: {
-        title: '欢迎使用 TokenRouter',
+        title: '开始配置你的网关',
         description:
-          '<div style="line-height: 1.8;"><p style="margin-bottom: 16px;">TokenRouter 通过已接入的提供商转发 AI 请求，并管理 API 密钥、计费和额度。</p><p style="margin-bottom: 12px;"><b>核心功能：</b></p><ul style="margin-left: 20px; margin-bottom: 16px;"><li><b>分组管理</b> - 创建不同的服务套餐（VIP、免费试用等）</li><li><b>提供商池</b> - 连接多个上游 AI 服务商提供商</li><li><b>密钥分发</b> - 为用户生成独立的 API Key</li><li><b>计费管理</b> - 灵活的费率和配额控制</li></ul><p style="color: var(--tour-action-color); font-weight: 600;">先创建分组，再接入提供商，最后生成 API 密钥。</p></div>',
+          '<div class="tour-welcome"><p>连接上游服务，为应用提供统一的 API 入口。</p><ol class="tour-setup-list"><li><strong>创建分组</strong><span>设置可用模型与计费规则</span></li><li><strong>接入提供商</strong><span>连接上游服务，并关联到分组</span></li><li><strong>生成 API 密钥</strong><span>在应用中使用统一的访问凭证</span></li></ol><p class="tour-replay-note">可以先跳过，之后从头像菜单重新打开。</p></div>',
         nextBtn: '开始配置',
         prevBtn: '跳过',
       },
@@ -596,7 +598,20 @@ export default {
       expiredHint: '如果已经转账，请保留订单号与交易哈希，联系客服核实。',
       creationUnconfirmed: '订单创建结果正在核实，请勿重复下单。可稍后在订单记录中查看进度。',
     },
+    starpay: {
+      refundHint: '仅支持全额退款，款项退回原付款商户余额。',
+      hint: '跳转 StarPAY 后，选择你自己的商户余额付款。需要足够可用余额，付款商户不能与收款商户相同。',
+      waiting: '请在 StarPAY 完成付款',
+      waitingHint: '在 StarPAY 确认商户与金额后付款，返回此页查看到账结果。',
+      continue: '继续 StarPAY 支付',
+      checkStatus: '查看付款状态',
+      confirmationHint: '本站核实付款后自动发放权益。如果已经付款，请等待状态更新，避免重复支付。',
+      expiredHint: '如果已经付款，请保留本站订单号与 StarPAY 付款记录，联系客服核实。',
+      creationUnconfirmed:
+        'StarPAY 订单创建结果尚未确认，请勿重复下单。可稍后查看订单进度或联系客服。',
+    },
     methods: {
+      starpay: 'StarPAY 商户余额',
       epusdt: '加密货币',
       nowpayments: 'USDT（NOWPayments）',
       easypay: '易支付',

@@ -1,12 +1,10 @@
 <template>
   <div class="space-y-4">
     <button type="button" :disabled="disabled" class="btn btn-secondary w-full" @click="startLogin">
-      <span
-        class="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary-100 text-xs font-semibold text-primary-700 dark:bg-primary-900/30 dark:text-primary-300"
-      >
-        {{ providerInitial }}
+      <AuthProviderIcon provider="oidc" class="h-5 w-5" />
+      <span class="min-w-0 break-words [overflow-wrap:anywhere]">
+        {{ t('auth.oidc.signIn', { providerName: normalizedProviderName }) }}
       </span>
-      {{ t('auth.oidc.signIn', { providerName: normalizedProviderName }) }}
     </button>
 
     <div v-if="showDivider" class="flex items-center gap-3">
@@ -25,10 +23,11 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import type { OAuthLoginStart } from '@/api/auth'
 import { resolveAffiliateCode, storeOAuthAffiliateCode } from '@/utils/oauthAffiliate'
+import AuthProviderIcon from './AuthProviderIcon.vue'
 
 // OidcOAuthSection.vue presents the OIDC sign-in entry and emits its start request
 // to the parent authentication gate. The configured display name supplies the
-// label and initial, with OIDC used for missing or blank names. The parent
+// label, with OIDC used for missing or blank names. The parent
 // performs captcha checks and navigation after receiving the event.
 
 // props supplies parent-owned configuration and draft input. emit reports
@@ -41,7 +40,7 @@ const props = withDefaults(
     affCode?: string // parent referral code
 
     // providerName defaults to OIDC when omitted. The displayed label also falls
-    // back after trimming, and its first character supplies the avatar initial.
+    // back after trimming without changing the fixed OAuth provider identifier.
     providerName?: string // configured provider label
 
     // showDivider defaults to true when omitted. Parents can hide the separator
@@ -63,15 +62,13 @@ const emit = defineEmits<{
 const route = useRoute() // current callback query context
 const { t } = useI18n() // translated authentication message resolver
 
-// normalizedProviderName falls back to OIDC after trimming. providerInitial
-// derives its uppercase first character for the avatar shown beside the provider
-// sign-in label.
+// normalizedProviderName supplies the configured sign-in label after trimming.
+// Missing or blank names display OIDC; the label remains separate from the fixed
+// provider identifier sent in authorization requests.
 const normalizedProviderName = computed(() => {
   const name = props.providerName?.trim()
   return name || 'OIDC'
 }) // trimmed OIDC display label
-
-const providerInitial = computed(() => normalizedProviderName.value.charAt(0).toUpperCase() || 'O') // provider avatar initial
 
 // startLogin emits the Oidc request with the current redirect or /dashboard
 // fallback. It saves resolved referral attribution first, leaving consent checks,

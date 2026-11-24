@@ -19,6 +19,8 @@ import (
 // unknown key returns an error.
 func CreateProvider(providerKey string, instanceID string, config map[string]string) (payment.Provider, error) {
 	switch providerKey {
+	case payment.TypeStarPay:
+		return NewStarPay(instanceID, config)
 	case payment.TypeEPUSDT:
 		return NewEPUSDT(instanceID, config)
 	case payment.TypeNOWPayments:

@@ -39,6 +39,7 @@ const (
 // AdminSettings carries administrator authentication input and effective
 // readback values for provider/policy configuration.
 type AdminSettings struct {
+	SocialOAuthSettings // runtime Telegram and Discord settings
 	// Aliyun verification access identifier
 	AliyunCaptchaAccessKeyID string `json:"aliyun_captcha_access_key_id"`
 	// AliyunCaptchaAccessKeySecret is saved when its raw text is nonempty. Exact
@@ -354,6 +355,7 @@ type AdminSettings struct {
 // and the coordinator for actual persistence.
 func PrepareAdminSettings(settings *AdminSettings) (map[string]string, error) {
 	updates := make(map[string]string)
+	settings.appendUpdates(updates)
 	normalizedWhitelist, err := NormalizeRegistrationEmailSuffixWhitelist(settings.RegistrationEmailSuffixWhitelist)
 	if err != nil {
 		return nil, apperror.BadRequest("INVALID_REGISTRATION_EMAIL_SUFFIX_WHITELIST", err.Error())

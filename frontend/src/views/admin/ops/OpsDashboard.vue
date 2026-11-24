@@ -46,16 +46,16 @@
       <!-- Row: Concurrency + Throughput -->
       <div
         v-if="opsEnabled && !(loading && !hasLoadedOnce)"
-        class="grid grid-cols-1 gap-4 lg:grid-cols-4"
+        class="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-4"
       >
-        <div class="h-[360px] lg:col-span-1">
+        <div class="min-w-0 h-[360px]">
           <OpsConcurrencyCard
             :platform-filter="platform"
             :group-id-filter="groupId"
             :refresh-token="dashboardRefreshToken"
           />
         </div>
-        <div class="lg:col-span-1 h-[360px]">
+        <div class="min-w-0 h-[360px]">
           <OpsSwitchRateTrendChart
             :points="switchTrend?.points ?? []"
             :loading="loadingSwitchTrend"
@@ -63,7 +63,7 @@
             :fullscreen="isFullscreen"
           />
         </div>
-        <div class="lg:col-span-2 h-[360px]">
+        <div class="min-w-0 md:col-span-2 h-[360px]">
           <OpsThroughputTrendChart
             :points="throughputTrend?.points ?? []"
             :by-platform="throughputTrend?.by_platform ?? []"
@@ -78,10 +78,10 @@
         </div>
       </div>
 
-      <!-- Row: Visual Analysis (baseline 3-up grid) -->
+      <!-- Analysis charts stack until each chart has room for its legend. -->
       <div
         v-if="opsEnabled && !(loading && !hasLoadedOnce)"
-        class="grid grid-cols-1 gap-4 md:grid-cols-3"
+        class="grid grid-cols-1 gap-4 2xl:grid-cols-3"
       >
         <OpsLatencyChart
           :latency-data="latencyHistogram"
@@ -188,6 +188,7 @@
 </template>
 
 <script setup lang="ts">
+import './opsLayout.css'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useDebounceFn, useIntervalFn } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'

@@ -1998,7 +1998,7 @@ func IdentityUserSignupSourceOrDefault(signupSource string) string {
 	switch strings.TrimSpace(strings.ToLower(signupSource)) {
 	case "", "email":
 		return "email"
-	case "linuxdo", "wechat", "oidc", "github", "google", "dingtalk":
+	case "linuxdo", "wechat", "oidc", "github", "google", "dingtalk", "qq", "phone", "telegram", "discord":
 		return strings.TrimSpace(strings.ToLower(signupSource))
 	default:
 		return "email"

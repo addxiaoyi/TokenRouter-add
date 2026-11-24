@@ -35,6 +35,9 @@ type ModelMarketplaceStats struct {
 // ModelMarketplacePricing exposes token and media unit amounts with optional
 // pricing modifiers for a public group quote.
 type ModelMarketplacePricing struct {
+	// PricePerRequest is the group-adjusted USD request price. Nil means absent;
+	// an explicit zero remains present in JSON as a free request.
+	PricePerRequest *float64 `json:"price_per_request,omitempty"`
 	// VideoPrices carries the available per-resolution amounts, including zero.
 	// The billing quote already applies the group multiplier to each value.
 	VideoPrices map[string]float64 `json:"video_prices,omitempty"`
@@ -380,6 +383,7 @@ func modelMarketplacePricingFromRouting(pricing pricing.ModelDisplayPricing) Mod
 	}
 
 	return ModelMarketplacePricing{
+		PricePerRequest:                pricing.PricePerRequest,
 		VideoPrices:                    pricing.VideoPrices,
 		VideoPricePerSecond:            pricing.VideoPricePerSecond,
 		PricingMode:                    pricing.PricingMode,

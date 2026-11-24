@@ -83,9 +83,12 @@ type OpsService struct {
 	// preference refresh loop.
 	realtimeOnce sync.Once        // single live runtime initializer
 	realtime     *RealtimeRuntime // lazily constructed live runtime
-	logging      LogControl       // assembled process logger control
-	opsRepo      OpsRepository    // observation and alert persistence
-	settingRepo  Settings         // runtime preference storage reader
+	// requestActivity is bound before concurrent request observation and worker
+	// startup. Nil keeps observation inactive and history reads explicitly unavailable.
+	requestActivity *RequestActivity
+	logging         LogControl    // assembled process logger control
+	opsRepo         OpsRepository // observation and alert persistence
+	settingRepo     Settings      // runtime preference storage reader
 	// cfg retains deployment options, logger callbacks, and hard monitoring
 	// policy. Callers keep this object immutable while request readers and
 	// background jobs consult it.

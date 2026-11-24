@@ -9,6 +9,79 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/billing/pricing"
 )
 
+// TestCatalogPriorityAndRequestQuotes checks the site's catalog-first policy against
+// retained custom cards. Quoted amounts must match actual calculation after group
+// scaling, including the two requested request-price multipliers and explicit zero.
+func TestCatalogPriorityAndRequestQuotes(t *testing.T) {
+	groupID := int64(66)
+	requestPrice, customPrice, zero := 0.01, 9.0, 0.0
+	catalog := defaultCatalogStub{entries: map[string]*pricing.CatalogModelPricing{
+		"known":   {InputCostPerToken: 1e-6, OutputCostPerToken: 2e-6},
+		"request": {CatalogRules: pricing.CatalogRules{CostPerRequest: &requestPrice}, TokenPricingAbsent: true},
+		"free":    {CatalogRules: pricing.CatalogRules{CostPerRequest: &zero}, TokenPricingAbsent: true},
+	}}
+	calculator := NewCalculator(catalog, CalculatorOptions{PreferCatalogPricing: true})
+	resolver := NewPriceResolver(mediaPriceCards{card: &ModelPricingEntry{BillingMode: pricing.BillingModePerRequest, PerRequestPrice: &customPrice}}, calculator, nil, nil)
+	known := resolver.Resolve(context.Background(), PricingInput{Model: "known", GroupID: &groupID})
+	require.Equal(t, pricing.BillingModeToken, known.Mode)
+	require.Equal(t, PricingSourceCatalog, known.Source)
+	require.Equal(t, 1e-6, known.BasePricing.InputPricePerToken)
+	for _, rate := range []float64{2, 0.01, 0} {
+		input := PricingInput{Model: "request", GroupID: &groupID}
+		quote := resolver.PublicQuote(context.Background(), PublicQuoteInput{PricingInput: input, RateMultiplier: rate})
+		require.Equal(t, "per_request", quote.PricingMode)
+		require.NotNil(t, quote.PricePerRequest)
+		require.InDelta(t, 0.01*rate, *quote.PricePerRequest, 1e-12)
+		cost, err := calculator.CalculateCostUnified(CostInput{Ctx: context.Background(), Model: input.Model, GroupID: &groupID, RequestCount: 1, RateMultiplier: rate, Resolver: resolver})
+		require.NoError(t, err)
+		require.InDelta(t, *quote.PricePerRequest, cost.ActualCost, 1e-12)
+		require.InDelta(t, 0.01, cost.TotalCost, 1e-12)
+	}
+	free := resolver.PublicQuote(context.Background(), PublicQuoteInput{PricingInput: PricingInput{Model: "free", GroupID: &groupID}, RateMultiplier: 2})
+	require.NotNil(t, free.PricePerRequest)
+	require.Zero(t, *free.PricePerRequest)
+	// Models absent from the catalog retain their saved custom card; no blanket
+	// default grants a price to arbitrary unsupported names introduced by clients.
+	custom := resolver.Resolve(context.Background(), PricingInput{Model: "custom", GroupID: &groupID})
+	require.Equal(t, pricing.PricingSourceConfig, custom.Source)
+	require.Equal(t, customPrice, custom.DefaultPerRequestPrice)
+	legacy := NewCalculator(catalog, CalculatorOptions{})
+	legacyResolver := NewPriceResolver(mediaPriceCards{card: &ModelPricingEntry{BillingMode: pricing.BillingModePerRequest, PerRequestPrice: &customPrice}}, legacy, nil, nil)
+	require.Equal(t, customPrice, legacyResolver.Resolve(context.Background(), PricingInput{Model: "known", GroupID: &groupID}).DefaultPerRequestPrice)
+}
+
+// TestCatalogPriorityNativePrices supersedes request baselines when native prices
+// become available. Retained custom cards and their multipliers cannot replace
+// catalog token, image, or video units under catalog preference.
+func TestCatalogPriorityNativePrices(t *testing.T) {
+	baseline, custom, cardMultiplier := 0.01, 9.0, 100.0
+	for _, tc := range []struct {
+		model string                       // catalog fixture model name
+		raw   *pricing.CatalogModelPricing // native rates plus request baseline
+		mode  pricing.BillingMode          // selected native billing unit
+		size  string                       // required media dimension label
+		want  float64                      // expected base charge in USD
+	}{
+		{"token", &pricing.CatalogModelPricing{CatalogRules: pricing.CatalogRules{CostPerRequest: &baseline}, InputCostPerToken: 1e-6, OutputCostPerToken: 2e-6}, pricing.BillingModeToken, "", 0.001},
+		{"image", &pricing.CatalogModelPricing{CatalogRules: pricing.CatalogRules{CostPerRequest: &baseline, ImagePrices: pricing.MediaPrices{"1K": 0.3}}, TokenPricingAbsent: true}, pricing.BillingModeImage, "1K", 0.6},
+		{"video", &pricing.CatalogModelPricing{CatalogRules: pricing.CatalogRules{CostPerRequest: &baseline, VideoPrices: pricing.MediaPrices{"720p": 0.1}}, TokenPricingAbsent: true}, pricing.BillingModeVideo, "720p", 0.2},
+	} {
+		t.Run(tc.model, func(t *testing.T) {
+			calculator := NewCalculator(defaultCatalogStub{entries: map[string]*pricing.CatalogModelPricing{tc.model: tc.raw}}, CalculatorOptions{PreferCatalogPricing: true})
+			resolver := NewPriceResolver(mediaPriceCards{card: &ModelPricingEntry{BillingMode: pricing.BillingModePerRequest, PerRequestPrice: &custom, PriceMultiplier: &cardMultiplier}}, calculator, nil, nil)
+			groupID := int64(1)
+			resolved := resolver.Resolve(context.Background(), PricingInput{Model: tc.model, GroupID: &groupID})
+			require.Equal(t, tc.mode, resolved.Mode)
+			require.Nil(t, resolved.ConfigPricing)
+			cost, err := calculator.CalculateCostUnified(CostInput{Model: tc.model, Tokens: UsageTokens{InputTokens: 1000}, RequestCount: 2, SizeTier: tc.size, RateMultiplier: 2, Resolver: resolver, Resolved: resolved})
+			require.NoError(t, err)
+			require.InDelta(t, tc.want, cost.TotalCost, 1e-12)
+			require.InDelta(t, tc.want*2, cost.ActualCost, 1e-12)
+			require.Equal(t, string(tc.mode), calculator.DefaultModelPrice(tc.model, "", "").BillingMode)
+		})
+	}
+}
+
 // TestPublicQuotePreservesExactImagePrices quotes explicit catalog image
 // prices, including zero, with a user multiplier. It checks quote, unit
 // price, and calculated charge agreement, and keeps an unknown image

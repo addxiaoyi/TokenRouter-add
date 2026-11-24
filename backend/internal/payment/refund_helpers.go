@@ -32,6 +32,7 @@ import (
 // currency-formatted money. A provider error accompanied by pending state is
 // retained for query recovery. Other responses keep their reference with any
 // error so the workflow can record it before changing local rights.
+// StarPAY also receives the already committed preparation ID as its request key.
 func (s *RefundWorkflow) GwRefund(ctx context.Context, p *RefundPlan) (*RefundResponse, error) {
 	// Orders with no stored upstream transaction follow local-only success
 	// handling. Record the skipped gateway operation so later audit inspection
@@ -64,10 +65,11 @@ func (s *RefundWorkflow) GwRefund(ctx context.Context, p *RefundPlan) (*RefundRe
 	}
 	finishProviderCall := s.runtime.Observe(ctx)
 	resp, err := prov.Refund(ctx, RefundRequest{
-		TradeNo: p.Order.PaymentTradeNo,
-		OrderID: p.Order.OutTradeNo,
-		Amount:  FormatGatewayRefundAmount(p.GatewayAmount, p.Order),
-		Reason:  p.Reason,
+		RequestID: p.OperationID,
+		TradeNo:   p.Order.PaymentTradeNo,
+		OrderID:   p.Order.OutTradeNo,
+		Amount:    FormatGatewayRefundAmount(p.GatewayAmount, p.Order),
+		Reason:    p.Reason,
 	})
 	finishProviderCall()
 	if err != nil {

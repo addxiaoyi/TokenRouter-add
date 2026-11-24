@@ -31,6 +31,62 @@ export const userRoutes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/chat/:id?',
+    alias: ['/playground', '/chat-history'],
+    name: 'ChatWorkspace',
+    component: () => import('@/views/user/ChatView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      titleKey: 'chat.title',
+      descriptionKey: 'chat.description',
+    },
+  },
+  {
+    path: '/chat2link',
+    name: 'ChatConnections',
+    component: () => import('@/views/user/ChatConnectionsView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      titleKey: 'chat.connectionTitle',
+      descriptionKey: 'chat.connectionDescription',
+    },
+  },
+  {
+    path: '/monitoring',
+    name: 'ServiceMonitoring',
+    component: () => import('@/views/user/ServiceMonitoringView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      titleKey: 'monitoring.title',
+      descriptionKey: 'monitoring.description',
+    },
+  },
+  {
+    path: '/support-tickets/:id?',
+    name: 'SupportTickets',
+    component: () => import('@/views/user/SupportView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      titleKey: 'support.title',
+      descriptionKey: 'support.description',
+    },
+  },
+  {
+    path: '/task-history',
+    alias: '/usage-logs/task',
+    name: 'TaskHistory',
+    component: () => import('@/views/TaskHistoryView.vue'),
+    meta: {
+      requiresAuth: true,
+      titleKey: 'taskHistory.title',
+      descriptionKey: 'taskHistory.description',
+    },
+  },
+  {
     path: '/ext/:pluginId/:subpath(.*)*',
     name: 'PluginPage',
     component: () => import('@/views/plugin/PluginPageView.vue'),

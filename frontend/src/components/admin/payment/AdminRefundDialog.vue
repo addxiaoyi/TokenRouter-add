@@ -126,7 +126,7 @@
 
       <div>
         <label class="input-label">{{ t('payment.admin.refundAmount') }}</label>
-        <div v-if="isSubscription && order" class="input" data-testid="subscription-refund-amount">
+        <div v-if="fullRefundOnly && order" class="input" data-testid="subscription-refund-amount">
           {{ formatGatewayAmount(order.pay_amount, order.currency) }}
         </div>
         <div v-else class="relative">
@@ -141,9 +141,15 @@
             required
           />
         </div>
-        <p v-if="!isSubscription" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        <p v-if="!fullRefundOnly" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
           {{ t('payment.admin.maxRefundable') }}:
           {{ order ? formatOrderAmount(maxRefundable, order) : '-' }}
+        </p>
+        <p
+          v-if="order?.payment_type === 'starpay'"
+          class="mt-1 text-xs text-gray-500 dark:text-gray-400"
+        >
+          {{ t('payment.starpay.refundHint') }}
         </p>
       </div>
 
@@ -216,6 +222,7 @@ import { formatPaymentAmount } from '@/utils/payment/currency'
 // Balance refunds accept an amount in entitlement units. Subscription refunds display
 // the original channel charge and submit the full order price in its own currency.
 // The subscription checkbox controls whether to pause and later revoke the grant.
+// StarPAY balance refunds also lock the amount to the original full payment.
 //
 // Opening the dialog initializes the draft from the selected order and clears force
 // consent. A server response requiring force leaves submission disabled until the
@@ -278,6 +285,12 @@ const form = reactive({
 // isSubscription selects fixed full refunds and subscription entitlement copy.
 const isSubscription = computed(() => props.order?.order_type === 'subscription')
 
+// fullRefundOnly locks the amount for subscriptions and StarPAY merchant balance orders.
+// Their gateway contract requires returning the complete original payment to its payer.
+const fullRefundOnly = computed(
+  () => isSubscription.value || props.order?.payment_type === 'starpay',
+)
+
 // actuallyRefunded counts refund_amount only in completed refund states; requested and
 // pending amounts remain proposals and do not reduce the available refund.
 const actuallyRefunded = computed(() => {
@@ -307,7 +320,7 @@ watch(
   () => props.show,
   (val) => {
     if (val && props.order) {
-      if (isSubscription.value) {
+      if (fullRefundOnly.value) {
         form.amount = props.order.amount
       } else if (props.order.status === 'REFUND_REQUESTED' && props.order.refund_amount) {
         form.amount = props.order.refund_amount
@@ -344,10 +357,11 @@ function formatGatewayAmount(amount: number, currency?: string | null): string {
 }
 
 // handleSubmit emits a copied refund draft after checking its amount and force consent.
-// The parent handles persistence, and invalid amounts or an unconfirmed force requirement
-// emit nothing.
+// The parent handles persistence. StarPAY and subscription refunds require the complete
+// order amount; invalid amounts or an unconfirmed force requirement emit nothing.
 function handleSubmit() {
   if (form.amount <= 0 || form.amount > maxRefundable.value) return
+  if (fullRefundOnly.value && form.amount !== props.order?.amount) return
   if (props.requireForce && !form.force) return
   emit('confirm', { ...form })
 }

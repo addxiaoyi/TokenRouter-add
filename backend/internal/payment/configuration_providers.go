@@ -50,6 +50,7 @@ var (
 	// remain visible. Keep its recognized secret names aligned with frontend
 	// providerConfig.ts sensitive metadata when changing the schema.
 	ConfigProviderSensitiveConfigFields = map[string]map[string]struct{}{
+		TypeStarPay:     {"pkey": {}},
 		TypeEasyPay:     {"pkey": {}},
 		TypeEPUSDT:      {"secretkey": {}},
 		TypeNOWPayments: {"apikey": {}, "ipnsecret": {}},
@@ -65,6 +66,7 @@ var (
 	// separate count includes pending, processing, paid and recharging in the
 	// PostgreSQL adapter.
 	ConfigProviderPendingOrderProtectedConfigFields = map[string]map[string]struct{}{
+		TypeStarPay:     {"pkey": {}, "pid": {}, "apibase": {}, "notifyurl": {}, "currency": {}},
 		TypeEasyPay:     {"pkey": {}, "pid": {}},
 		TypeEPUSDT:      {"secretkey": {}, "pid": {}, "currency": {}, "apibase": {}},
 		TypeNOWPayments: {"apikey": {}, "ipnsecret": {}, "currency": {}, "paycurrency": {}, "apibase": {}},
@@ -77,6 +79,7 @@ var (
 	// ConfigValidProviderKeys contains exact provider labels accepted by creation
 	// request validation and the configured adapter factory choices.
 	ConfigValidProviderKeys = map[string]bool{
+		TypeStarPay: true,
 		TypeEasyPay: true, TypeAlipay: true, TypeWxpay: true, TypeStripe: true, TypeAirwallex: true, TypeEPUSDT: true, TypeNOWPayments: true,
 	}
 
@@ -248,6 +251,7 @@ func (s *ConfigService) ConfigCountPendingOrders(ctx context.Context, providerIn
 // EPUSDT requires its cryptocurrency method, selects hosted popup checkout,
 // and rejects requests enabling automatic or buyer-initiated refunds.
 // NOWPayments likewise rejects automatic or buyer-initiated refunds.
+// StarPAY uses its single merchant-balance method and hosted popup checkout.
 //
 // EasyPay name preparation mutates the supplied config map before custom
 // mapping validation. Enabled requests construct an adapter, which can defer
@@ -270,6 +274,9 @@ func (s *ConfigService) CreateProviderInstance(ctx context.Context, req CreatePr
 		if req.RefundEnabled || req.AllowUserRefund {
 			return nil, infraerrors.BadRequest("REFUND_UNSUPPORTED", "nowpayments automatic refunds are not supported")
 		}
+	}
+	if req.ProviderKey == TypeStarPay {
+		req.PaymentMode = "popup"
 	}
 	if req.ProviderKey == TypeEasyPay {
 		if err := ConfigValidateEasyPayTradeNumberCompatibility(req.Config); err != nil {
@@ -362,10 +369,9 @@ func (s *ConfigService) TestProviderDraft(ctx context.Context, req TestProviderD
 	return &ProviderDraftTestResult{Reachable: true}, nil
 }
 
-// ConfigValidateProviderRequest requires a trimmed nonblank display name and
-// exact key in ConfigValidProviderKeys. EPUSDT and NOWPayments each require
-// their single hosted cryptocurrency method; other provider support rules are
-// validated by their configuration-specific paths before persistence.
+// ConfigValidateProviderRequest validates a trimmed name, exact provider key,
+// and the dedicated payment method required by each hosted crypto or balance
+// provider before persistence.
 func ConfigValidateProviderRequest(providerKey, name, supportedTypes string) error {
 	if strings.TrimSpace(name) == "" {
 		return infraerrors.BadRequest("VALIDATION_ERROR", "provider name is required")
@@ -375,6 +381,9 @@ func ConfigValidateProviderRequest(providerKey, name, supportedTypes string) err
 	}
 	if providerKey == TypeNOWPayments && supportedTypes != TypeNOWPayments {
 		return infraerrors.BadRequest("VALIDATION_ERROR", "nowpayments supports only the cryptocurrency payment method")
+	}
+	if providerKey == TypeStarPay && supportedTypes != TypeStarPay {
+		return infraerrors.BadRequest("VALIDATION_ERROR", "starpay supports only merchant balance payments")
 	}
 	if !ConfigValidProviderKeys[providerKey] {
 		return infraerrors.BadRequest("VALIDATION_ERROR", fmt.Sprintf("invalid provider key: %s", providerKey))
@@ -454,6 +463,7 @@ func ConfigEasyPayCustomMethodTypeConflictsWithBuiltin(methodType string) bool {
 // in its corresponding update rules. EPUSDT always selects hosted popup mode
 // and rejects requests enabling automatic or buyer-initiated refunds.
 // NOWPayments likewise rejects automatic or buyer-initiated refunds.
+// StarPAY also retains hosted popup mode and its required balance method.
 //
 // One successful in-progress count is memoized for protected credential
 // changes, disabling and support removal checks. Config merging rereads the
@@ -479,6 +489,9 @@ func (s *ConfigService) UpdateProviderInstance(ctx context.Context, id int64, re
 		if req.RefundEnabled != nil && *req.RefundEnabled || req.AllowUserRefund != nil && *req.AllowUserRefund {
 			return nil, infraerrors.BadRequest("REFUND_UNSUPPORTED", "nowpayments automatic refunds are not supported")
 		}
+	}
+	if current.ProviderKey == TypeStarPay {
+		req.PaymentMode = configPointer("popup")
 	}
 	var pendingOrderCount *int
 	getPendingOrderCount := func() (int, error) {
@@ -508,6 +521,9 @@ func (s *ConfigService) UpdateProviderInstance(ctx context.Context, id int64, re
 	}
 	if current.ProviderKey == TypeNOWPayments && nextSupportedTypes != TypeNOWPayments {
 		return nil, infraerrors.BadRequest("VALIDATION_ERROR", "nowpayments requires its cryptocurrency payment method")
+	}
+	if current.ProviderKey == TypeStarPay && nextSupportedTypes != TypeStarPay {
+		return nil, infraerrors.BadRequest("VALIDATION_ERROR", "starpay requires its merchant balance payment method")
 	}
 	if err := s.ConfigValidateVisibleMethodEnablementConflicts(ctx, id, current.ProviderKey, nextSupportedTypes, nextEnabled); err != nil {
 		return nil, err

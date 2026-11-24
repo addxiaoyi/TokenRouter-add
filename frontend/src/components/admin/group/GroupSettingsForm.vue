@@ -6,6 +6,7 @@
     :label="t('admin.groups.tabs.label')"
   >
     <template #general>
+      <slot name="draft-tools" />
       <SettingsSection :title="t('admin.groups.tabs.identity')">
         <div class="grid gap-4 md:grid-cols-2">
           <div data-group-field="name">

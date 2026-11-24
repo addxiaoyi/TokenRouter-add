@@ -24,21 +24,20 @@ import (
 // returns no error, including a nil notification for an irrelevant verified
 // event.
 //
-// POST reading is capped at one MiB by truncation rather than an explicit
-// oversize rejection; GET query text bypasses that body reader. Verification
-// failures return 400, while provider/order processing failures generally
-// return 500. Missing provider lookup is acknowledged for non-WeChat, and a
-// missing local order is acknowledged after verification. Provider-specific
-// success bodies retain their protocol shape, and failed-verification body
-// logging truncates by bytes, which can split UTF-8.
+// StarPAY rejects POST bodies exceeding one MiB before verification; other
+// providers retain their capped prefix reader. GET query text bypasses that
+// reader. Verification failures return 400, while provider/order processing
+// failures generally return 500. Missing provider lookup is acknowledged except
+// for WeChat and StarPAY. Missing local orders are acknowledged after verification.
+// Provider-specific success bodies retain their protocol shape, and failed
+// verification body logging truncates by bytes, which can split UTF-8.
 
 // WebhookMaxWebhookBodySize and WebhookWebhookLogTruncateLen bound received
 // POST bytes and failure diagnostics. WebhookWxpaySuccessCode and
 // WebhookWxpaySuccessMessage form the official WeChat acknowledgement payload.
 const (
-	// WebhookMaxWebhookBodySize caps bytes read from POST callbacks through
-	// LimitReader; an overlong request is truncated at one MiB before provider
-	// verification.
+	// WebhookMaxWebhookBodySize bounds accepted POST callback bytes. StarPAY reads
+	// one extra byte to reject overflow; other providers verify a capped prefix.
 	WebhookMaxWebhookBodySize = 1 << 20
 
 	// WebhookWebhookLogTruncateLen caps raw failure-body diagnostics by byte
@@ -97,6 +96,13 @@ func (h *PaymentWebhookHandler) NOWPaymentsNotify(c *gin.Context) {
 	h.handleNotify(c, payment.TypeNOWPayments)
 }
 
+// StarPayNotify forwards raw JSON and signature headers to the balance verifier.
+// Successful verification includes a fresh platform query before the common runtime
+// checks the saved order and grants its entitlement through persistent deduplication.
+func (h *PaymentWebhookHandler) StarPayNotify(c *gin.Context) {
+	h.handleNotify(c, payment.TypeStarPay)
+}
+
 // AlipayNotify delegates the official Alipay callback to common body reading
 // and candidate verification. Verified notification handling follows before
 // its plain-text success acknowledgement; errors retain the shared status
@@ -131,13 +137,14 @@ func (h *PaymentWebhookHandler) AirwallexWebhook(c *gin.Context) {
 
 // handleNotify reads callback text, resolves candidate providers, and
 // processes the first accepted notification before its provider-specific
-// acknowledgement. POST uses a one-MiB LimitReader and GET uses raw query
-// text; a read error returns bad request.
+// acknowledgement. POST uses a one-MiB limit and GET uses raw query text;
+// StarPAY overflow returns 413, while a read error returns bad request.
 //
 // Merchant extraction is an unsigned account hint. Candidate verification
 // receives lowercased header names with each first value, and the first nil
 // error wins even for an irrelevant nil notification. A missing provider is
-// acknowledged except official WeChat; other lookup failures return 500.
+// acknowledged except for official WeChat and StarPAY; other lookup failures
+// return 500. StarPAY retains unverified notifications for a later retry.
 // Failed verification returns 400 after bounded diagnostics. Verified missing
 // orders are acknowledged, while other notification-processing failures return
 // 500 for provider retry.
@@ -149,13 +156,22 @@ func (h *PaymentWebhookHandler) handleNotify(c *gin.Context, providerKey string)
 		// POST byte cap.
 		rawBody = c.Request.URL.RawQuery
 	} else {
-		// Read at most the configured POST bytes before verification. LimitReader
-		// truncates an overlong body rather than reporting overflow, so the provider
-		// validates the resulting received prefix.
-		body, err := io.ReadAll(io.LimitReader(c.Request.Body, WebhookMaxWebhookBodySize))
+		// Existing providers validate a capped prefix. StarPAY's raw JSON signature
+		// requires a complete body, so its reader detects overflow before dispatch.
+		readLimit := int64(WebhookMaxWebhookBodySize)
+		if providerKey == payment.TypeStarPay {
+			// Read one extra byte for the raw JSON protocol so an oversized body
+			// cannot be mistaken for a complete signed prefix after truncation.
+			readLimit++
+		}
+		body, err := io.ReadAll(io.LimitReader(c.Request.Body, readLimit))
 		if err != nil {
 			slog.Error("[Payment Webhook] failed to read body", "provider", providerKey, "error", err)
 			c.String(http.StatusBadRequest, "failed to read body")
+			return
+		}
+		if providerKey == payment.TypeStarPay && len(body) > WebhookMaxWebhookBodySize {
+			c.String(http.StatusRequestEntityTooLarge, "notification body is too large")
 			return
 		}
 		rawBody = string(body)
@@ -170,13 +186,13 @@ func (h *PaymentWebhookHandler) handleNotify(c *gin.Context, providerKey string)
 	if err != nil {
 		slog.Warn("[Payment Webhook] provider not found", "provider", providerKey, "outTradeNo", outTradeNo, "error", err)
 		// Only classified missing-provider lookup reaches acknowledgement handling.
-		// Other lookup failures stay retryable server errors; official WeChat
+		// Other lookup failures stay retryable server errors; WeChat and StarPAY
 		// missing-account handling still returns verification failure.
 		if !WebhookShouldAcknowledgeWebhookProviderLookupError(err) {
 			c.String(http.StatusInternalServerError, "provider lookup failed")
 			return
 		}
-		if providerKey == payment.TypeWxpay {
+		if providerKey == payment.TypeWxpay || providerKey == payment.TypeStarPay {
 			c.String(http.StatusBadRequest, "verify failed")
 			return
 		}
@@ -252,12 +268,21 @@ func WebhookShouldAcknowledgeWebhookProviderLookupError(err error) bool {
 // EasyPay/Alipay read out_trade_no, Stripe reads object metadata orderId, and
 // Airwallex reads its nested merchant_order_id. EPUSDT EPay uses out_trade_no
 // and NOWPayments IPN bodies carry a top-level order_id.
+// Airwallex reads its nested merchant_order_id. EPUSDT EPay uses out_trade_no.
+// StarPAY reads merchantOrderId from its JSON balance event.
 // These representations select
 // candidate accounts before authentication; no returned value authorizes
 // fulfillment on its own. Trimming is applied to the JSON hints, while form
 // extraction returns the parsed first value.
 func WebhookExtractOutTradeNo(rawBody, providerKey string) string {
 	switch providerKey {
+	case payment.TypeStarPay:
+		var event struct {
+			MerchantOrderID string `json:"merchantOrderId"` // unsigned business order hint
+		}
+		if err := json.Unmarshal([]byte(rawBody), &event); err == nil {
+			return event.MerchantOrderID
+		}
 	case payment.TypeEasyPay, payment.TypeAlipay, payment.TypeEPUSDT:
 		values, err := url.ParseQuery(rawBody)
 		if err == nil {

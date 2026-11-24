@@ -715,4 +715,28 @@ describe('ProfileIdentityBindingsSection', () => {
     expect(wrapper.find('[data-testid="profile-binding-linuxdo-action"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="profile-binding-oidc-action"]').exists()).toBe(false)
   })
+  // Both social providers expose authenticated bind navigation when enabled.
+  // Existing bindings remain visible after disablement and honor server unbind protection.
+  it.each(['telegram', 'discord'] as const)(
+    'binds %s and preserves the final-method protection',
+    async (provider) => {
+      const wrapper = mount(ProfileIdentityBindingsSection, {
+        props: { user: createUser(), telegramEnabled: true, discordEnabled: true },
+        global: { plugins: [pinia] },
+      })
+      await wrapper.get(`[data-testid="profile-binding-${provider}-action"]`).trigger('click')
+      expect(locationState.current.href).toContain(`/api/v1/auth/oauth/${provider}/bind/start?`)
+      expect(locationState.current.href).toContain('intent=bind_current_user')
+      await wrapper.setProps({
+        telegramEnabled: false,
+        discordEnabled: false,
+        user: createUser({ auth_bindings: { [provider]: { bound: true, can_unbind: false } } }),
+      })
+      expect(wrapper.get(`[data-testid="profile-binding-${provider}-status"]`).text()).toBe('Bound')
+      expect(wrapper.find(`[data-testid="profile-binding-${provider}-action"]`).exists()).toBe(
+        false,
+      )
+      wrapper.unmount()
+    },
+  )
 })

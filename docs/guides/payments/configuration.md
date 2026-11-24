@@ -24,6 +24,7 @@ TokenRouter 内置支付系统，支持用户自助充值、购买套餐和发�
 | Stripe | 银行卡、支付宝、微信支付、Link 等 | 国际支付，支持多币种 |
 | EPUSDT / GMPay（EPay 协议） | 加密货币 | 通过独立部署的 epusdt 收银台选择币种和网络，支持 CNY / USD 计价 |
 | NOWPayments | 加密货币 | 托管加密货币收款，实例固定结算币种（默认 USDT-TRC20），支持 USD / CNY 计价 |
+| StarPAY 商户余额 | StarPAY 商户账户的可用余额 | 独立 HMAC-SHA256 协议，CNY 计价，支持全额原路退款 |
 | Airwallex（空中云汇） | Airwallex 托管收银台支持的支付方式 | 国际支付，支持测试和生产 API、多币种和可选的平台提供商 |
 
 支付宝官方、微信官方和易支付可以同时作为后台的服务商实例存在，但前台只展示"支付宝"和"微信支付"两个按钮。管理员需要为每个按钮选择一个支付来源：官方或易支付。官方渠道直接对接 API，资金直接进入商户账户，手续费较低；易支付通过第三方平台聚合，接入门槛较低。
@@ -104,6 +105,27 @@ TokenRouter 内置支付系统，支持用户自助充值、购买套餐和发�
 不同的服务商需要不同的凭据和参数。在"服务商管理 → 添加服务商"里选择类型后填写。
 
 添加服务商时，异步回调地址（Notify URL）和同步跳转地址（Return URL）由系统根据站点域名自动生成，管理员只需要确认域名正确。
+
+### StarPAY 商户余额
+
+1. 在 StarPAY 商户中心选择代表本站的收款商户，从「API 接入」取得 EPay 商户号 PID 和 EPay MD5 签名密钥。
+2. 在 TokenRouter「设置 → 支付设置」启用 StarPAY，然后添加「StarPAY 商户余额」服务商实例。
+3. 填写下表参数，确认通知域名与用户访问本站的 HTTPS 域名一致，再启用实例。买家需要另一个 StarPAY 商户账户和足够的可用余额。
+
+| 参数 | 填写内容 |
+| --- | --- |
+| API 地址（`apiBase`） | 默认 `https://star-web.top/pay`，保留 `/pay` 前缀 |
+| EPay PID（`pid`） | 本站收款商户的数字 PID |
+| 商户密钥（`pkey`） | 该商户的 EPay MD5 签名密钥；余额协议实际使用 HMAC-SHA256 |
+| 异步回调地址（`notifyUrl`） | `https://本站域名/api/v1/payment/webhook/starpay` |
+
+TokenRouter 的 Go 后端原生实现余额 SDK v1 协议，不需要安装 Node.js SDK。凭据通过已有服务商配置保存，仅后端使用；前端读取的配置不包含密钥。普通易支付的 `type=balance` 不能替代这个渠道。返回页使用本站 `/payment/result`，必须与通知地址同源。
+
+上线前确认 `POST /pay/epay/balance/orders`、`query`、`refund` 已部署且不返回 HTML 404，再使用测试商户完成付款、重复通知、伪造通知、余额不足、全额退款和超时恢复验收。下单提示「结果尚未确认」时，保留原订单并查看进度，避免新建业务订单重复付款。
+
+开启退款后，管理员只能退整笔实付金额，款项退回原付款商户；收款商户需有足够的原净入账余额。退款结果未知时在订单管理中执行退款查单，确认平台状态后完成本地恢复。回滚版本或禁用渠道前先处理未确认订单和退款，并保留原商户配置。
+
+收款手续费按收款商户费率计算。100 元／年的开票服务是独立功能，不是余额支付 SDK 接入费。
 
 ### EasyPay（易支付）
 
@@ -237,6 +259,7 @@ NOWPayments 对每种结算币种设有最低收款额，订单法币金额过�
 | 微信官方 | `https://your-domain.com/api/v1/payment/webhook/wxpay` |
 | Stripe | `https://your-domain.com/api/v1/payment/webhook/stripe` |
 | EPUSDT / GMPay（EPay 协议） | `https://your-domain.com/api/v1/payment/webhook/epusdt` |
+| StarPAY 商户余额 | `https://your-domain.com/api/v1/payment/webhook/starpay` |
 | Airwallex | `https://your-domain.com/api/v1/payment/webhook/airwallex` |
 
 把 `your-domain.com` 换成实际的域名。EasyPay、支付宝和微信的回调地址，在添加服务商时自动填入，不需要手动配置。
@@ -327,7 +350,7 @@ NOWPayments 对每种结算币种设有最低收款额，订单法币金额过�
 | 对比项 | Sub2ApiPay | 内置支付 |
 | --- | --- | --- |
 | 部署方式 | 独立服务（Next.js + PostgreSQL） | 内置在 TokenRouter 里，不需要另外部署 |
-| 支付方式 | EasyPay、支付宝、微信、Stripe | EasyPay、支付宝、微信、Stripe、Airwallex |
+| 支付方式 | EasyPay、支付宝、微信、Stripe | EasyPay、支付宝、微信、Stripe、Airwallex、EPUSDT、StarPAY |
 | 配置方式 | 环境变量加独立的管理后台 | 在 TokenRouter 管理后台统一配置 |
 | 充值对接 | 通过 Admin API 回调 | 内部直接处理，少一次跨服务调用 |
 | 订阅套餐 | 支持 | 支持内置套餐和订阅权益 |

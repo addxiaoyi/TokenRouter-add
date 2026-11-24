@@ -12,6 +12,7 @@
 //   - order*.go, query_ports.go, query_types.go, document.go, and statistics.go handle order state and queries.
 //   - fulfillment*.go and expiry.go confirm payments, grant rights, and process expired orders.
 //   - refund_*.go validate refunds, call providers, and deduct or restore rights.
+//   - tax_invoice*.go admit financially approved digital invoices and recover their immutable applications.
 //   - provider_*.go, registry.go, load_balancer.go, and instance.go register, bind, and select providers.
 //   - amount_rules.go, currency.go, and fee.go calculate recharge amounts, currency precision, and fees.
 //   - resume*.go and crypto.go sign resume tokens and read encrypted configuration.

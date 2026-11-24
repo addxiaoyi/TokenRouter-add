@@ -584,3 +584,29 @@ func TestAuthPendingIdentityService_ConsumeBrowserSessionScrubsLegacyCompletionT
 	require.NotContains(t, completion, "token_type")
 	require.Equal(t, "/dashboard", completion["redirect"])
 }
+
+// TestSocialIdentityPersistenceAndReplay uses the real Ent schema to preserve
+// social ownership and pending browser proof. Duplicate subjects cannot acquire a
+// second owner, and a consumed browser continuation cannot be reused.
+func TestSocialIdentityPersistenceAndReplay(t *testing.T) {
+	svc, client := newAuthPendingIdentityServiceTestClient(t)
+	ctx := context.Background()
+	for _, provider := range []string{identity.SocialTelegram, identity.SocialDiscord} {
+		user, err := client.User.Create().SetEmail(provider + "@example.com").SetPasswordHash("hash").SetSignupSource(provider).Save(ctx)
+		require.NoError(t, err)
+		_, err = client.AuthIdentity.Create().SetUserID(user.ID).SetProviderType(provider).SetProviderKey(provider).SetProviderSubject("123456789").Save(ctx)
+		require.NoError(t, err)
+		otherUser, err := client.User.Create().SetEmail(provider + "-other@example.com").SetPasswordHash("hash").Save(ctx)
+		require.NoError(t, err)
+		_, err = client.AuthIdentity.Create().SetUserID(otherUser.ID).SetProviderType(provider).SetProviderKey(provider).SetProviderSubject("123456789").Save(ctx)
+		require.Error(t, err)
+		session, err := svc.CreatePendingSession(ctx, CreatePendingAuthSessionInput{Intent: "login", Identity: PendingAuthIdentityKey{ProviderType: provider, ProviderKey: provider, ProviderSubject: "123456789"}, TargetUserID: &user.ID, BrowserSessionKey: "browser", LocalFlowState: map[string]any{"completion_response": map[string]any{"provider": provider}}})
+		require.NoError(t, err)
+		_, err = svc.ConsumeBrowserSession(ctx, session.SessionToken, "another-browser")
+		require.ErrorIs(t, err, ErrPendingAuthBrowserMismatch)
+		_, err = svc.ConsumeBrowserSession(ctx, session.SessionToken, "browser")
+		require.NoError(t, err)
+		_, err = svc.ConsumeBrowserSession(ctx, session.SessionToken, "browser")
+		require.ErrorIs(t, err, ErrPendingAuthSessionConsumed)
+	}
+}

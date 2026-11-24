@@ -5,8 +5,9 @@ package pricing
 // Administrator price rows need a unit classification even when a catalog
 // entry has no usable charge amount. DefaultBillingMode checks declared video
 // dimensions before image dimensions or an eligible flat image amount, then
-// checks token availability. A chat record's per-image metadata keeps token
-// classification unless image-mode or model-name rules select that unit.
+// checks token availability before a declared request baseline. A chat record's
+// per-image metadata keeps token classification unless its declared image mode
+// or absence of token prices selects that unit.
 //
 // The resulting mode and PriceStatus answer separate questions: mode describes
 // the row's units, while status describes available prices. Optional amount
@@ -68,7 +69,8 @@ type DefaultPriceInterval struct {
 // token classification unless an explicit image operation mode applies.
 //
 // Available token prices then select token mode. When every price lookup is
-// unavailable, the supplied image, image_generation, or video mode still
+// unavailable, an explicit request amount selects per-request mode. Otherwise
+// the supplied image, image_generation, or video mode still
 // provides the corresponding classification; other values default to token.
 // This function classifies rows independently of their separate priced or
 // unpriced status.
@@ -82,6 +84,9 @@ func DefaultBillingMode(model, mode string, raw *CatalogModelPricing) string {
 	}
 	if value, err := ResolveModelPricing(model, raw); err == nil && value != nil {
 		return "token"
+	}
+	if raw != nil && raw.CostPerRequest != nil && validAmount(*raw.CostPerRequest) {
+		return "per_request"
 	}
 	// Missing amounts still leave the supplied operation classification useful to
 	// administrators; priced status is determined separately from this descriptive

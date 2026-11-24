@@ -13,6 +13,7 @@ import (
 	wshttp "github.com/TokenFlux/TokenRouter/internal/gateway/ws/httpapi"
 	"github.com/TokenFlux/TokenRouter/internal/idempotency"
 	identityhttp "github.com/TokenFlux/TokenRouter/internal/identity/httpapi"
+	qualityhttp "github.com/TokenFlux/TokenRouter/internal/modelquality/httpapi"
 	notificationhttp "github.com/TokenFlux/TokenRouter/internal/notification/httpapi"
 	opshttp "github.com/TokenFlux/TokenRouter/internal/ops/httpapi"
 	paymenthttp "github.com/TokenFlux/TokenRouter/internal/payment/httpapi"
@@ -21,6 +22,7 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/routing/httpapi/dto"
 	servermiddleware "github.com/TokenFlux/TokenRouter/internal/server/middleware"
 	sitehttp "github.com/TokenFlux/TokenRouter/internal/site/httpapi"
+	supporthttp "github.com/TokenFlux/TokenRouter/internal/support/httpapi"
 	teamhttp "github.com/TokenFlux/TokenRouter/internal/team/httpapi"
 	usagehttp "github.com/TokenFlux/TokenRouter/internal/usage/httpapi"
 )
@@ -31,6 +33,7 @@ import (
 // registration uses the engine directly for protocol paths, while
 // authentication, user, administrator, plugin, payment, and page registrars receive the
 // /api/v1 group.
+
 // httpRouteSecurity carries the assembled guards and limiters used by route
 // families.
 type httpRouteSecurity struct {
@@ -46,6 +49,7 @@ type httpRouteSecurity struct {
 	Panel                                               *servermiddleware.PanelRateLimiter // panel request limits
 	AuthLimiter                                         *servermiddleware.RateLimiter      // public authentication limits
 }
+
 type (
 	// authRouteMount registers authentication and public panel routes with shared guards.
 	authRouteMount func(*gin.RouterGroup, httpRouteSecurity)
@@ -89,8 +93,10 @@ func provideAuthRouteMount(eModelMarketplace *routinghttp.MarketplaceHandler,
 	eNotification *notificationhttp.Handler,
 	ePasskey *identityhttp.PasskeyHandler,
 	eAuth *identityHTTP,
+	eQuality *qualityhttp.Handler,
 ) authRouteMount {
 	return func(v1 *gin.RouterGroup, security httpRouteSecurity) {
+		v1.GET("/model-quality", security.Panel.PublicIP(), eQuality.List)
 		guards := identityhttp.AuthRouteMiddleware{JWT: security.JWT, Audit: security.Audit, BackendAuth: security.BackendAuth, BackendUser: security.BackendUser, Panel: security.Panel.Global(), Limit: func(key string, n int, window time.Duration) gin.HandlerFunc {
 			return security.AuthLimiter.LimitWithOptions(key, n, window, servermiddleware.RateLimitOptions{FailureMode: servermiddleware.RateLimitFailClose})
 		}}
@@ -140,10 +146,12 @@ func providePaymentRouteMount(user *paymenthttp.PaymentHandler, webhook *payment
 
 // provideUserRouteMount mounts user resources after JWT, backend-mode, panel,
 // and audit middleware. Team routes receive step-up protection, usage plus
-// creative registrars receive the heavy-query limiter, and signed usage-export
+// creative registrars plus task history receive the heavy-query limiter, and signed usage-export
 // downloads mount on /api/v1 under the public-IP limiter.
 func provideUserRouteMount(
+	eSupport *supporthttp.Handler,
 	eMonitoring *opshttp.UserMonitoringHandler,
+	eTaskHistory *batchhttp.HistoryHandler,
 	eModelMarketplace *routinghttp.MarketplaceHandler,
 	eUserPromotion *promotionhttp.UserHandler,
 	eSubscription *billinghttp.SubscriptionHandler,
@@ -173,8 +181,10 @@ func provideUserRouteMount(
 		usagehttp.RegisterUserRoutes(authenticated, eUsage, security.Panel.Heavy())
 		usagehttp.RegisterPublicExportDownloadRoutes(v1, eUsage, security.Panel.PublicIP())
 		creativehttp.RegisterUserRoutes(authenticated, eCreative, security.Panel.Heavy())
+		batchhttp.RegisterUserHistory(authenticated, eTaskHistory, security.Panel.Heavy())
 		sitehttp.RegisterUserRoutes(authenticated, eAnnouncement)
-		billinghttp.RegisterUserRoutes(authenticated, eRedeem, eSubscription)
+		supporthttp.RegisterUser(authenticated, eSupport)
 		opshttp.RegisterUserMonitoring(authenticated, eMonitoring, security.Panel.Heavy())
+		billinghttp.RegisterUserRoutes(authenticated, eRedeem, eSubscription)
 	}
 }

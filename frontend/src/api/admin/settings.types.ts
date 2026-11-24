@@ -377,6 +377,14 @@ export interface SystemSettings extends AuthSourceDefaultFields {
   linuxdo_connect_client_id: string // Linuxdo connect client ID.
   linuxdo_connect_client_secret_configured: boolean // Linuxdo connect client secret configured.
   linuxdo_connect_redirect_url: string // Linuxdo connect redirect URL.
+  telegram_oauth_enabled: boolean // telegram login availability.
+  telegram_oauth_client_id: string // Authorization client identifier.
+  telegram_oauth_client_secret_configured: boolean // Saved credential presence.
+  telegram_oauth_redirect_url: string // Optional explicit backend callback.
+  discord_oauth_enabled: boolean // discord login availability.
+  discord_oauth_client_id: string // Authorization client identifier.
+  discord_oauth_client_secret_configured: boolean // Saved credential presence.
+  discord_oauth_redirect_url: string // Optional explicit backend callback.
   qq_connect_enabled: boolean // QQ connect enabled.
   qq_connect_client_id: string // QQ connect client ID.
   qq_connect_client_secret_configured: boolean // QQ connect client secret configured.
@@ -681,6 +689,14 @@ export interface UpdateSettingsRequest extends AuthSourceDefaultFields {
   linuxdo_connect_client_id?: string // Linuxdo connect client ID.
   linuxdo_connect_client_secret?: string // Linuxdo connect client secret.
   linuxdo_connect_redirect_url?: string // Linuxdo connect redirect URL.
+  telegram_oauth_enabled?: boolean // Submitted login switch.
+  telegram_oauth_client_id?: string // Authorization client identifier.
+  telegram_oauth_client_secret?: string // Blank retains saved credential.
+  telegram_oauth_redirect_url?: string // Blank selects current public origin.
+  discord_oauth_enabled?: boolean // Submitted login switch.
+  discord_oauth_client_id?: string // Authorization client identifier.
+  discord_oauth_client_secret?: string // Blank retains saved credential.
+  discord_oauth_redirect_url?: string // Blank selects current public origin.
   qq_connect_enabled?: boolean // QQ connect enabled.
   qq_connect_client_id?: string // QQ connect client ID.
   qq_connect_client_secret?: string // QQ connect client secret.

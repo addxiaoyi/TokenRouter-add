@@ -388,6 +388,9 @@ type IdempotencyConfig struct {
 
 // ModelCatalogConfig selects remote catalog data, custom supplements, and periodic source checks.
 type ModelCatalogConfig struct {
+	// PreferCatalogPricing selects usable catalog amounts before custom cards.
+	// Missing catalog prices still use configured cards; false preserves card priority.
+	PreferCatalogPricing bool `yaml:"prefer_catalog_pricing"`
 	// Model price and attribute catalog URL in models.dev format.
 	CatalogURL string `yaml:"catalog_url"`
 	// Catalog and local-file check interval, in minutes.

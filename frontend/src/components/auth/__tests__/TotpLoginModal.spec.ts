@@ -1,11 +1,16 @@
-import { mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { enableAutoUnmount, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import TotpLoginModal from '@/components/auth/TotpLoginModal.vue'
 
 // TotpLoginModal.spec.ts checks segmented OTP input and parent-driven verification
 // errors. Hidden autofill, visible autofill, and change-only events exercise the
 // real component watcher so repeated notifications can be distinguished from
 // distinct verification submissions.
+
+// Content tests keep teleport inline; dialogMotion verifies the real document-body
+// placement separately, while automatic unmounting releases each shell's scroll lock.
+const dialogOptions = { global: { stubs: { teleport: true } } }
+enableAutoUnmount(afterEach)
 
 // These fixtures provide controllable dependencies and component handles for the
 // cases below. Each test configures the responses it needs and inspects calls or
@@ -43,6 +48,7 @@ describe('TotpLoginModal', () => {
   // panel.
   it('sends verification errors to toast and does not render inline red text', async () => {
     const wrapper = mount(TotpLoginModal, {
+      ...dialogOptions,
       props: {
         tempToken: 'temp-token',
         userEmailMasked: 'u***@example.com',
@@ -67,6 +73,7 @@ describe('TotpLoginModal', () => {
   // value.
   it('fills visible code inputs from hidden one-time-code autofill input', async () => {
     const wrapper = mount(TotpLoginModal, {
+      ...dialogOptions,
       props: {
         tempToken: 'temp-token',
       },
@@ -94,6 +101,7 @@ describe('TotpLoginModal', () => {
   // verification code.
   it('splits a complete autofilled code written to the first visible cell', async () => {
     const wrapper = mount(TotpLoginModal, {
+      ...dialogOptions,
       props: {
         tempToken: 'temp-token',
       },
@@ -121,6 +129,7 @@ describe('TotpLoginModal', () => {
   // event. The modal must distribute the complete code and emit verification.
   it('handles an autofill provider that only dispatches change', async () => {
     const wrapper = mount(TotpLoginModal, {
+      ...dialogOptions,
       props: {
         tempToken: 'temp-token',
       },
@@ -147,6 +156,7 @@ describe('TotpLoginModal', () => {
   // complete OTP. The modal must emit only one verification event for that value.
   it('submits once when both autofill targets receive the same code', async () => {
     const wrapper = mount(TotpLoginModal, {
+      ...dialogOptions,
       props: {
         tempToken: 'temp-token',
       },

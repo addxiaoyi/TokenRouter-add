@@ -57,6 +57,15 @@ func (s *Calculator) DefaultModelPrice(model, platform, mode string) pricing.Def
 		result.Source = raw.Source
 		result.PriceSources = maps.Clone(raw.PriceSources)
 	}
+	if result.BillingMode == "per_request" {
+		add("per_request_price", *raw.CostPerRequest, "USD/request")
+		if result.PriceSources == nil {
+			result.PriceSources = map[string]string{}
+		}
+		result.PriceSources["per_request_price"] = raw.PriceSources["request"]
+		result.PriceStatus = "priced"
+		return result
+	}
 	knownVideo := raw != nil && len(raw.VideoPrices) > 0
 	if knownVideo {
 		if result.PriceSources == nil {

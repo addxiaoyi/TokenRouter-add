@@ -45,7 +45,8 @@ type (
 
 // OidcIDTokenClaims represents signed identity and JWT claims used for OIDC verification.
 type OidcIDTokenClaims struct {
-	Email string `json:"email,omitempty"` // suggested provider email address
+	Picture string `json:"picture,omitempty"` // signed public profile picture
+	Email   string `json:"email,omitempty"`   // suggested provider email address
 	// EmailVerified preserves omitted versus supplied verification. OIDCHandler
 	// uses userinfo's present flag first, then this pointer when userinfo omits it.
 	EmailVerified     *bool  `json:"email_verified,omitempty"`
