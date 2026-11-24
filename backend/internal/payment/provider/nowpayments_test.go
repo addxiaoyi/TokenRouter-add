@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -39,10 +40,7 @@ func TestNOWPaymentsConfigValidation(t *testing.T) {
 		"bad notify URL":     func(c map[string]string) { c["notifyUrl"] = "http://site.example/hook" },
 	} {
 		t.Run(name, func(t *testing.T) {
-			config := make(map[string]string, len(valid))
-			for key, value := range valid {
-				config[key] = value
-			}
+			config := maps.Clone(valid)
 			mutate(config)
 			_, err := NewNOWPayments("fixture", config)
 			require.Error(t, err)
@@ -253,7 +251,8 @@ func newNOWPaymentsFixture(t *testing.T, server *httptest.Server) *NOWPayments {
 // Tests pass a literal canonical body so the signing algorithm is pinned independently of the adapter renderer.
 func nowPaymentsTestSignature(canonical, secret string) string {
 	mac := hmac.New(sha512.New, []byte(secret))
-	mac.Write([]byte(canonical))
+	// The hash.Hash contract guarantees a nil error for every input.
+	_, _ = mac.Write([]byte(canonical))
 	return hex.EncodeToString(mac.Sum(nil))
 }
 

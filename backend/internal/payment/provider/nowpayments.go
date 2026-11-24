@@ -24,34 +24,32 @@ import (
 	"github.com/TokenFlux/TokenRouter/internal/pkg/apperror"
 )
 
-// nowpayments.go creates NOWPayments cryptocurrency payments through its REST
-// API and authenticates its IPN callbacks before reporting payment progress.
-// A created payment fixes one settlement asset, and the buyer transfers the
-// quoted asset amount to the returned deposit address, so checkout exposes
-// that address as the scannable payload and keeps the numeric payment
-// identifier as the stored transaction reference for later queries.
-//
-// NOWPayments signs each IPN body with HMAC-SHA512 over a key-sorted JSON
-// rendering, which the adapter reproduces from the received bytes before it
-// trusts any field. A finished notification still has to agree with an
-// independently queried payment state and fiat amount before fulfillment can
-// run, following the same dual-confirmation rule as the other hosted
-// adapters. Creation failures stay unconfirmed when the service may already
-// have accepted the payment, because a repeated create call could quote a
-// second deposit address for one local order.
-
-// NOWPayments transport bounds and protocol defaults govern one adapter
-// operation, its decoded response size, and the fallback API and asset codes.
 const (
+	// nowpayments.go creates NOWPayments cryptocurrency payments through its REST
+	// API and authenticates its IPN callbacks before reporting payment progress.
+	// A created payment fixes one settlement asset, and the buyer transfers the
+	// quoted asset amount to the returned deposit address, so checkout exposes
+	// that address as the scannable payload and keeps the numeric payment
+	// identifier as the stored transaction reference for later queries.
+	//
+	// NOWPayments signs each IPN body with HMAC-SHA512 over a key-sorted JSON
+	// rendering, which the adapter reproduces from the received bytes before it
+	// trusts any field. A finished notification still has to agree with an
+	// independently queried payment state and fiat amount before fulfillment can
+	// run, following the same dual-confirmation rule as the other hosted
+	// adapters. Creation failures stay unconfirmed when the service may already
+	// have accepted the payment, because a repeated create call could quote a
+	// second deposit address for one local order.
+
+	// NOWPayments transport bounds and protocol defaults govern one adapter
+	// operation, its decoded response size, and the fallback API and asset codes.
 	nowPaymentsHTTPTimeout        = 15 * time.Second                // individual HTTP request budget
 	nowPaymentsMaxBody            = 1 << 20                         // maximum response body bytes
 	nowPaymentsDefaultAPIBase     = "https://api.nowpayments.io/v1" // production API prefix
 	nowPaymentsDefaultPayCurrency = "usdttrc20"                     // default settlement asset and network
-)
 
-// NOWPayments payment lifecycle labels are the exact status strings returned
-// by the payment API and IPN payloads; only finished settles an order.
-const (
+	// NOWPayments payment lifecycle labels are the exact status strings returned
+	// by the payment API and IPN payloads; only finished settles an order.
 	nowPaymentsStatusWaiting       = "waiting"        // created, awaiting the buyer's transfer
 	nowPaymentsStatusConfirming    = "confirming"     // transfer seen, awaiting network confirmations
 	nowPaymentsStatusConfirmed     = "confirmed"      // transfer confirmed on chain
@@ -63,13 +61,13 @@ const (
 	nowPaymentsStatusExpired       = "expired"        // payment window elapsed without a transfer
 )
 
-// nowPaymentsPayCurrencyPattern accepts the lowercase asset codes NOWPayments
-// assigns to settlement currencies, such as usdttrc20 or btc.
-var nowPaymentsPayCurrencyPattern = regexp.MustCompile(`^[a-z0-9]{2,32}$`)
-
-// Adapter assertions keep checkout and merchant identity capabilities checked
-// whenever the common payment interfaces change during application development.
 var (
+	// nowPaymentsPayCurrencyPattern accepts the lowercase asset codes NOWPayments
+	// assigns to settlement currencies, such as usdttrc20 or btc.
+	nowPaymentsPayCurrencyPattern = regexp.MustCompile(`^[a-z0-9]{2,32}$`)
+
+	// Adapter assertions keep checkout and merchant identity capabilities checked
+	// whenever the common payment interfaces change during application development.
 	_ payment.Provider                 = (*NOWPayments)(nil)
 	_ payment.MerchantIdentityProvider = (*NOWPayments)(nil)
 )
@@ -377,7 +375,8 @@ func (n *NOWPayments) nowPaymentsValidSignature(rawBody, signature string) bool 
 		return false
 	}
 	mac := hmac.New(sha512.New, []byte(n.ipnSecret))
-	mac.Write(canonical)
+	// HMAC implements hash.Hash, whose Write method always returns a nil error.
+	_, _ = mac.Write(canonical)
 	return hmac.Equal(provided, mac.Sum(nil))
 }
 
@@ -409,6 +408,7 @@ func nowPaymentsCanonicalJSON(raw string) ([]byte, error) {
 // Object members are emitted in sorted key order so the result is independent
 // of the sender's member order; scalar values use their JSON spellings.
 func nowPaymentsWriteCanonical(out *bytes.Buffer, value any) error {
+	// Buffer writes append in memory and always return a nil error.
 	switch typed := value.(type) {
 	case map[string]any:
 		keys := make([]string, 0, len(typed))
@@ -416,30 +416,30 @@ func nowPaymentsWriteCanonical(out *bytes.Buffer, value any) error {
 			keys = append(keys, key)
 		}
 		sort.Strings(keys)
-		out.WriteByte('{')
+		_ = out.WriteByte('{')
 		for i, key := range keys {
 			if i > 0 {
-				out.WriteByte(',')
+				_ = out.WriteByte(',')
 			}
 			nowPaymentsWriteJSONString(out, key)
-			out.WriteByte(':')
+			_ = out.WriteByte(':')
 			if err := nowPaymentsWriteCanonical(out, typed[key]); err != nil {
 				return err
 			}
 		}
-		out.WriteByte('}')
+		_ = out.WriteByte('}')
 		return nil
 	case []any:
-		out.WriteByte('[')
+		_ = out.WriteByte('[')
 		for i, item := range typed {
 			if i > 0 {
-				out.WriteByte(',')
+				_ = out.WriteByte(',')
 			}
 			if err := nowPaymentsWriteCanonical(out, item); err != nil {
 				return err
 			}
 		}
-		out.WriteByte(']')
+		_ = out.WriteByte(']')
 		return nil
 	case string:
 		nowPaymentsWriteJSONString(out, typed)
@@ -452,17 +452,17 @@ func nowPaymentsWriteCanonical(out *bytes.Buffer, value any) error {
 		// The provider's serializer prints amounts in shortest plain decimal
 		// form. Reformatting the parsed value reproduces that spelling instead
 		// of preserving insignificant zeros from the received literal.
-		out.WriteString(strconv.FormatFloat(parsed, 'f', -1, 64))
+		_, _ = out.WriteString(strconv.FormatFloat(parsed, 'f', -1, 64))
 		return nil
 	case bool:
 		if typed {
-			out.WriteString("true")
+			_, _ = out.WriteString("true")
 		} else {
-			out.WriteString("false")
+			_, _ = out.WriteString("false")
 		}
 		return nil
 	case nil:
-		out.WriteString("null")
+		_, _ = out.WriteString("null")
 		return nil
 	default:
 		return fmt.Errorf("nowpayments IPN value type is unsupported")
@@ -479,7 +479,7 @@ func nowPaymentsWriteJSONString(out *bytes.Buffer, value string) {
 	// Encoding a string cannot fail; the trailing newline the encoder appends
 	// is not part of the JSON value and is dropped before writing.
 	_ = encoder.Encode(value)
-	out.Write(bytes.TrimRight(encoded.Bytes(), "\n"))
+	_, _ = out.Write(bytes.TrimRight(encoded.Bytes(), "\n"))
 }
 
 // nowPaymentsDecodePayment parses one payment object while preserving amount
