@@ -17,7 +17,9 @@ import { monitoringBuckets, monitoringStatus } from '@/utils/monitoring'
 // averaging interval rates, and cache percentages use the endpoint's input-token
 // denominator. This keeps sparse groups comparable without filling their gaps. The
 // compact variant keeps status and availability in group selectors without displacing
-// a single-column scan with detailed performance metrics.
+// a single-column scan with detailed performance metrics. Compact rows retain the
+// group identity and show one responsive availability bar instead of a numeric rate
+// or the full interval trend.
 
 // Props carries display metadata and nullable observations; the parent owns selection
 // and persistence, while this presentation preserves explicit no-sample states.
@@ -46,6 +48,12 @@ const HOUR_MS = 3600000
 // no-sample labels remain visible independently of the caller's selected state.
 const rate = computed(() => props.stats?.success_rate)
 const requestCount = computed(() => (props.stats?.success ?? 0) + (props.stats?.errors ?? 0))
+// availabilityPercent clamps malformed upstream rates before they control bar width.
+const availabilityPercent = computed(() =>
+  rate.value == null || !Number.isFinite(rate.value)
+    ? null
+    : Math.min(100, Math.max(0, rate.value)),
+)
 const history = computed(() => {
   // Anchor missing recent intervals to the observation endpoint, rather than moving
   // the most recent request to now and hiding the following period without traffic.
@@ -139,10 +147,21 @@ function bucketTitle(time: number, rate: number | null): string {
         }}</strong>
       </div>
     </div>
-    <div class="group-monitor-trend" :class="{ 'group-monitor-trend-compact': compact }">
-      <strong v-if="compact && rate != null" class="group-monitor-rate" :data-status="status">{{
-        rate == null ? '��' : `${rate.toFixed(2)}%`
-      }}</strong>
+    <div v-if="compact" class="group-monitor-trend group-monitor-trend-compact">
+      <div
+        class="group-monitor-availability-bar"
+        role="img"
+        :aria-label="`${name}: ${t('monitoring.availability')} ${availabilityPercent == null ? t('monitoring.noSamples') : `${availabilityPercent}%`}`"
+      >
+        <span
+          v-if="availabilityPercent != null"
+          class="group-monitor-availability-fill"
+          :data-status="status"
+          :style="{ width: `${availabilityPercent}%` }"
+        />
+      </div>
+    </div>
+    <div v-else class="group-monitor-trend">
       <div class="group-monitor-bars" role="img" :aria-label="`${name}: ${t('monitoring.trend')}`">
         <span
           v-for="(bucket, index) in history"
@@ -272,13 +291,22 @@ dd {
   @apply min-w-0;
 }
 .group-monitor-trend-compact {
-  @apply flex shrink-0 items-center gap-2;
+  @apply min-w-[4rem] flex-1;
 }
-.group-monitor-trend-compact .group-monitor-rate {
-  @apply text-sm;
+.group-monitor-availability-bar {
+  @apply h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-500;
 }
-.group-monitor-trend-compact .group-monitor-bars {
-  @apply mt-0 h-6 w-24 gap-0.5;
+.group-monitor-availability-fill {
+  @apply block h-full rounded-full;
+}
+.group-monitor-availability-fill[data-status='healthy'] {
+  @apply bg-emerald-500;
+}
+.group-monitor-availability-fill[data-status='degraded'] {
+  @apply bg-amber-400;
+}
+.group-monitor-availability-fill[data-status='incident'] {
+  @apply bg-red-400;
 }
 .group-monitor-bars > span {
   @apply min-w-0 flex-1;

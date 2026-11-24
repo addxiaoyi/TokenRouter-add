@@ -54,17 +54,42 @@ describe('monitored group cards', () => {
     expect(view.findAll('[data-state="healthy"]')).toHaveLength(0)
   })
 
-  // Selectors use the compact variant to retain availability while keeping one
-  // selectable group on each row without the full metric breakdown.
-  it('renders a compact availability row without detailed metrics', () => {
+  // Selectors keep one proportional availability bar without exposing a number or
+  // the detailed metrics shown on the full monitoring card.
+  it('renders only a proportional compact availability bar', () => {
     const view = mount(GroupMonitorCard, {
       props: { name: 'Compact group', stats: observed(), compact: true },
     })
     expect(view.classes()).toContain('group-monitor-card-compact')
     expect(view.find('.group-monitor-timings').exists()).toBe(false)
     expect(view.find('.group-monitor-footer').exists()).toBe(false)
-    expect(view.find('.group-monitor-bars').exists()).toBe(true)
-    expect(view.text()).toContain('100.00%')
+    expect(view.find('.group-monitor-bars').exists()).toBe(false)
+    expect(view.get('.group-monitor-availability-fill').attributes('style')).toContain(
+      'width: 100%',
+    )
+    expect(view.text()).not.toContain('%')
     expect(view.text()).not.toContain('1.00s')
+  })
+
+  // Narrow or anomalous percentages stay within the responsive track's 0–100 range.
+  it('clamps compact bar width to the percentage range', () => {
+    const view = mount(GroupMonitorCard, {
+      props: {
+        name: 'Partial group',
+        stats: { ...observed(), success: 1, errors: 1, success_rate: 50 },
+        compact: true,
+      },
+    })
+    expect(view.get('.group-monitor-availability-fill').attributes('style')).toContain('width: 50%')
+    expect(view.text()).not.toContain('50%')
+  })
+
+  // Missing samples keep the track empty so absence cannot appear as zero-percent uptime.
+  it('leaves the compact availability track empty without samples', () => {
+    const view = mount(GroupMonitorCard, { props: { name: 'Idle group', compact: true } })
+    expect(view.find('.group-monitor-availability-fill').exists()).toBe(false)
+    expect(view.get('.group-monitor-availability-bar').attributes('aria-label')).toContain(
+      'monitoring.noSamples',
+    )
   })
 })

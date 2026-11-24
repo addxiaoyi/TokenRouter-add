@@ -257,7 +257,7 @@ const dropdownStyle = computed(() => {
   const rect = triggerRect.value
   // Reserve sixteen CSS pixels beside the viewport edges.
   const viewportMargin = 16
-  const maxDropdownWidth = Math.max(200, window.innerWidth - viewportMargin * 2)
+  const maxDropdownWidth = Math.max(0, window.innerWidth - viewportMargin * 2)
   const estimatedWidth = Math.min(
     Math.max(rect.width, props.panelMinWidth ?? 200),
     maxDropdownWidth,
@@ -663,7 +663,8 @@ onUnmounted(() => {
 
 <style>
 .select-dropdown-portal {
-  @apply w-max min-w-[200px];
+  @apply w-max;
+  min-width: min(200px, calc(100vw - 32px));
   @apply bg-white dark:bg-dark-900;
   @apply rounded-control;
   @apply border border-primary-900/10 dark:border-dark-600;
