@@ -4,9 +4,9 @@ import ProviderStatusIndicator from '../ProviderStatusIndicator.vue'
 import type { Provider } from '@/api/admin/providers.types'
 
 // ProviderStatusIndicator.spec.ts checks provider status badges for model
-// limits, Grok recovery, and Antigravity credits. Fixed formatter output
-// separates presentation assertions from clock behavior, while fixtures
-// distinguish model exhaustion from the availability of overage credits.
+// limits, Grok recovery, Antigravity credits, and keyboard-accessible model
+// details. Fixed formatter output separates presentation assertions from clock
+// behavior, while fixtures distinguish exhausted credits from overage use.
 
 vi.mock('vue-i18n', async () => {
   const actual = await vi.importActual<typeof import('vue-i18n')>('vue-i18n')
@@ -366,6 +366,38 @@ describe('ProviderStatusIndicator', () => {
     expect(wrapper.get('[data-model-restriction-reason]').text()).toBe(expected)
     expect(wrapper.find('img').exists()).toBe(false)
     expect(wrapper.text()).toContain('admin.providers.status.modelCooldownScopeHint')
+    wrapper.unmount()
+  })
+
+  // Model status rows receive keyboard focus and expose their full tooltip as
+  // the group's accessible description through a unique element reference.
+  it('associates model cooldown details with its keyboard focus target', () => {
+    const wrapper = mount(ProviderStatusIndicator, {
+      props: {
+        provider: makeProvider({
+          id: 27,
+          extra: {
+            model_rate_limits: {
+              'claude-sonnet-5': {
+                rate_limited_at: '2026-07-28T00:00:00Z',
+                rate_limit_reset_at: '2099-07-28T00:00:00Z',
+              },
+            },
+          },
+        }),
+      },
+      global: { stubs: { Icon: true } },
+    })
+
+    const status = wrapper.get('[role="group"][tabindex="0"]')
+    const labelId = status.attributes('aria-labelledby')
+    const tooltipId = status.attributes('aria-describedby')
+
+    expect(labelId).toBeTruthy()
+    expect(wrapper.get(`#${labelId}`).exists()).toBe(true)
+    expect(tooltipId).toBeTruthy()
+    expect(wrapper.get(`#${tooltipId}`).attributes('role')).toBe('tooltip')
+    expect(wrapper.get(`#${tooltipId}`).text()).toContain('modelRateLimitedUntil')
     wrapper.unmount()
   })
 

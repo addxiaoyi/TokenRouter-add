@@ -84,14 +84,18 @@
       ]"
     >
       <div
-        v-for="item in activeModelStatuses"
+        v-for="(item, index) in activeModelStatuses"
         :key="`${item.kind}-${item.model}`"
         tabindex="0"
+        role="group"
+        :aria-labelledby="`model-status-label-${provider.id}-${index}`"
+        :aria-describedby="`model-status-tooltip-${provider.id}-${index}`"
         class="group relative mb-1 break-inside-avoid"
       >
         <!-- AI credits are exhausted. -->
         <span
           v-if="item.kind === 'credits_exhausted'"
+          :id="`model-status-label-${provider.id}-${index}`"
           class="inline-flex items-center gap-1 rounded-compact bg-red-100 px-1.5 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400"
         >
           <Icon name="exclamationTriangle" size="xs" :stroke-width="2" />
@@ -101,6 +105,7 @@
         <!-- The model cooldown is shown as credit-backed overage use.-->
         <span
           v-else-if="item.kind === 'credits_active'"
+          :id="`model-status-label-${provider.id}-${index}`"
           class="inline-flex items-center gap-1 rounded-compact bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
         >
           <Icon name="bolt" size="xs" />
@@ -110,6 +115,7 @@
         <!-- Ordinary model cooldown. -->
         <span
           v-else
+          :id="`model-status-label-${provider.id}-${index}`"
           class="inline-flex items-center gap-1 rounded-compact bg-purple-100 px-1.5 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
         >
           <Icon name="exclamationTriangle" size="xs" :stroke-width="2" />
@@ -118,6 +124,8 @@
         </span>
         <!-- Tooltip -->
         <div
+          :id="`model-status-tooltip-${provider.id}-${index}`"
+          role="tooltip"
           class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-max max-w-[320px] -translate-x-1/2 whitespace-nowrap tooltip-panel rounded-compact px-3 py-2 text-center text-xs leading-relaxed opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100"
         >
           {{
@@ -220,10 +228,7 @@ const now = ref(Date.now())
 // hasActiveTimedRestriction reports whether any valid provider or model deadline
 // still needs clock updates. Invalid or expired deadlines cannot keep a timer alive.
 const hasActiveTimedRestriction = computed(() => {
-  const extra = props.provider.extra as Record<string, unknown> | undefined
-  const modelLimits = extra?.model_rate_limits as
-    | Record<string, { rate_limit_reset_at: string /* model restriction reset timestamp */ }>
-    | undefined
+  const modelLimits = props.provider.extra?.model_rate_limits
   const timestamps = [
     props.provider.rate_limit_reset_at,
     props.provider.overload_until,
@@ -293,16 +298,8 @@ type ProviderModelStatusItem = {
  * allow_overages, distinguishing blocked quota from credit-backed traffic.
  */
 const activeModelStatuses = computed<ProviderModelStatusItem[]>(() => {
-  const extra = props.provider.extra as Record<string, unknown> | undefined
-  const modelLimits = extra?.model_rate_limits as
-    | Record<
-        string,
-        {
-          rate_limited_at: string // model limit observation timestamp
-          rate_limit_reset_at: string // model limit expiry timestamp
-        }
-      >
-    | undefined
+  const extra = props.provider.extra
+  const modelLimits = extra?.model_rate_limits
   const currentTime = now.value
   const items: ProviderModelStatusItem[] = []
 
@@ -320,8 +317,7 @@ const activeModelStatuses = computed<ProviderModelStatusItem[]>(() => {
     // Invalid dates provide no usable cooldown observation, matching backend
     // admission rather than leaving an unexpiring restriction badge on this model.
     if (!Number.isFinite(resetAt) || resetAt <= currentTime) continue
-    const rawReason = (info as { reason?: unknown /* persisted restriction reason value */ }).reason
-    const reason = typeof rawReason === 'string' ? rawReason : undefined
+    const reason = info.reason
 
     if (model === 'AICredits') {
       // The dedicated credit marker represents exhausted credits, even when the provider

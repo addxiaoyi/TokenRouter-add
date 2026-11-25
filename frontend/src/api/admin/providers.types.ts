@@ -170,6 +170,13 @@ export interface QoderModelCatalogStatus {
   version?: string // Model observation content version.
 }
 
+// ProviderModelRateLimit records a model's cooldown observation and optional cause.
+export interface ProviderModelRateLimit {
+  rate_limited_at: string // Timestamp cooldown observed.
+  rate_limit_reset_at: string // Timestamp restriction expires.
+  reason?: string // Persisted restriction reason.
+}
+
 // Provider describes an administrator-visible upstream connection and its current
 // scheduling state.
 export interface Provider {
@@ -193,13 +200,7 @@ export interface Provider {
     OpenAITextProtocolState &
     OpenAICompactState &
     OpenAINativeCompactionV2State & {
-      model_rate_limits?: Record<
-        string,
-        {
-          rate_limited_at: string // Rate limited timestamp.
-          rate_limit_reset_at: string // Rate limit reset timestamp.
-        }
-      > // Per-model throttle observations.
+      model_rate_limits?: Record<string, ProviderModelRateLimit> // Per-model throttle observations.
       antigravity_credits_overages?: Record<
         string,
         {
