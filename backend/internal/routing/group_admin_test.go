@@ -134,7 +134,7 @@ func TestGroupAdminGetAllGroupsIncludingInactiveReadsEveryPage(t *testing.T) {
 	for i := range allGroups {
 		allGroups[i] = Group{ID: int64(i + 1)}
 	}
-	allGroups[1000].Status = StatusInactive
+	allGroups[1000].Status = StatusDisabled
 	repo := &paginatedGroupRepoStubForAdmin{
 		groupRepoStubForAdmin: &groupRepoStubForAdmin{},
 		groups:                allGroups,
@@ -147,7 +147,7 @@ func TestGroupAdminGetAllGroupsIncludingInactiveReadsEveryPage(t *testing.T) {
 	require.Len(t, groups, 1001)
 	require.Equal(t, int64(1), groups[0].ID)
 	require.Equal(t, int64(1001), groups[1000].ID)
-	require.Equal(t, StatusInactive, groups[1000].Status)
+	require.Equal(t, StatusDisabled, groups[1000].Status)
 	require.Equal(t, []int{1, 2}, repo.requestedPage)
 }
 
