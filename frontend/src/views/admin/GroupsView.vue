@@ -231,10 +231,8 @@
             </div>
           </template>
 
-          <template #cell-status="{ value }">
-            <span :class="['badge', value === 'active' ? 'badge-success' : 'badge-danger']">
-              {{ t('admin.providers.status.' + value) }}
-            </span>
+          <template #cell-status="{ row }">
+            <GroupHealthDetails :group="row" :fallback-groups="unavailableFallbackGroups" />
           </template>
 
           <template #cell-actions="{ row }">
@@ -424,12 +422,15 @@ import { extractApiErrorMessage } from '@/utils/apiError'
 import { getFloatingPanelPosition } from '@/utils/floatingPanel'
 import { providerBrandDisplayName, resolveProviderBrand } from '@/utils/providerBrand'
 import GroupFormModal from './groups/GroupFormModal.vue'
+import GroupHealthDetails from './groups/GroupHealthDetails.vue'
 
 // GroupsView.vue lists administrator groups and coordinates creation, editing,
 // ordering, duplication, deletion, and per-user rate and RPM override dialogs.
 // Group creation and editing share GroupFormModal, while list queries cancel
 // superseded reads via AbortController and optional usage or capacity summaries
 // run only when their corresponding columns are visible.
+// Each status cell also separates saved activation from provider-count
+// observations and exposes direct fallback targets without promising live health.
 
 const { t } = useI18n()
 const appStore = useAppStore()

@@ -250,6 +250,12 @@ export default {
       rateLimitedUntil: 'Rate limited and removed from scheduling. Auto resumes at {time}',
       rateLimitedAutoResume: 'Auto resumes in {time}',
       modelRateLimitedUntil: '{model} rate limited until {time}',
+      modelNotFoundReason:
+        'The upstream reported a missing model. This provider/model pair is temporarily skipped.',
+      modelPlanGatedReason:
+        'The upstream plan does not support this model. This provider/model pair is temporarily skipped.',
+      modelCooldownScopeHint:
+        'This scheduling state has an expiry. Model configuration is retained, and eligibility is checked again afterward.',
       modelCreditOveragesUntil: '{model} using AI Credits until {time}',
       creditsExhausted: 'Credits Exhausted',
       creditsExhaustedUntil: 'AI Credits exhausted, expected recovery at {time}',

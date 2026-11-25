@@ -626,6 +626,28 @@ export default {
   },
   // Groups
   groups: {
+    health: {
+      activation: { active: 'Enabled', inactive: 'Disabled' },
+      disabledHint: 'Configuration is disabled',
+      noProviders: 'No linked providers',
+      noCandidates: 'No schedulable candidates in snapshot',
+      hasCandidates: 'Snapshot candidates: {count}',
+      details: 'Evidence and fallback',
+      counts: 'Candidates {active} · Temporarily limited {limited} · Linked total {total}',
+      snapshotHint:
+        'Provider counts are a snapshot; refresh to update. They exclude request-specific model, protocol, quota, and other checks and do not establish a successful live probe.',
+      fallback: {
+        client: 'Client restriction fallback',
+        invalid: 'Invalid-request fallback',
+        unavailable: 'Unavailable-group fallback',
+      },
+      notConfigured: 'Not configured',
+      targetUnverified: '(target information unverified)',
+      targetDisabled: '(target disabled)',
+      selfFallback: '(points to itself; correct the configuration)',
+      fallbackHint:
+        'Only saved direct targets are shown. Execution still checks model, protocol, permissions, and funds. Unavailable-group fallback also requires API key permission.',
+    },
     routingPolicy: {
       mapping: 'Model mapping',
       mappingHint:

@@ -706,6 +706,15 @@ export default {
       loadFailed: 'Failed to load settings',
       saveSuccess: 'Ops monitoring settings saved successfully',
       saveFailed: 'Failed to save settings',
+      saveIncomplete:
+        'Saving could not be confirmed for: {sections}. Review the individual results.',
+      saveResultsHint:
+        'Each section saves independently. Successful writes remain applied when another section fails. Check unconfirmed sections before retrying.',
+      saveStatus: {
+        pending: 'Saving',
+        saved: 'Saved',
+        failed: 'Save unconfirmed',
+      },
       dataCollection: 'Data Collection',
       evaluationInterval: 'Evaluation Interval (seconds)',
       evaluationIntervalHint: 'Frequency of detection tasks, recommended to keep default',
@@ -713,7 +722,8 @@ export default {
       enableAlert: 'Enable Alerts',
       alertRecipients: 'Alert Recipient Emails',
       emailPlaceholder: 'Enter email address',
-      recipientsHint: 'If empty, the system will use the first admin email as default recipient',
+      recipientsHint:
+        'Enabled email delivery requires a recipient. Turn off the corresponding switch to stop delivery.',
       minSeverity: 'Minimum Severity',
       reportConfig: 'Report Configuration',
       enableReport: 'Enable Reports',

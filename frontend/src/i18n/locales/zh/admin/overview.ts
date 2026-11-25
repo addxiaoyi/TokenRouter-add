@@ -610,6 +610,28 @@ export default {
   },
   // Groups Management
   groups: {
+    health: {
+      activation: { active: '已启用', inactive: '已停用' },
+      disabledHint: '配置已停用',
+      noProviders: '未绑定提供商',
+      noCandidates: '快照中无可调度候选',
+      hasCandidates: '快照候选：{count}',
+      details: '依据与容灾',
+      counts: '候选 {active} · 临时受限 {limited} · 绑定总数 {total}',
+      snapshotHint:
+        '这是提供商状态快照，刷新可更新。候选数不包含特定模型、协议、额度等请求级检查，也不代表实测成功。',
+      fallback: {
+        client: '客户端限制回退',
+        invalid: '无效请求回退',
+        unavailable: '分组不可用回退',
+      },
+      notConfigured: '未配置',
+      targetUnverified: '（目标信息未核实）',
+      targetDisabled: '（目标已停用）',
+      selfFallback: '（指向自身，请修正配置）',
+      fallbackHint:
+        '这里只展示已保存的直接目标。执行时仍检查模型、协议、授权和资金；不可用回退还须 API Key 允许。',
+    },
     routingPolicy: {
       mapping: '模型映射',
       mappingHint: '客户端模型先经过分组映射，再进入提供商映射。支持模型名和末尾 * 通配符。',

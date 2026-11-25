@@ -697,6 +697,14 @@ export default {
       loadFailed: '加载设置失败',
       saveSuccess: '运维监控设置保存成功',
       saveFailed: '保存设置失败',
+      saveIncomplete: '以下设置未确认保存成功：{sections}。请查看逐项结果。',
+      saveResultsHint:
+        '各组设置独立保存。已成功的写入不会因其他组失败而回滚；未确认的项目请核对后重试。',
+      saveStatus: {
+        pending: '保存中',
+        saved: '已保存',
+        failed: '未确认保存成功',
+      },
       dataCollection: '数据采集',
       evaluationInterval: '评估间隔（秒）',
       evaluationIntervalHint: '检测任务的执行频率，建议保持默认',
@@ -704,7 +712,7 @@ export default {
       enableAlert: '开启预警',
       alertRecipients: '预警接收邮箱',
       emailPlaceholder: '输入邮箱地址',
-      recipientsHint: '若为空，系统将使用第一个管理员邮箱作为默认收件人',
+      recipientsHint: '启用邮件时须填写收件人；如需停止发送，请明确关闭对应开关。',
       minSeverity: '最低级别',
       reportConfig: '评估报告配置',
       enableReport: '开启评估报告',

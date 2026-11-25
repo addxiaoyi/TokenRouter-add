@@ -307,9 +307,7 @@ type GroupAdministration interface {
 	// selection queries.
 	GetAllGroups(context.Context) ([]routing.Group, error)
 	// GetAllGroupsIncludingInactive returns administrator choices including
-	// active and disabled groups. GroupAdmin requests one 10,000-row page; the
-	// PostgreSQL reader caps it at 1,000, so callers needing every group use
-	// paginated reads.
+	// active and disabled groups by reading successive bounded pages.
 	GetAllGroupsIncludingInactive(context.Context) ([]routing.Group, error)
 	// GetGroup reads the persisted group identified by the supplied numeric ID.
 	GetGroup(context.Context, int64) (*routing.Group, error)

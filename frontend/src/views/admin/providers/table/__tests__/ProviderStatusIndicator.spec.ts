@@ -236,6 +236,139 @@ describe('ProviderStatusIndicator', () => {
     expect(wrapper.find('.whitespace-nowrap').exists()).toBe(true)
   })
 
+  // Provider and model limits share a near-term deadline while the component
+  // remains mounted. Both badges must expire without a prop change or manual refresh.
+  it('提供商和模型限流到期后会自动恢复为可用状态', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-28T00:00:00Z'))
+    const wrapper = mount(ProviderStatusIndicator, {
+      props: {
+        provider: makeProvider({
+          rate_limit_reset_at: '2026-07-28T00:00:01Z',
+          extra: {
+            model_rate_limits: {
+              'claude-sonnet-4-5': {
+                rate_limited_at: '2026-07-28T00:00:00Z',
+                rate_limit_reset_at: '2026-07-28T00:00:01Z',
+              },
+            },
+          },
+        }),
+      },
+      global: {
+        stubs: {
+          Icon: true,
+        },
+      },
+    })
+
+    try {
+      expect(wrapper.text()).toContain('admin.providers.status.rateLimited')
+      expect(wrapper.text()).toContain('CSon45')
+
+      await vi.advanceTimersByTimeAsync(1000)
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.text()).not.toContain('admin.providers.status.rateLimited')
+      expect(wrapper.text()).not.toContain('CSon45')
+      expect(wrapper.text()).toContain('admin.providers.status.active')
+    } finally {
+      wrapper.unmount()
+      vi.useRealTimers()
+    }
+  })
+
+  // Overload and temporary-suspension windows can expire without a new API
+  // response. The status must recover and release its interval after the final deadline passes.
+  it.each(['overload_until', 'temp_unschedulable_until'] as const)(
+    '%s 到期后停止计时',
+    async (field) => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-07-28T00:00:00Z'))
+      const timerCount = vi.getTimerCount()
+      const wrapper = mount(ProviderStatusIndicator, {
+        props: { provider: makeProvider({ [field]: '2026-07-28T00:00:01Z' }) },
+        global: { stubs: { Icon: true } },
+      })
+      try {
+        expect(vi.getTimerCount()).toBe(timerCount + 1)
+        await vi.advanceTimersByTimeAsync(1000)
+        expect(wrapper.text()).toContain('admin.providers.status.active')
+        expect(vi.getTimerCount()).toBe(timerCount)
+      } finally {
+        wrapper.unmount()
+        vi.useRealTimers()
+      }
+    },
+  )
+
+  // An idle row has no active deadline and receives a restriction later.
+  // Its interval must restart for that new observation and disappear when the row unmounts.
+  it('空闲状态收到新限流后重新计时并在卸载时清理', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-28T00:00:00Z'))
+    const timerCount = vi.getTimerCount()
+    const wrapper = mount(ProviderStatusIndicator, {
+      props: { provider: makeProvider({}) },
+      global: { stubs: { Icon: true } },
+    })
+    try {
+      expect(vi.getTimerCount()).toBe(timerCount)
+      await vi.advanceTimersByTimeAsync(60_000)
+      await wrapper.setProps({
+        provider: makeProvider({ rate_limit_reset_at: '2026-07-28T00:01:05Z' }),
+      })
+      expect(wrapper.text()).toContain('admin.providers.status.rateLimited')
+      expect(vi.getTimerCount()).toBe(timerCount + 1)
+      wrapper.unmount()
+      expect(vi.getTimerCount()).toBe(timerCount)
+    } finally {
+      wrapper.unmount()
+      vi.useRealTimers()
+    }
+  })
+
+  // Invalid stored model reset values establish no active backend cooldown.
+  // The frontend must omit the model badge and avoid an interval that can never expire.
+  it('忽略无效模型限流日期', () => {
+    const wrapper = mount(ProviderStatusIndicator, {
+      props: {
+        provider: makeProvider({
+          extra: { model_rate_limits: { 'claude-sonnet-5': { rate_limit_reset_at: 'invalid' } } },
+        }),
+      },
+      global: { stubs: { Icon: true } },
+    })
+    expect(wrapper.text()).not.toContain('CSon5')
+    wrapper.unmount()
+  })
+
+  // Automatic model cooldowns carry persisted classification reasons. Known
+  // reasons receive translated explanations while unknown reasons remain inspectable as literal text.
+  it.each([
+    ['upstream_404_model_not_found', 'admin.providers.status.modelNotFoundReason'],
+    ['upstream_400_codex_plan_gated_model', 'admin.providers.status.modelPlanGatedReason'],
+    ['future-classification', 'future-classification'],
+    ['<img src=x onerror=alert(1)>', '<img src=x onerror=alert(1)>'],
+  ])('展示模型临时停用原因 %s', (reason, expected) => {
+    const wrapper = mount(ProviderStatusIndicator, {
+      props: {
+        provider: makeProvider({
+          extra: {
+            model_rate_limits: {
+              'claude-sonnet-5': { rate_limit_reset_at: '2099-07-28T00:00:00Z', reason },
+            },
+          },
+        }),
+      },
+      global: { stubs: { Icon: true } },
+    })
+    expect(wrapper.get('[data-model-restriction-reason]').text()).toBe(expected)
+    expect(wrapper.find('img').exists()).toBe(false)
+    expect(wrapper.text()).toContain('admin.providers.status.modelCooldownScopeHint')
+    wrapper.unmount()
+  })
+
   // An Antigravity AICredits limit is active while overages are enabled. The
   // status indicator displays the credits-exhausted message for that special
   // limit entry.

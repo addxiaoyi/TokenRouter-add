@@ -61,6 +61,21 @@ type groupRepoStubForAdmin struct {
 	groupSortOrderLockCalls int   // recorded ordering lock requests
 }
 
+// paginatedGroupRepoStubForAdmin supplies bounded group pages and records
+// requests for complete administrative group enumeration tests.
+type paginatedGroupRepoStubForAdmin struct {
+	*groupRepoStubForAdmin         // base group repository fixture
+	groups                 []Group // configured complete group records
+	requestedPage          []int   // observed requested page numbers
+	// failPage returns queryErr instead of the selected page, allowing tests to
+	// verify that earlier successful pages are withheld after a later failure.
+	failPage int   // failing one-based page number
+	queryErr error // injected paginated query failure
+	// omitMetadata removes pagination totals from responses so traversal must
+	// determine completion from the number of records returned by each page.
+	omitMetadata bool // omit total count metadata
+}
+
 // groupProviderCopyRepoStub supplies source groups and records destination
 // membership replacement calls.
 type groupProviderCopyRepoStub struct {
@@ -95,6 +110,86 @@ type groupProviderCopyRepoStub struct {
 	// providers is returned directly by GetByIDs, including with providerError.
 	// Tests keep these records stable while administration filters their identities.
 	providers []GroupProvider // configured provider authentication records
+}
+
+// ListWithFilters returns the requested slice and records its page number.
+// Configured failures return no records, and omitted metadata leaves completion
+// detection to the caller's bounded-page rule.
+func (s *paginatedGroupRepoStubForAdmin) ListWithFilters(_ context.Context, params pagination.PaginationParams, _, _, _ string, _ *bool) ([]Group, *pagination.PaginationResult, error) {
+	s.requestedPage = append(s.requestedPage, params.Page)
+	if params.Page == s.failPage {
+		return nil, nil, s.queryErr
+	}
+	if s.omitMetadata {
+		return pagination.Slice(s.groups, params), nil, nil
+	}
+	return pagination.Slice(s.groups, params), pagination.ResultFromTotal(int64(len(s.groups)), params), nil
+}
+
+// TestGroupAdminGetAllGroupsIncludingInactiveReadsEveryPage enumerates groups
+// beyond the repository's single-page ceiling. The service must preserve every
+// supplied identifier, including a disabled group on the second page.
+func TestGroupAdminGetAllGroupsIncludingInactiveReadsEveryPage(t *testing.T) {
+	allGroups := make([]Group, 1001)
+	for i := range allGroups {
+		allGroups[i] = Group{ID: int64(i + 1)}
+	}
+	allGroups[1000].Status = StatusInactive
+	repo := &paginatedGroupRepoStubForAdmin{
+		groupRepoStubForAdmin: &groupRepoStubForAdmin{},
+		groups:                allGroups,
+	}
+	service := &GroupAdmin{groupRepo: repo}
+
+	groups, err := service.GetAllGroupsIncludingInactive(context.Background())
+
+	require.NoError(t, err)
+	require.Len(t, groups, 1001)
+	require.Equal(t, int64(1), groups[0].ID)
+	require.Equal(t, int64(1001), groups[1000].ID)
+	require.Equal(t, StatusInactive, groups[1000].Status)
+	require.Equal(t, []int{1, 2}, repo.requestedPage)
+}
+
+// TestGroupAdminGetAllGroupsIncludingInactiveEmptyAndExactPages exercises empty
+// and exact-page collections. Enumeration must terminate at the supplied total
+// without issuing another query for an unnecessary empty trailing page.
+func TestGroupAdminGetAllGroupsIncludingInactiveEmptyAndExactPages(t *testing.T) {
+	for _, count := range []int{0, 1000, 2000} {
+		// The fixture returns a stable count at each boundary. An exact full
+		// page must stop at its matching total rather than requesting another page.
+		t.Run(fmt.Sprintf("count_%d", count), func(t *testing.T) {
+			repo := &paginatedGroupRepoStubForAdmin{groupRepoStubForAdmin: &groupRepoStubForAdmin{}, groups: make([]Group, count)}
+			groups, err := (&GroupAdmin{groupRepo: repo}).GetAllGroupsIncludingInactive(context.Background())
+			require.NoError(t, err)
+			require.NotNil(t, groups)
+			require.Len(t, groups, count)
+			require.Len(t, repo.requestedPage, max(1, count/1000))
+		})
+	}
+}
+
+// TestGroupAdminGetAllGroupsIncludingInactiveWithoutTotals supplies full pages
+// without count metadata. The service must request an empty final page and
+// return all records rather than depending on an optional total.
+func TestGroupAdminGetAllGroupsIncludingInactiveWithoutTotals(t *testing.T) {
+	repo := &paginatedGroupRepoStubForAdmin{groupRepoStubForAdmin: &groupRepoStubForAdmin{}, groups: make([]Group, 1000), omitMetadata: true}
+	groups, err := (&GroupAdmin{groupRepo: repo}).GetAllGroupsIncludingInactive(context.Background())
+	require.NoError(t, err)
+	require.Len(t, groups, 1000)
+	require.Equal(t, []int{1, 2}, repo.requestedPage)
+}
+
+// TestGroupAdminGetAllGroupsIncludingInactiveDiscardsPartialFailure injects an
+// error after a successful full page. The caller must receive the original error
+// and no partial list that could be mistaken for complete choices.
+func TestGroupAdminGetAllGroupsIncludingInactiveDiscardsPartialFailure(t *testing.T) {
+	wantErr := errors.New("second group page failed")
+	repo := &paginatedGroupRepoStubForAdmin{groupRepoStubForAdmin: &groupRepoStubForAdmin{}, groups: make([]Group, 1001), failPage: 2, queryErr: wantErr}
+	groups, err := (&GroupAdmin{groupRepo: repo}).GetAllGroupsIncludingInactive(context.Background())
+	require.ErrorIs(t, err, wantErr)
+	require.Nil(t, groups)
+	require.Equal(t, []int{1, 2}, repo.requestedPage)
 }
 
 // TestAdminServiceUpdateGroupCopiesMembershipWithoutAssociationPriority

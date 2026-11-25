@@ -3,13 +3,14 @@ import Skeleton from '@/components/common/Skeleton.vue'
 
 import Disclosure from '@/components/common/Disclosure.vue'
 
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onScopeDispose } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAppStore } from '@/stores/app'
 import { opsAPI } from '@/api/admin/ops'
 import BaseDialog from '@/components/common/BaseDialog.vue'
 import Select from '@/components/common/Select.vue'
 import Toggle from '@/components/common/Toggle.vue'
+import SettingsNotice from '@/components/common/settings/SettingsNotice.vue'
 import type {
   OpsAlertRuntimeSettings,
   EmailNotificationConfig,
@@ -24,11 +25,13 @@ import type {
 // result and one save action. Missing status-code configuration receives the
 // standard ignored-code defaults when loaded.
 //
-// Save normalizes ignored codes and disables enabled email sections with no
-// recipients before issuing independent updates in parallel. A failed update
-// does not roll back successful sibling writes, and the dialog stays open with
-// an error message. Saved and close events are emitted after every requested
-// update succeeds so the dashboard can reload its presentation settings.
+// Saving validates recipient intent and normalizes ignored codes before issuing
+// independent updates in parallel. Each completed request receives its own
+// visible result because sibling writes cannot be rolled back together. The
+// dialog waits for all requests before allowing another save, refreshes the
+// dashboard after any success, and remains open when any family fails. Opening
+// starts a fresh load generation; hidden or disposed generations cannot publish
+// drafts over a newer editing session.
 
 // Translation and application notifications supply dialog labels, validation
 // feedback, and settings persistence results for this editor.
@@ -45,7 +48,7 @@ const props = defineProps<{
 // corresponding dialog action completes for the parent.
 const emit = defineEmits<{
   close: [] // dialog dismissal event payload
-  saved: [] // successful settings persistence event
+  saved: [] // at least one settings family persisted
 }>()
 
 // Loading and saving flags track request phases separately, while the
@@ -53,6 +56,22 @@ const emit = defineEmits<{
 const loading = ref(false)
 const saving = ref(false)
 const ignoredStatusCodesInput = ref('401, 403')
+
+// SaveResult identifies one settings family's outcome without implying that
+// the independent server writes form a single atomic administrative update.
+interface SaveResult {
+  label: string // translated settings family label
+  status: 'pending' | 'saved' | 'failed' // observed settings request outcome
+  error?: string // server or translated error detail
+}
+
+// Save results remain visible after partial failure; each new load or explicit
+// save replaces them so old outcomes cannot describe a newer submission.
+const saveResults = ref<SaveResult[]>([])
+const loadFailed = ref(false)
+// loadGeneration invalidates earlier requests when visibility changes or the
+// component is disposed, preventing stale loads from replacing current drafts.
+let loadGeneration = 0
 
 // runtimeSettings holds the loaded alert evaluator settings; null means that
 // settings family has not been populated.
@@ -128,12 +147,23 @@ function formatIgnoredStatusCodes(codes: number[] | null | undefined): string {
   return parsed.valid ? parsed.codes.join(', ') : '401, 403'
 }
 
-// loadAllSettings retrieves four settings families together before publishing
-// their editable values. Missing ignored-code arrays and omitted threshold
-// fields receive defaults, while a failed request reports an error and leaves
-// previous drafts available.
+// loadAllSettings retrieves all settings families before exposing a saveable
+// draft. Opening clears earlier values, and a failed load keeps saving disabled
+// until the administrator explicitly retries or reopens the dialog.
+//
+// Each invocation captures the current generation before starting requests.
+// Closing, reopening, or disposing invalidates that generation, so a late
+// response cannot overwrite newer edits or clear a newer loading indicator.
+// Missing ignored-code arrays and threshold fields use the editor defaults only
+// after the complete current generation has loaded successfully.
 async function loadAllSettings() {
+  const generation = ++loadGeneration
   loading.value = true
+  loadFailed.value = false
+  saveResults.value = []
+  runtimeSettings.value = null
+  emailConfig.value = null
+  advancedSettings.value = null
   try {
     const [runtime, email, advanced, thresholds] = await Promise.all([
       opsAPI.getAlertRuntimeSettings(),
@@ -141,6 +171,7 @@ async function loadAllSettings() {
       opsAPI.getAdvancedSettings(),
       opsAPI.getMetricThresholds(),
     ])
+    if (generation !== loadGeneration) return
     runtimeSettings.value = runtime
     emailConfig.value = email
     advancedSettings.value = advanced
@@ -154,19 +185,19 @@ async function loadAllSettings() {
     )
     // Apply supplied threshold fields individually so partially populated
     // settings retain usable defaults for the remaining metric badges.
-    if (thresholds && Object.keys(thresholds).length > 0) {
-      metricThresholds.value = {
-        sla_percent_min: thresholds.sla_percent_min ?? 99.5,
-        ttft_p99_ms_max: thresholds.ttft_p99_ms_max ?? 500,
-        request_error_rate_percent_max: thresholds.request_error_rate_percent_max ?? 5,
-        upstream_error_rate_percent_max: thresholds.upstream_error_rate_percent_max ?? 5,
-      }
+    metricThresholds.value = {
+      sla_percent_min: thresholds?.sla_percent_min ?? 99.5,
+      ttft_p99_ms_max: thresholds?.ttft_p99_ms_max ?? 500,
+      request_error_rate_percent_max: thresholds?.request_error_rate_percent_max ?? 5,
+      upstream_error_rate_percent_max: thresholds?.upstream_error_rate_percent_max ?? 5,
     }
   } catch (err: any) {
+    if (generation !== loadGeneration) return
+    loadFailed.value = true
     console.error('[OpsSettingsDialog] Failed to load settings', err)
     appStore.showError(err?.response?.data?.detail || t('admin.ops.settings.loadFailed'))
   } finally {
-    loading.value = false
+    if (generation === loadGeneration) loading.value = false
   }
 }
 
@@ -177,9 +208,20 @@ watch(
   (show) => {
     if (show) {
       loadAllSettings()
+    } else {
+      // Invalidate the closed session before a pending response can publish
+      // settings into a later reopening of this same mounted dialog instance.
+      loadGeneration++
     }
   },
+  { immediate: true },
 )
+
+// Disposal invalidates pending loads because their results belong to this
+// instance and must not update drafts after its owning page has gone away.
+onScopeDispose(() => {
+  loadGeneration++
+})
 
 // Recipient inputs remain separate from persisted lists until an add action
 // validates and appends a normalized email address.
@@ -240,23 +282,26 @@ function removeRecipient(target: 'alert' | 'report', email: string) {
   if (idx >= 0) list.splice(idx, 1)
 }
 
-// validation collects evaluator, retention, ignored-code, and metric errors
-// before saving; enabled email lists with no recipients are handled during
-// normalization.
+// validation collects evaluator, recipient, retention, ignored-code, and metric
+// errors before saving. Empty enabled recipient lists require an explicit
+// correction instead of silently changing the administrator's delivery choice.
 const validation = computed(() => {
   const errors: string[] = []
 
   // Evaluation intervals range from one second to one day.
   if (runtimeSettings.value) {
     const evalSeconds = runtimeSettings.value.evaluation_interval_seconds
-    if (!Number.isFinite(evalSeconds) || evalSeconds < 1 || evalSeconds > 86400) {
+    if (!Number.isInteger(evalSeconds) || evalSeconds < 1 || evalSeconds > 86400) {
       errors.push(t('admin.ops.runtime.validation.evalIntervalRange'))
     }
   }
 
-  // Recipient-free email sections pass validation because saveAllSettings
-  // disables their delivery flags before sending the corresponding configuration
-  // updates.
+  if (emailConfig.value?.alert.enabled && emailConfig.value.alert.recipients.length === 0) {
+    errors.push(t('admin.ops.email.validation.alertRecipientsRequired'))
+  }
+  if (emailConfig.value?.report.enabled && emailConfig.value.report.recipients.length === 0) {
+    errors.push(t('admin.ops.email.validation.reportRecipientsRequired'))
+  }
 
   // Retention and cleanup inputs are checked against the supported day,
   // batch-count, and pause-duration limits before requests are sent.
@@ -266,13 +311,25 @@ const validation = computed(() => {
       minute_metrics_retention_days,
       hourly_metrics_retention_days,
     } = advancedSettings.value.data_retention
-    if (error_log_retention_days < 0 || error_log_retention_days > 365) {
+    if (
+      !Number.isInteger(error_log_retention_days) ||
+      error_log_retention_days < 0 ||
+      error_log_retention_days > 365
+    ) {
       errors.push(t('admin.ops.settings.validation.retentionDaysRange'))
     }
-    if (minute_metrics_retention_days < 0 || minute_metrics_retention_days > 365) {
+    if (
+      !Number.isInteger(minute_metrics_retention_days) ||
+      minute_metrics_retention_days < 0 ||
+      minute_metrics_retention_days > 365
+    ) {
       errors.push(t('admin.ops.settings.validation.retentionDaysRange'))
     }
-    if (hourly_metrics_retention_days < 0 || hourly_metrics_retention_days > 365) {
+    if (
+      !Number.isInteger(hourly_metrics_retention_days) ||
+      hourly_metrics_retention_days < 0 ||
+      hourly_metrics_retention_days > 365
+    ) {
       errors.push(t('admin.ops.settings.validation.retentionDaysRange'))
     }
     const { cleanup_batch_size, cleanup_pause_ms } = advancedSettings.value.data_retention
@@ -298,26 +355,31 @@ const validation = computed(() => {
   // accepts nonnegative milliseconds when supplied by the editor.
   if (
     metricThresholds.value.sla_percent_min != null &&
-    (metricThresholds.value.sla_percent_min < 0 || metricThresholds.value.sla_percent_min > 100)
+    (!Number.isFinite(metricThresholds.value.sla_percent_min) ||
+      metricThresholds.value.sla_percent_min < 0 ||
+      metricThresholds.value.sla_percent_min > 100)
   ) {
     errors.push(t('admin.ops.settings.validation.slaMinPercentRange'))
   }
   if (
     metricThresholds.value.ttft_p99_ms_max != null &&
-    metricThresholds.value.ttft_p99_ms_max < 0
+    (!Number.isFinite(metricThresholds.value.ttft_p99_ms_max) ||
+      metricThresholds.value.ttft_p99_ms_max < 0)
   ) {
     errors.push(t('admin.ops.settings.validation.ttftP99MaxRange'))
   }
   if (
     metricThresholds.value.request_error_rate_percent_max != null &&
-    (metricThresholds.value.request_error_rate_percent_max < 0 ||
+    (!Number.isFinite(metricThresholds.value.request_error_rate_percent_max) ||
+      metricThresholds.value.request_error_rate_percent_max < 0 ||
       metricThresholds.value.request_error_rate_percent_max > 100)
   ) {
     errors.push(t('admin.ops.settings.validation.requestErrorRateMaxRange'))
   }
   if (
     metricThresholds.value.upstream_error_rate_percent_max != null &&
-    (metricThresholds.value.upstream_error_rate_percent_max < 0 ||
+    (!Number.isFinite(metricThresholds.value.upstream_error_rate_percent_max) ||
+      metricThresholds.value.upstream_error_rate_percent_max < 0 ||
       metricThresholds.value.upstream_error_rate_percent_max > 100)
   ) {
     errors.push(t('admin.ops.settings.validation.upstreamErrorRateMaxRange'))
@@ -326,55 +388,88 @@ const validation = computed(() => {
   return { valid: errors.length === 0, errors }
 })
 
-// saveAllSettings validates the dialog and persists each loaded settings family.
-// Email sections with no recipients are disabled, and ignored HTTP codes are
-// normalized before requests begin.
+// saveAllSettings validates a fully loaded draft and persists its four settings
+// families. Concurrent clicks and calls during loading are ignored, and ignored
+// HTTP codes are normalized before any request begins.
 //
-// The four update operations run independently in Promise.all, so one rejection
-// can leave other server updates completed and the local drafts already
-// normalized. Failure keeps the dialog open and reports available API detail.
-// Saved and close events follow complete success, and the saving flag resets on
-// either path.
+// Requests settle independently and publish individual outcomes before the
+// aggregate result is reported. Waiting for every sibling prevents a retry from
+// overlapping unfinished writes after an early failure. Any success asks the
+// parent to refresh persisted settings; partial failure retains the draft and
+// outcome list, while complete success also closes the dialog. Failed requests
+// report an unconfirmed save because a network error cannot prove no write occurred.
 async function saveAllSettings() {
+  if (
+    loading.value ||
+    saving.value ||
+    !runtimeSettings.value ||
+    !emailConfig.value ||
+    !advancedSettings.value
+  )
+    return
   if (!validation.value.valid) {
     appStore.showError(validation.value.errors[0])
     return
   }
 
   saving.value = true
+  const generation = loadGeneration
   try {
-    // Disable delivery for empty recipient lists before persistence so enabled
-    // email sections do not request notifications with no destination.
-    if (emailConfig.value) {
-      if (emailConfig.value.alert.enabled && emailConfig.value.alert.recipients.length === 0) {
-        emailConfig.value.alert.enabled = false
-      }
-      if (emailConfig.value.report.enabled && emailConfig.value.report.recipients.length === 0) {
-        emailConfig.value.report.enabled = false
-      }
-    }
     if (advancedSettings.value) {
       const ignoredStatusCodes = parseIgnoredStatusCodes(ignoredStatusCodesInput.value)
       advancedSettings.value.ignored_status_codes = ignoredStatusCodes.codes
       ignoredStatusCodesInput.value = ignoredStatusCodes.codes.join(', ')
     }
-    // These independent updates can partly succeed before another rejects; success
-    // events wait for all results, while failures leave drafts available for
-    // correction.
-    await Promise.all([
-      runtimeSettings.value
-        ? opsAPI.updateAlertRuntimeSettings(runtimeSettings.value)
-        : Promise.resolve(),
-      emailConfig.value
-        ? opsAPI.updateEmailNotificationConfig(emailConfig.value)
-        : Promise.resolve(),
-      advancedSettings.value
-        ? opsAPI.updateAdvancedSettings(advancedSettings.value)
-        : Promise.resolve(),
-      opsAPI.updateMetricThresholds(metricThresholds.value),
-    ])
+    const operations = [
+      {
+        label: t('admin.ops.settings.dataCollection'),
+        save: () => opsAPI.updateAlertRuntimeSettings(runtimeSettings.value!),
+      },
+      {
+        label: t('admin.ops.email.title'),
+        save: () => opsAPI.updateEmailNotificationConfig(emailConfig.value!),
+      },
+      {
+        label: t('admin.ops.settings.advancedSettings'),
+        save: () => opsAPI.updateAdvancedSettings(advancedSettings.value!),
+      },
+      {
+        label: t('admin.ops.settings.metricThresholds'),
+        save: () => opsAPI.updateMetricThresholds(metricThresholds.value),
+      },
+    ]
+    saveResults.value = operations.map(({ label }) => ({ label, status: 'pending' }))
+    const results = saveResults.value
+    // Every request records its own acknowledgement before the dialog permits
+    // another submission; a rejected sibling cannot hide later completed writes.
+    await Promise.allSettled(
+      operations.map(async (operation, index) => {
+        try {
+          await operation.save()
+          results[index].status = 'saved'
+        } catch (err: any) {
+          results[index].status = 'failed'
+          results[index].error =
+            err?.response?.data?.message ||
+            err?.response?.data?.detail ||
+            t('admin.ops.settings.saveFailed')
+        }
+      }),
+    )
+    // Forced dismissal or disposal detaches this batch from the current editor.
+    // Its retained outcomes cannot close or report success for a newer opening.
+    if (generation !== loadGeneration) return
+    if (results.some((result) => result.status === 'saved')) emit('saved')
+    const failed = results.filter((result) => result.status === 'failed')
+    if (failed.length > 0) {
+      appStore.showError(
+        t('admin.ops.settings.saveIncomplete', {
+          sections: failed.map((result) => result.label).join(', '),
+        }),
+      )
+      return
+    }
     appStore.showSuccess(t('admin.ops.settings.saveSuccess'))
-    emit('saved')
     emit('close')
   } catch (err: any) {
     console.error('[OpsSettingsDialog] Failed to save settings', err)
@@ -387,6 +482,12 @@ async function saveAllSettings() {
     saving.value = false
   }
 }
+
+// requestClose retains the active save's result view until all requests settle.
+// Administrators can dismiss the dialog after the pending writes have completed.
+function requestClose() {
+  if (!saving.value) emit('close')
+}
 </script>
 
 <template>
@@ -394,7 +495,7 @@ async function saveAllSettings() {
     :show="show"
     :title="t('admin.ops.settings.title')"
     width="extra-wide"
-    @close="emit('close')"
+    @close="requestClose"
   >
     <div
       v-if="loading"
@@ -426,7 +527,32 @@ async function saveAllSettings() {
       </div>
     </div>
 
-    <div v-else-if="runtimeSettings && emailConfig && advancedSettings" class="space-y-6">
+    <SettingsNotice v-else-if="loadFailed" tone="error">
+      <p>{{ t('admin.ops.settings.loadFailed') }}</p>
+      <button type="button" class="btn btn-secondary" @click="loadAllSettings">{{
+        t('common.retry')
+      }}</button>
+    </SettingsNotice>
+
+    <fieldset
+      v-else-if="runtimeSettings && emailConfig && advancedSettings"
+      :disabled="saving"
+      class="min-w-0 space-y-6"
+    >
+      <SettingsNotice
+        v-if="saveResults.length > 0"
+        tone="warning"
+        aria-live="polite"
+        data-save-results
+      >
+        <p>{{ t('admin.ops.settings.saveResultsHint') }}</p>
+        <ul class="space-y-1">
+          <li v-for="result in saveResults" :key="result.label" :data-save-status="result.status">
+            {{ result.label }}: {{ t(`admin.ops.settings.saveStatus.${result.status}`) }}
+            <span v-if="result.error" class="break-words"> · {{ result.error }}</span>
+          </li>
+        </ul>
+      </SettingsNotice>
       <!-- Configuration validation errors -->
       <div
         v-if="!validation.valid"
@@ -900,14 +1026,23 @@ async function saveAllSettings() {
           </div>
         </div>
       </Disclosure>
-    </div>
+    </fieldset>
 
     <template #footer>
       <div class="flex justify-end gap-2">
-        <button class="btn btn-secondary" @click="emit('close')">{{ t('common.cancel') }}</button>
+        <button class="btn btn-secondary" :disabled="saving" @click="requestClose">{{
+          t('common.cancel')
+        }}</button>
         <button
           class="btn btn-primary"
-          :disabled="saving || !validation.valid"
+          :disabled="
+            loading ||
+            saving ||
+            !runtimeSettings ||
+            !emailConfig ||
+            !advancedSettings ||
+            !validation.valid
+          "
           @click="saveAllSettings"
         >
           {{ saving ? t('common.saving') : t('common.save') }}

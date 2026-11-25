@@ -51,15 +51,35 @@ func (s *GroupAdmin) GetAllGroups(ctx context.Context) ([]Group, error) {
 	return s.groupRepo.ListActive(ctx)
 }
 
-// GetAllGroupsIncludingInactive requests the first unfiltered administrative
-// page with a size of 10,000. The PostgreSQL repository applies
-// pagination.Limit's 1,000-row ceiling, so this convenience method can return a
-// truncated collection.
+// GetAllGroupsIncludingInactive collects active and disabled groups through
+// bounded repository pages, returning an empty nonnil slice for an empty list.
+// Repository display ordering and its stable ID ties remain in effect for each
+// page. A failed page discards the accumulated result rather than exposing a
+// partial collection as the complete administrator list.
+//
+// Each query observes its own repository snapshot, so concurrent deletion or
+// insertion is not an atomic snapshot of all groups. A short or empty page ends
+// traversal even when supplied metadata still reports additional matching rows.
 func (s *GroupAdmin) GetAllGroupsIncludingInactive(ctx context.Context) ([]Group, error) {
-	// This view requests one page; the PostgreSQL pagination limit further caps
-	// it, so groups beyond that page are omitted from the unpaginated response.
-	groups, _, err := s.groupRepo.ListWithFilters(ctx, pagination.PaginationParams{Page: 1, PageSize: 10000}, "", "", "", nil)
-	return groups, err
+	// Keep each query within the shared pagination ceiling.
+	const pageSize = 1000
+	groups := make([]Group, 0)
+	for page := 1; ; page++ {
+		params := pagination.PaginationParams{Page: page, PageSize: pageSize}
+		pageGroups, result, err := s.groupRepo.ListWithFilters(ctx, params, "", "", "", nil)
+		if err != nil {
+			return nil, err
+		}
+		groups = append(groups, pageGroups...)
+
+		if result != nil && int64(len(groups)) >= result.Total {
+			break
+		}
+		if len(pageGroups) < params.Limit() {
+			break
+		}
+	}
+	return groups, nil
 }
 
 // GetGroup loads the requested group with repository-provided derived counts.

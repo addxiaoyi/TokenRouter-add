@@ -86,6 +86,7 @@
       <div
         v-for="item in activeModelStatuses"
         :key="`${item.kind}-${item.model}`"
+        tabindex="0"
         class="group relative mb-1 break-inside-avoid"
       >
         <!-- AI credits are exhausted. -->
@@ -117,7 +118,7 @@
         </span>
         <!-- Tooltip -->
         <div
-          class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-max max-w-[320px] -translate-x-1/2 whitespace-nowrap tooltip-panel rounded-compact px-3 py-2 text-center text-xs leading-relaxed opacity-0 transition-opacity group-hover:opacity-100"
+          class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-max max-w-[320px] -translate-x-1/2 whitespace-nowrap tooltip-panel rounded-compact px-3 py-2 text-center text-xs leading-relaxed opacity-0 transition-opacity group-hover:opacity-100 group-focus:opacity-100"
         >
           {{
             item.kind === 'credits_exhausted'
@@ -134,6 +135,16 @@
                     time: formatDateTimeToMinute(item.reset_at),
                   })
           }}
+          <div
+            v-if="item.reason"
+            class="mt-1 whitespace-normal break-words"
+            data-model-restriction-reason
+          >
+            {{ modelRestrictionReason(item.reason) }}
+          </div>
+          <div v-if="item.reason" class="mt-1 whitespace-normal">
+            {{ t('admin.providers.status.modelCooldownScopeHint') }}
+          </div>
           <div class="tooltip-caret -bottom-1 left-1/2 -translate-x-1/2 border-b border-r"></div>
         </div>
       </div>
@@ -161,7 +172,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useIntervalFn } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
 import type { Provider } from '@/api/admin/providers.types'
@@ -183,9 +195,9 @@ import {
  * The main status calculation checks stored errors, temporary suspension, then inactive status,
  * quota exhaustion, and a paused scheduling flag. The template gives provider-wide rate limits
  * and overload precedence over that main badge. All time comparisons occur when reactive
- * computations run;
- * this component owns no ticking clock. Temporary-suspension clicks delegate to the parent only
- * while that restriction is considered active.
+ * computations run. A component-owned clock runs only while a future restriction exists, then
+ * stops as soon as the last deadline passes. Temporary-suspension clicks delegate to the parent
+ * only while that restriction is considered active.
  */
 
 /**
@@ -201,6 +213,49 @@ const { t } = useI18n()
 const props = defineProps<{
   provider: Provider // current provider availability record
 }>()
+
+// A component-owned clock supplies the same observation time to every timed
+// badge, and the deadline predicate limits ticking to rows needing expiry updates.
+const now = ref(Date.now())
+// hasActiveTimedRestriction reports whether any valid provider or model deadline
+// still needs clock updates. Invalid or expired deadlines cannot keep a timer alive.
+const hasActiveTimedRestriction = computed(() => {
+  const extra = props.provider.extra as Record<string, unknown> | undefined
+  const modelLimits = extra?.model_rate_limits as
+    | Record<string, { rate_limit_reset_at: string /* model restriction reset timestamp */ }>
+    | undefined
+  const timestamps = [
+    props.provider.rate_limit_reset_at,
+    props.provider.overload_until,
+    props.provider.temp_unschedulable_until,
+    ...Object.values(modelLimits ?? {}).map((limit) => limit.rate_limit_reset_at),
+  ]
+
+  return timestamps.some((timestamp) => timestamp && Date.parse(timestamp) > now.value)
+})
+// VueUse owns interval cleanup with the component scope; one-second updates
+// refresh countdowns while avoiding timer work for rows without future deadlines.
+const { pause: pauseClock, resume: resumeClock } = useIntervalFn(
+  () => {
+    now.value = Date.now()
+  },
+  1000,
+  { immediate: false },
+)
+watch(
+  hasActiveTimedRestriction,
+  (active) => {
+    if (active) {
+      // A previously idle row can receive a new restriction after its clock
+      // stopped; sample wall time before resuming to avoid displaying stale durations.
+      now.value = Date.now()
+      resumeClock()
+    } else {
+      pauseClock()
+    }
+  },
+  { immediate: true },
+)
 
 /**
  * emit asks the parent to show temporary-suspension details for the selected provider after the
@@ -220,7 +275,7 @@ const emit = defineEmits<{
  */
 const isRateLimited = computed(() => {
   if (!props.provider.rate_limit_reset_at) return false
-  return new Date(props.provider.rate_limit_reset_at) > new Date()
+  return Date.parse(props.provider.rate_limit_reset_at) > now.value
 })
 
 /**
@@ -230,6 +285,7 @@ type ProviderModelStatusItem = {
   kind: 'rate_limit' | 'credits_exhausted' | 'credits_active' // displayed model restriction category
   model: string // model or credit scope identifier
   reset_at: string // restriction expiry timestamp
+  reason?: string // persisted model restriction reason
 }
 
 /**
@@ -247,7 +303,7 @@ const activeModelStatuses = computed<ProviderModelStatusItem[]>(() => {
         }
       >
     | undefined
-  const now = new Date()
+  const currentTime = now.value
   const items: ProviderModelStatusItem[] = []
 
   if (!modelLimits) return items
@@ -255,29 +311,51 @@ const activeModelStatuses = computed<ProviderModelStatusItem[]>(() => {
   // An active AICredits marker overrides the overage interpretation so ordinary model cooldowns
   // cannot imply available credits after credit exhaustion.
   const aiCreditsEntry = modelLimits['AICredits']
-  const hasActiveAICredits = aiCreditsEntry && new Date(aiCreditsEntry.rate_limit_reset_at) > now
+  const hasActiveAICredits =
+    aiCreditsEntry && Date.parse(aiCreditsEntry.rate_limit_reset_at) > currentTime
   const allowOverages = !!extra?.allow_overages
 
   for (const [model, info] of Object.entries(modelLimits)) {
-    if (new Date(info.rate_limit_reset_at) <= now) continue
+    const resetAt = Date.parse(info.rate_limit_reset_at)
+    // Invalid dates provide no usable cooldown observation, matching backend
+    // admission rather than leaving an unexpiring restriction badge on this model.
+    if (!Number.isFinite(resetAt) || resetAt <= currentTime) continue
+    const rawReason = (info as { reason?: unknown /* persisted restriction reason value */ }).reason
+    const reason = typeof rawReason === 'string' ? rawReason : undefined
 
     if (model === 'AICredits') {
       // The dedicated credit marker represents exhausted credits, even when the provider
       // otherwise permits overage use for model cooldowns.
-      items.push({ kind: 'credits_exhausted', model, reset_at: info.rate_limit_reset_at })
+      items.push({ kind: 'credits_exhausted', model, reset_at: info.rate_limit_reset_at, reason })
     } else if (allowOverages && !hasActiveAICredits) {
       // With overages enabled and no active exhausted-credit marker, show the model cooldown as
       // credit-backed use in its status badge.
-      items.push({ kind: 'credits_active', model, reset_at: info.rate_limit_reset_at })
+      items.push({ kind: 'credits_active', model, reset_at: info.rate_limit_reset_at, reason })
     } else {
       // Keep ordinary cooldowns visibly restricted when overages are unavailable or the
       // separate credit marker reports exhaustion for the provider.
-      items.push({ kind: 'rate_limit', model, reset_at: info.rate_limit_reset_at })
+      items.push({ kind: 'rate_limit', model, reset_at: info.rate_limit_reset_at, reason })
     }
   }
 
   return items
 })
+
+/**
+ * modelRestrictionReason translates the two automatic model-unavailability
+ * reasons owned by provider health. Other persisted reasons remain visible as
+ * text so new classifications are inspectable without guessing their meaning.
+ */
+function modelRestrictionReason(reason: string): string {
+  switch (reason) {
+    case 'upstream_404_model_not_found':
+      return t('admin.providers.status.modelNotFoundReason')
+    case 'upstream_400_codex_plan_gated_model':
+      return t('admin.providers.status.modelPlanGatedReason')
+    default:
+      return reason
+  }
+}
 
 /**
  * formatScopeName returns a compact alias for recognized model and legacy scope identifiers.
@@ -335,13 +413,13 @@ const formatScopeName = (scope: string): string => {
  */
 const isOverloaded = computed(() => {
   if (!props.provider.overload_until) return false
-  return new Date(props.provider.overload_until) > new Date()
+  return Date.parse(props.provider.overload_until) > now.value
 })
 
 // Computed: is temp unschedulable
 const isTempUnschedulable = computed(() => {
   if (!props.provider.temp_unschedulable_until) return false
-  return new Date(props.provider.temp_unschedulable_until) > new Date()
+  return Date.parse(props.provider.temp_unschedulable_until) > now.value
 })
 
 // Computed: has error status
@@ -374,7 +452,8 @@ const isQuotaExceeded = computed(() => {
  * separate status details using the shared date helpers.
  */
 const rateLimitCountdown = computed(() => {
-  return formatCountdown(props.provider.rate_limit_reset_at)
+  const resetAt = props.provider.rate_limit_reset_at
+  return resetAt && Date.parse(resetAt) > now.value ? formatCountdown(resetAt) : null
 })
 
 const rateLimitResumeText = computed(() => {
@@ -384,7 +463,8 @@ const rateLimitResumeText = computed(() => {
 
 // Computed: countdown text for overload (529)
 const overloadCountdown = computed(() => {
-  return formatCountdownWithSuffix(props.provider.overload_until)
+  const resetAt = props.provider.overload_until
+  return resetAt && Date.parse(resetAt) > now.value ? formatCountdownWithSuffix(resetAt) : null
 })
 
 const tempUnschedRecoveryText = computed(() => {
