@@ -79,7 +79,7 @@ function mountHome(locale: 'en' | 'zh' = 'en') {
 
 describe('Homepage footer', () => {
   // The provider appends its claim link outside Vue after the page loads.
-  // HomeView must move the original link into its footer and return it hidden when the route closes.
+  // HomeView must move the original link into its footer and return it to body when the route closes.
   it('places the external provider badge in the homepage footer', () => {
     const badge = document.createElement('a')
     badge.href = 'https://lmspeed.net/provider/helstera'

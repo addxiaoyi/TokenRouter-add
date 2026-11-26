@@ -18,6 +18,7 @@ export type GradientASCIIShape = 'horizon' | 'pinch' | 'rise' | 'eclipse'
 
 export type GradientASCIIClickEffect = 'wave' | 'burst' | 'none'
 
+// GradientASCIIProps configures the light field, glyph appearance, and interaction limits.
 export interface GradientASCIIProps {
   colors?: string[]
   shape?: GradientASCIIShape
@@ -50,6 +51,7 @@ export interface GradientASCIIProps {
   style?: CSSProperties
 }
 
+// Settings holds normalized renderer options and the resolved glyph atlas font.
 type Settings = {
   colors: string[]
   shape: number
