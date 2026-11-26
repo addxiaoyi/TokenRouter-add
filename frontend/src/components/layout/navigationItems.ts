@@ -189,11 +189,11 @@ export function useNavigationItems(): NavigationItems {
   const adminNavItems = computed((): NavItem[] => {
     const baseItems: NavItem[] = [
       { path: '/admin/dashboard', label: t('nav.dashboard'), icon: 'dashboard' as const },
-      { path: '/admin/profit', label: t('admin.profit.title'), icon: 'chart' as const },
+      { path: '/admin/profit', label: t('admin.profit.title'), icon: 'dollar' as const },
       ...(adminSettingsStore.opsMonitoringEnabled
-        ? [{ path: '/admin/ops', label: t('nav.ops'), icon: 'chart' as const }]
+        ? [{ path: '/admin/ops', label: t('nav.ops'), icon: 'monitor' as const }]
         : []),
-      { path: '/admin/users', label: t('nav.users'), icon: 'users' as const },
+      { path: '/admin/users', label: t('nav.users'), icon: 'userCircle' as const },
       {
         path: '/admin/teams',
         label: t('nav.teams'),
@@ -204,13 +204,13 @@ export function useNavigationItems(): NavigationItems {
       {
         path: '/admin/model-management',
         label: t('nav.modelManagement'),
-        icon: 'pricing' as const,
+        icon: 'cube' as const,
         children: [
           { path: '/admin/pricing', label: t('nav.pricing'), icon: 'pricing' as const },
           {
             path: '/admin/model-attributes',
             label: t('nav.modelAttributes'),
-            icon: 'cog' as const,
+            icon: 'sliders' as const,
           },
         ],
       },
@@ -239,7 +239,11 @@ export function useNavigationItems(): NavigationItems {
       },
       { path: '/admin/providers', label: t('nav.providers'), icon: 'globe' as const },
       { path: '/admin/announcements', label: t('nav.announcements'), icon: 'bell' as const },
-      { path: '/admin/support-tickets', label: t('support.adminTitle'), icon: 'ticket' as const },
+      {
+        path: '/admin/support-tickets',
+        label: t('support.adminTitle'),
+        icon: 'chatBubble' as const,
+      },
       { path: '/admin/proxies', label: t('nav.proxies'), icon: 'server' as const },
       {
         path: '/admin/risk-control',
@@ -254,7 +258,7 @@ export function useNavigationItems(): NavigationItems {
             {
               path: '/admin/affiliates',
               label: t('nav.affiliateManagement'),
-              icon: 'users' as const,
+              icon: 'affiliate' as const,
               children: [
                 {
                   path: '/admin/affiliates/invites',
@@ -292,12 +296,12 @@ export function useNavigationItems(): NavigationItems {
             },
           ]
         : []),
-      { path: '/admin/usage', label: t('nav.usage'), icon: 'chart' as const },
+      { path: '/admin/usage', label: t('nav.usage'), icon: 'chartBar' as const },
       { path: '/admin/requests', label: t('requests.title'), icon: 'search' as const },
       { path: '/admin/task-history', label: t('taskHistory.adminTitle'), icon: 'history' as const },
-      { path: '/admin/audit-logs', label: t('nav.auditLogs'), icon: 'shieldCheck' as const },
+      { path: '/admin/audit-logs', label: t('nav.auditLogs'), icon: 'shield' as const },
       { path: '/admin/permissions', label: t('permissions.title'), icon: 'lock' as const },
-      { path: '/admin/mcp', label: t('admin.mcp.title'), icon: 'key' as const },
+      { path: '/admin/mcp', label: t('admin.mcp.title'), icon: 'toolCall' as const },
       { path: '/admin/plugins', label: t('admin.plugins.title'), icon: 'puzzle' as const },
     ]
 

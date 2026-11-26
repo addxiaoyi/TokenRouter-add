@@ -12,8 +12,18 @@ import { useNavigationItems } from '../navigationItems'
 const fixture = vi.hoisted(() => ({ plugins: [] as PluginUI[] }))
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: (key: string) => key }) }))
 vi.mock('@/stores', () => ({
-  useAppStore: () => ({ cachedPublicSettings: {} }),
-  useAdminSettingsStore: () => ({ customMenuItems: [] }),
+  useAppStore: () => ({
+    cachedPublicSettings: {
+      affiliate_enabled: true,
+      risk_control_enabled: true,
+      team_enabled: true,
+    },
+  }),
+  useAdminSettingsStore: () => ({
+    customMenuItems: [],
+    opsMonitoringEnabled: true,
+    paymentEnabled: true,
+  }),
 }))
 vi.mock('@/stores/plugins', () => ({ usePluginsStore: () => fixture }))
 
@@ -65,5 +75,20 @@ describe('account plugin navigation', () => {
     expect(
       adminNavItems.value.filter((entry) => entry.path.startsWith('/admin/ext/')),
     ).toHaveLength(4)
+  })
+})
+
+describe('administrator navigation icons', () => {
+  // Every visible built-in administrator destination should remain recognizable
+  // when the full feature set is enabled, so no two sidebar entries share an icon.
+  it('uses a distinct icon for each top-level destination', () => {
+    fixture.plugins = []
+    const { adminNavItems } = useNavigationItems()
+    const icons = adminNavItems.value
+      .filter((item) => item.path.startsWith('/admin/') && !item.path.startsWith('/admin/ext/'))
+      .map((item) => item.icon)
+
+    expect(icons.every(Boolean)).toBe(true)
+    expect(new Set(icons).size).toBe(icons.length)
   })
 })
