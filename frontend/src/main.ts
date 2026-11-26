@@ -9,11 +9,12 @@ import { updateFavicon } from '@/utils/branding'
 import { isIOSDevice } from '@/utils/device'
 import './styles/fonts.css'
 import './style.css'
+import './styles/experience.css'
 
 // main.ts initializes browser presentation and mounts the Vue application after its
-// initial route is ready. The shared font precedes the global stylesheet, and theme
-// selection runs before mounting so the first rendered view uses the selected
-// appearance.
+// initial route is ready. The shared font precedes global and scoped plugin styles;
+// plugin presentation loads last to override template defaults. Theme selection
+// runs before mounting so the first rendered view uses the selected appearance.
 //
 // Pinia is installed before reading injected site settings. Branding is applied before
 // language initialization, then public settings are refreshed if their locale differs

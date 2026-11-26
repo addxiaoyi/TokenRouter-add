@@ -1,0 +1,252 @@
+/*
+ * experience.css presents the installed experience plugin as a focused progress
+ * dashboard. The host owns this scoped presentation because the current plugin
+ * bundle targets its template identifier and therefore misses its installed root.
+ * Existing values, request states, controls, and progress semantics stay owned by
+ * the plugin; its authenticated status endpoint remains the source of truth.
+ */
+
+[data-tr-plugin='helstare.exp'] .exp-page {
+  display: grid;
+  gap: 2rem;
+  width: 100%;
+  max-width: 70rem;
+  margin-inline: auto;
+  color: var(--tr-color-text);
+  font-family: var(--font-app);
+}
+
+[data-tr-plugin='helstare.exp'] .exp-heading {
+  display: grid;
+  gap: 0.75rem;
+  padding-block: 0.5rem;
+}
+
+[data-tr-plugin='helstare.exp'] .exp-heading h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+[data-tr-plugin='helstare.exp'] .exp-heading p {
+  max-width: 48rem;
+  margin: 0;
+  color: var(--tr-color-text-muted);
+  font-size: 0.875rem;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+[data-tr-plugin='helstare.exp'] .exp-card {
+  display: grid;
+  gap: 2rem;
+  padding: 2rem;
+  border: 1px solid var(--tr-color-border);
+  border-radius: var(--radius-surface);
+  background: var(--tr-color-surface);
+}
+
+/* The loaded layout reserves a distinct level column; loading and error-only
+ * states keep the full card width instead of occupying an empty grid column. */
+[data-tr-plugin='helstare.exp'] .exp-card:has(.exp-level-row) {
+  grid-template-columns: minmax(11rem, 0.8fr) minmax(0, 2fr);
+  column-gap: 2.5rem;
+}
+
+[data-tr-plugin='helstare.exp'] .exp-level-row {
+  grid-column: 1;
+  grid-row: 1 / 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  min-width: 0;
+  padding-inline-end: 2.5rem;
+  border-inline-end: 1px solid var(--tr-color-border);
+}
+
+[data-tr-plugin='helstare.exp'] .exp-level-label {
+  color: var(--tr-color-text-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+[data-tr-plugin='helstare.exp'] .exp-level-value {
+  display: grid;
+  place-items: center;
+  min-height: 8rem;
+  width: 100%;
+  padding: 1.25rem 0.75rem;
+  border: 2px solid var(--tr-color-accent);
+  border-radius: var(--radius-surface);
+  background: var(--tr-color-surface-muted);
+  color: var(--tr-color-text);
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+[data-tr-plugin='helstare.exp'] .exp-stats {
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+  min-width: 0;
+  margin: 0;
+  padding-block-end: 1.5rem;
+  border-block-end: 1px solid var(--tr-color-border);
+}
+
+[data-tr-plugin='helstare.exp'] .exp-stats > div {
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+[data-tr-plugin='helstare.exp'] .exp-stats dt {
+  color: var(--tr-color-text-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+[data-tr-plugin='helstare.exp'] .exp-stats dd {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+[data-tr-plugin='helstare.exp'] .exp-stats small {
+  margin-inline-start: 0.375rem;
+  color: var(--tr-color-text-muted);
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+[data-tr-plugin='helstare.exp'] .exp-progress {
+  grid-column: 2;
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+[data-tr-plugin='helstare.exp'] .exp-progress-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+[data-tr-plugin='helstare.exp'] .exp-progress-head > :last-child {
+  color: var(--tr-color-accent);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-tr-plugin='helstare.exp'] .exp-progress-track {
+  height: 1rem;
+  overflow: hidden;
+  border-radius: var(--radius-compact);
+  background: var(--tr-color-surface-muted);
+}
+
+[data-tr-plugin='helstare.exp'] .exp-progress-fill {
+  height: 100%;
+  max-width: 100%;
+  border-radius: inherit;
+  background: var(--tr-color-accent);
+}
+
+[data-tr-plugin='helstare.exp'] .exp-hint {
+  margin: 0;
+  color: var(--tr-color-text-muted);
+  font-size: 0.875rem;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+[data-tr-plugin='helstare.exp'] .exp-card > button {
+  grid-column: 2;
+  justify-self: end;
+  min-height: 2.75rem;
+  padding-inline: 1.25rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+[data-tr-plugin='helstare.exp'] .exp-card > button:focus-visible {
+  outline: 2px solid var(--tr-color-accent);
+  outline-offset: 4px;
+}
+
+[data-tr-plugin='helstare.exp'] .exp-error {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--tr-color-danger);
+  line-height: 1.8;
+}
+
+[data-tr-plugin='helstare.exp'] .exp-card:not(:has(.exp-level-row)) > button {
+  grid-column: 1;
+  justify-self: start;
+}
+
+@media (max-width: 767px) {
+  [data-tr-plugin='helstare.exp'] .exp-page {
+    gap: 1.5rem;
+  }
+
+  [data-tr-plugin='helstare.exp'] .exp-card,
+  [data-tr-plugin='helstare.exp'] .exp-card:has(.exp-level-row) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+    padding: 1.5rem;
+  }
+
+  [data-tr-plugin='helstare.exp'] .exp-level-row {
+    grid-row: auto;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-inline-end: 0;
+    padding-block-end: 1.5rem;
+    border-inline-end: 0;
+    border-block-end: 1px solid var(--tr-color-border);
+  }
+
+  [data-tr-plugin='helstare.exp'] .exp-level-value {
+    width: auto;
+    min-height: 4rem;
+    max-width: 70%;
+    padding: 0.75rem 1rem;
+    font-size: 2rem;
+  }
+
+  [data-tr-plugin='helstare.exp'] .exp-stats,
+  [data-tr-plugin='helstare.exp'] .exp-progress,
+  [data-tr-plugin='helstare.exp'] .exp-card > button {
+    grid-column: 1;
+  }
+
+  [data-tr-plugin='helstare.exp'] .exp-stats {
+    gap: 0.75rem;
+  }
+
+  [data-tr-plugin='helstare.exp'] .exp-stats dd {
+    font-size: 1.5rem;
+  }
+
+  [data-tr-plugin='helstare.exp'] .exp-card > button {
+    width: 100%;
+  }
+}
