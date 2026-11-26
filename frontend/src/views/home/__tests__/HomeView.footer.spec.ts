@@ -56,6 +56,9 @@ beforeEach(() => {
   state.settings = {}
   state.authenticated = false
 })
+afterEach(() => {
+  document.body.querySelector('body > a[href^="https://lmspeed.net/provider/helstera"]')?.remove()
+})
 
 // mountHome renders the real footer with one shipped catalog and stubbed artwork.
 // Automatic unmount releases the homepage's icon timer after each navigation fixture.
@@ -75,6 +78,27 @@ function mountHome(locale: 'en' | 'zh' = 'en') {
 }
 
 describe('Homepage footer', () => {
+  // The provider appends its claim link outside Vue after the page loads.
+  // HomeView must move the original link into its footer and return it hidden when the route closes.
+  it('places the external provider badge in the homepage footer', () => {
+    const badge = document.createElement('a')
+    badge.href = 'https://lmspeed.net/provider/helstera'
+    badge.innerHTML =
+      '<img src="https://lmspeed.net/api/provider/claim-badge/test" alt="Featured on LMSpeed.net">'
+    document.body.append(badge)
+
+    const wrapper = mountHome()
+    const footerCredits = wrapper.get('.home-footer-credits')
+    expect(footerCredits.element.contains(badge)).toBe(true)
+    expect(wrapper.get('footer').element.contains(badge)).toBe(true)
+
+    wrapper.unmount()
+
+    expect(
+      document.body.querySelector('body > a[href^="https://lmspeed.net/provider/helstera"]'),
+    ).toBe(badge)
+  })
+
   // A guest visits a Google-enabled deployment using either shipped language catalog.
   // The public footer must explain profile use and prohibited image content without untranslated keys.
   it.each(['en', 'zh'] as const)('explains Google sign-in and usage boundaries in %s', (locale) => {

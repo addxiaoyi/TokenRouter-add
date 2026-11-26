@@ -757,16 +757,21 @@
         </div>
 
         <div class="mt-10 border-t border-black/[0.07] pt-6 dark:border-dark-600">
-          <p class="break-words text-xs leading-relaxed text-gray-500 dark:text-dark-400">
-            &copy; {{ currentYear }} {{ siteName }}. {{ t('home.footer.allRightsReserved') }}
-          </p>
-          <p
-            v-for="(line, index) in footerTextLines"
-            :key="index"
-            class="mt-1 break-words text-xs leading-relaxed text-gray-500 dark:text-dark-400"
-          >
-            {{ line }}
-          </p>
+          <div class="flex flex-wrap items-end justify-between gap-4">
+            <div class="min-w-0">
+              <p class="break-words text-xs leading-relaxed text-gray-500 dark:text-dark-400">
+                &copy; {{ currentYear }} {{ siteName }}. {{ t('home.footer.allRightsReserved') }}
+              </p>
+              <p
+                v-for="(line, index) in footerTextLines"
+                :key="index"
+                class="mt-1 break-words text-xs leading-relaxed text-gray-500 dark:text-dark-400"
+              >
+                {{ line }}
+              </p>
+            </div>
+            <div ref="homeFooterCredits" class="home-footer-credits flex shrink-0 items-center" />
+          </div>
         </div>
       </div>
     </footer>
@@ -1099,6 +1104,14 @@ const homeStatsError = ref(false)
 // interval and a bounded display index; empty lists use the template fallback icon.
 const homeMarketplaceButtonIconIndex = ref(0)
 let homeMarketplaceButtonIconTimer: number | null = null
+// homeFooterCredits receives the original provider badge while the home route is
+// mounted. The observer watches late body insertions until teardown returns the
+// badge to the hidden body location for the next visit.
+const homeFooterCredits = ref<HTMLElement | null>(null) // Bottom-row badge destination.
+let homeLmspeedBadge: HTMLAnchorElement | null = null // Original third-party credit element.
+let homeLmspeedBadgeObserver: MutationObserver | null = null // Late badge insertion observer.
+// LMSPEED_BADGE_SELECTOR locates only the provider credit whose position is controlled here.
+const LMSPEED_BADGE_SELECTOR = 'a[href^="https://lmspeed.net/provider/helstera"]'
 // Statistic values, started keys, and active frame handles coordinate one initial
 // count-up per key; teardown cancels frames still present in the handle map.
 const homeAnimatedStats = ref<Record<HomeStatsKey, number>>({
@@ -1623,6 +1636,25 @@ async function fetchHomeStats() {
 // Start the tracked icon rotation before awaiting public settings, then request
 // both default-page data sources together only when custom home content is absent.
 onMounted(async () => {
+  // placeLmspeedBadge moves the original provider link into the built-in footer.
+  // Missing footer targets or badges leave the document unchanged until another
+  // body insertion triggers the observer.
+  const placeLmspeedBadge = () => {
+    const footerCredits = homeFooterCredits.value
+    if (!footerCredits) return
+
+    const badge = document.body.querySelector<HTMLAnchorElement>(LMSPEED_BADGE_SELECTOR)
+    if (!badge) return
+
+    homeLmspeedBadge = badge
+    footerCredits.append(badge)
+  }
+
+  placeLmspeedBadge()
+  // The provider may append its link after Vue mounts, so watch body children until teardown.
+  homeLmspeedBadgeObserver = new MutationObserver(placeLmspeedBadge)
+  homeLmspeedBadgeObserver.observe(document.body, { childList: true })
+
   authStore.checkAuth()
   homeMarketplaceButtonIconTimer = window.setInterval(() => {
     if (homeMarketplaceButtonBrands.value.length <= 1) {
@@ -1649,6 +1681,15 @@ onMounted(async () => {
 // Cancel every tracked count-up frame and the icon interval using their current
 // handles; API requests retain their independent completion behavior after teardown.
 onUnmounted(() => {
+  homeLmspeedBadgeObserver?.disconnect()
+  homeLmspeedBadgeObserver = null
+  if (homeLmspeedBadge) {
+    // Return the original node to body before Vue removes the footer; style.css
+    // hides this parked badge until the next home visit moves it back.
+    document.body.append(homeLmspeedBadge)
+    homeLmspeedBadge = null
+  }
+
   homeStatAnimationFrames.forEach((frameId) => cancelAnimationFrame(frameId))
   homeStatAnimationFrames.clear()
   if (homeMarketplaceButtonIconTimer) {

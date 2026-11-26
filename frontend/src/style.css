@@ -1951,6 +1951,29 @@
     background: var(--page-bg);
   }
 
+  /* Keep the injected credit hidden outside the home footer. */
+  body > a[href^='https://lmspeed.net/provider/helstera'] {
+    display: none !important;
+  }
+
+  .home-footer-credits > a[href^='https://lmspeed.net/provider/helstera'] {
+    display: inline-flex !important;
+    position: static !important;
+    width: max-content !important;
+    height: auto !important;
+    margin: 0 !important;
+    line-height: 0 !important;
+    pointer-events: auto !important;
+  }
+
+  .home-footer-credits > a[href^='https://lmspeed.net/provider/helstera'] img {
+    display: block !important;
+    width: min(128px, calc(100vw - 2rem)) !important;
+    max-width: calc(100vw - 2rem) !important;
+    height: auto !important;
+    pointer-events: auto !important;
+  }
+
   .ba-theme-backdrop {
     overflow: hidden;
     background: var(--page-bg);
