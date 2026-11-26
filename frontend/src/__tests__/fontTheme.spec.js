@@ -85,16 +85,11 @@ describe('font theme', () => {
     expect(bytes.subarray(0, 4).toString()).toBe('wOF2')
   })
 
-  // A local preload and the font-face source must resolve to one asset.
-  // Remote font stylesheets would add a competing font download during startup.
-  it('preloads the local font without requesting remote font stylesheets', () => {
+  // The document must not request a source-only font path that production bundling rewrites.
+  // The imported stylesheet owns the hashed asset URL and avoids duplicate font requests.
+  it('keeps the document free of source-only font preloads', () => {
     const document = new DOMParser().parseFromString(readSource('../index.html'), 'text/html')
-    const preload = document.querySelector('link[rel="preload"][as="font"]')
-    expect(preload?.getAttribute('href')).toBe(
-      '/src/assets/fonts/chang-ban-dian-song-monospaced-12px-square.woff2',
-    )
-    expect(preload?.getAttribute('type')).toBe('font/woff2')
-    expect(preload?.hasAttribute('crossorigin')).toBe(true)
+    expect(document.querySelector('link[rel="preload"][as="font"]')).toBeNull()
     expect(document.querySelector('link[href*="fonts.googleapis.com"]')).toBeNull()
   })
 

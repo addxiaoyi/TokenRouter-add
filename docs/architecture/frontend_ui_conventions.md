@@ -360,7 +360,7 @@ Vue 的 `<style scoped>` 中，深色后代规则写成 `.dark .component-class`
 ## 字体和字号
 
 1. 用户提供的长坂点宋等宽 12px Square 字体用于全站文本。`styles/fonts.css` 自托管 WOFF2，并让 Tailwind 的 `sans`、`display`、`mono`、`serif` 共用 `--font-app`；正文、标题、表单、表格和代码保留语义工具名，但不再切换字体。
-2. `index.html` 预加载字体，`main.ts` 先引入字体样式，再引入 `style.css`。Vite 为字体生成带哈希的资源地址；字体使用 `font-display: swap`，未加载或缺少字形时由浏览器回退。`fontTheme.spec.js` 检查字体资源、全站角色映射和加载顺序。
+2. `main.ts` 先引入字体样式，再引入 `style.css`。Vite 为字体生成带哈希的资源地址，避免 HTML 直接引用源码路径；字体使用 `font-display: swap`，未加载或缺少字形时由浏览器回退。`fontTheme.spec.js` 检查字体资源、全站角色映射和加载顺序。
 3. 图表和字符背景从应用或所属容器读取字体，避免 canvas 使用独立的默认字体。字体加载后图表重新绘制文字；表单、经验页和导览浮层继承同一字体设置。
 4. 字体文件保留原始字形和常规字重，由浏览器合成粗体和斜体。Emoji 和文件未覆盖的字符由系统字体回退显示。
 5. 最小字号是 `text-xs`（12px），徽章和辅助数字也一样；`text-[9px]`、`text-[10px]`、`text-[11px]` 会被门禁拦截。
