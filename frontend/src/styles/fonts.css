@@ -1,8 +1,8 @@
 /*
- * fonts.css loads the supplied Chang Ban Dian Song face and defines the shared
- * application font stack. Tailwind text roles and canvas renderers use this
- * family so Chinese, Latin, numeric, and code content share the same typeface;
- * missing glyphs remain available through browser fallback.
+ * fonts.css loads the supplied Chang Ban Dian Song face for application headings.
+ * Body text uses the system interface stack, while a separate heading token keeps
+ * the decorative face out of forms, tables, and canvas labels. Missing heading
+ * glyphs remain available through browser fallback.
  */
 @font-face {
   font-family: 'Chang Ban Dian Song';
@@ -13,5 +13,8 @@
 }
 
 :root {
-  --font-app: 'Chang Ban Dian Song', monospace;
+  --font-app:
+    system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', sans-serif;
+  --font-heading: 'Chang Ban Dian Song', monospace;
 }

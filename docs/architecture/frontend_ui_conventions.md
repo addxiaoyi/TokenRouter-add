@@ -359,12 +359,12 @@ Vue 的 `<style scoped>` 中，深色后代规则写成 `.dark .component-class`
 <a id="typography"></a>
 ## 字体和字号
 
-1. 全站使用用户提供的长坂点宋等宽 12px Square 字体。`styles/fonts.css` 自托管 WOFF2 并定义 `--font-app`，`tailwind.config.js` 的 `sans`、`mono`、`serif` 共用此变量，正文、表单、表格和代码使用同一字体。
-2. `index.html` 预加载字体，`main.ts` 先引入字体样式，再引入 `style.css`。Vite 为字体生成带哈希的资源地址；字体使用 `font-display: swap`，未加载或缺少字形时由浏览器回退。`fontTheme.spec.js` 检查字体资源、共享栈和加载顺序。
-3. 图表和字符背景从应用读取字体，避免 canvas 使用独立的默认字体。字体加载后重新绘制文字，表单和导览浮层继承正文设置。
+1. 用户提供的长坂点宋等宽 12px Square 字体仅用于标题。`styles/fonts.css` 自托管 WOFF2，并用 `--font-heading` 和 Tailwind 的 `font-display` 提供标题字体；`h1` 至 `h6`、`[role='heading']`、`.page-title`、`.modal-title` 和 `.empty-state-title` 使用此角色。`--font-app` 提供系统无衬线正文栈，正文、表单和表格使用 `font-sans`，代码使用独立的系统等宽栈。
+2. `index.html` 预加载标题字体，`main.ts` 先引入字体样式，再引入 `style.css`。Vite 为字体生成带哈希的资源地址；字体使用 `font-display: swap`，未加载或缺少字形时由浏览器回退。`fontTheme.spec.js` 检查字体资源、标题适用范围、正文与代码字体隔离，以及加载顺序。
+3. 图表和字符背景从应用或所属容器读取字体，避免 canvas 使用独立的默认字体。常规容器继承系统正文字体，字体加载后重新绘制文字；表单和导览浮层继承正文设置。
 4. 字体文件保留原始字形和常规字重，由浏览器合成粗体和斜体。Emoji 和文件未覆盖的字符由系统字体回退显示。
 5. 最小字号是 `text-xs`（12px），徽章和辅助数字也一样；`text-[9px]`、`text-[10px]`、`text-[11px]` 会被门禁拦截。
-6. 正文和表格用 `text-sm`，说明文字用 `text-xs`，页面标题用 `.page-title`（`text-2xl font-bold`），`h1` 不单独设字号。
+6. 正文和表格用 `text-sm`，说明文字用 `text-xs`，页面标题用 `.page-title`；其字号和字重由公共样式定义，`h1` 不单独设字号。
 
 ## 合法例外
 

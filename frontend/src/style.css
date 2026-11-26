@@ -360,6 +360,19 @@
     letter-spacing: 0.005em;
   }
 
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  [role='heading'],
+  .page-title,
+  .modal-title,
+  .empty-state-title {
+    @apply font-display;
+  }
+
   body {
     @apply text-gray-900 dark:text-dark-100;
     @apply min-h-screen;

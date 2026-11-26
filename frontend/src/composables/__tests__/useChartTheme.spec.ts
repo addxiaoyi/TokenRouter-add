@@ -130,7 +130,7 @@ describe('application chart font', () => {
   const fontPlugin = ChartJS.registry.getPlugin('application-font')
 
   beforeEach(() => {
-    document.documentElement.style.fontFamily = '"Chang Ban Dian Song", monospace'
+    document.documentElement.style.fontFamily = 'system-ui, sans-serif'
   })
 
   afterEach(() => {
@@ -152,8 +152,8 @@ describe('application chart font', () => {
     ChartJS.instances[chart.id] = chart
 
     fontPlugin.beforeInit?.(chart, {}, {})
-    expect(ChartJS.defaults.font.family).toBe('"Chang Ban Dian Song", monospace')
-    expect(load).toHaveBeenCalledWith('400 10px "Chang Ban Dian Song", monospace')
+    expect(ChartJS.defaults.font.family).toBe('system-ui, sans-serif')
+    expect(load).toHaveBeenCalledWith('400 10px system-ui, sans-serif')
     expect(chart.update).not.toHaveBeenCalled()
 
     finishFont([])
@@ -189,7 +189,7 @@ describe('application chart font', () => {
 
     fontPlugin.beforeInit?.(chart, {}, {})
     await Promise.resolve()
-    expect(ChartJS.defaults.font.family).toBe('"Chang Ban Dian Song", monospace')
+    expect(ChartJS.defaults.font.family).toBe('system-ui, sans-serif')
     expect(warning).toHaveBeenCalledExactlyOnceWith(
       '[useChartTheme.ts] Application font failed to load',
       failure,
