@@ -10,7 +10,7 @@
       x="12"
       y="15.5"
       text-anchor="middle"
-      font-family="Arial, Helvetica, sans-serif"
+      font-family="inherit"
       font-size="8"
       font-weight="700"
       fill="#FFFFFF"

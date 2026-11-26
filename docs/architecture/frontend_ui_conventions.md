@@ -359,12 +359,12 @@ Vue 的 `<style scoped>` 中，深色后代规则写成 `.dark .component-class`
 <a id="typography"></a>
 ## 字体和字号
 
-- 正文字体栈在 `tailwind.config.js` 的 `fontFamily.sans`：英文用 Plus Jakarta Sans，中文先用苹方（`"PingFang SC"`），没有苹方的设备用思源黑体网页字体（`"Noto Sans SC Variable"`），再往后是系统字体。等宽字体用 Geist Mono。网页字体都自托管，在 `main.ts` 里先于 `style.css` 引入，`fontTheme.spec.js` 检查字体栈、引入顺序和下面的 PostCSS 改写。
-- 苹方随苹果系统安装，许可限定在苹果设备上使用。思源黑体的字形和苹方接近，Windows 和 Android 上由它显示中文，各平台的中文看起来基本一致。思源黑体按字符切成约 100 个 woff2 文件，字体栈前面的字体缺少某个字符时，浏览器才下载这个字符所在的文件。苹果设备上苹方覆盖了常用汉字，通常一个文件也用不到。
-- `postcss.config.js` 的 `adjust-noto-sans-sc-font-face` 插件改写思源黑体的 `@font-face`。字重范围上限改成 600，因为苹方最粗是 Semibold（600），`font-bold` 在两边一样粗。`unicode-range` 去掉默认按彩色显示的 emoji 码位，🍥 这类字符由系统的彩色 emoji 字体显示。
-- emoji 由浏览器的系统回退显示，字体栈里没有 emoji 字体。加入 `"Apple Color Emoji"` 后，Jakarta 还没加载完或加载失败时，Chrome 会用它渲染数字和空格，数字明显变宽。
-- 最小字号是 `text-xs`（12px），徽章和辅助数字也一样；`text-[9px]`、`text-[10px]`、`text-[11px]` 会被门禁拦截。
-- 正文和表格用 `text-sm`，说明文字用 `text-xs`，页面标题用 `.page-title`（`text-2xl font-bold`），`h1` 不单独设字号。
+1. 全站使用用户提供的长坂点宋等宽 12px Square 字体。`styles/fonts.css` 自托管 WOFF2 并定义 `--font-app`，`tailwind.config.js` 的 `sans`、`mono`、`serif` 共用此变量，正文、表单、表格和代码使用同一字体。
+2. `index.html` 预加载字体，`main.ts` 先引入字体样式，再引入 `style.css`。Vite 为字体生成带哈希的资源地址；字体使用 `font-display: swap`，未加载或缺少字形时由浏览器回退。`fontTheme.spec.js` 检查字体资源、共享栈和加载顺序。
+3. 图表和字符背景从应用读取字体，避免 canvas 使用独立的默认字体。字体加载后重新绘制文字，表单和导览浮层继承正文设置。
+4. 字体文件保留原始字形和常规字重，由浏览器合成粗体和斜体。Emoji 和文件未覆盖的字符由系统字体回退显示。
+5. 最小字号是 `text-xs`（12px），徽章和辅助数字也一样；`text-[9px]`、`text-[10px]`、`text-[11px]` 会被门禁拦截。
+6. 正文和表格用 `text-sm`，说明文字用 `text-xs`，页面标题用 `.page-title`（`text-2xl font-bold`），`h1` 不单独设字号。
 
 ## 合法例外
 

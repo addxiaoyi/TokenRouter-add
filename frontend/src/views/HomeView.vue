@@ -48,7 +48,6 @@
             :light-mode="!isDarkTheme"
             :dpr="1"
             :max-fps="30"
-            font-family="'Geist Mono Variable', 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
           />
           <!-- Soft bottom fade seamlessly transitions the hero light field into the gallery canvas below. -->
           <div

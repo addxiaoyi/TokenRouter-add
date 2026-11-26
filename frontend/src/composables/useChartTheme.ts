@@ -1,10 +1,18 @@
 import { computed, watch } from 'vue'
+import { Chart as ChartJS } from 'chart.js'
 import { useTheme } from './useTheme'
 
 // useChartTheme.ts provides shared chart colors, typography sizes, and reactive theme
 // observations. Chart configuration consumers use semantic text and grid colors, while
 // distribution and token-series palettes keep their assigned colors across light and dark
-// themes.
+// themes. Charts inherit the application's resolved font family instead of relying
+// on canvas defaults, which do not inherit styles from surrounding DOM elements.
+//
+// Chart creation can precede the web font download. A shared initialization hook
+// requests that family and redraws each live chart after loading, allowing its
+// measured labels to match page typography. Destroyed instances are excluded from
+// this completion path, so navigating away while fonts load cannot update a
+// disposed chart. Existing theme subscriptions keep their component-owned lifetime.
 
 // CHART_PALETTE assigns an editorial, restrained set of ranked distribution colors
 // harmonized with the warm gallery stone and smoked obsidian surfaces.
@@ -42,6 +50,35 @@ export const CHART_TICK_FONT_SIZE = 10
 
 // CHART_LEGEND_FONT_SIZE sets the shared pixel size used for chart series legend text.
 export const CHART_LEGEND_FONT_SIZE = 11
+
+// Shared registration covers charts that only import palette constants as well
+// as consumers that call the reactive theme composable during component setup.
+ChartJS.register({
+  id: 'application-font',
+  // beforeInit applies the document's resolved font before canvas labels are
+  // measured and requests its web font. A chart created during downloading can
+  // initially measure fallback glyphs, so successful loading triggers a redraw
+  // without animation. The completion checks Chart.js's live instance registry
+  // because a route change can destroy this chart before the font arrives.
+  // Failed loading retains the browser fallback and reports the cause.
+  beforeInit(chart) {
+    const family = getComputedStyle(document.documentElement).fontFamily
+    if (!family) return
+    ChartJS.defaults.font.family = family
+    if (!document.fonts) return
+
+    void document.fonts.load(`400 ${CHART_TICK_FONT_SIZE}px ${family}`).then(
+      () => {
+        // Font completion outlives route mounts; redraw only the registered
+        // instance, preventing updates against a chart destroyed during navigation.
+        if (ChartJS.instances[chart.id] === chart) chart.update('none')
+      },
+      (error) => {
+        console.warn('[useChartTheme.ts] Application font failed to load', error)
+      },
+    )
+  },
+})
 
 // useChartTheme exposes reactive theme colors and a chart redraw subscription. Consumers
 // rebuild chart options or update their chart when notified; the returned watcher stop

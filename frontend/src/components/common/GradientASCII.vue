@@ -41,6 +41,8 @@ export interface GradientASCIIProps {
   intro?: boolean
   lightMode?: boolean
   ignoreReducedMotion?: boolean
+  // An omitted family uses the container's inherited application font when the
+  // canvas builds its glyph atlas, keeping artwork consistent with surrounding text.
   fontFamily?: string
   dpr?: number
   maxFps?: number
@@ -70,7 +72,7 @@ type Settings = {
   clickEffect: number
   intro: boolean
   lightMode: boolean
-  fontFamily: string
+  fontFamily: string // Resolved glyph atlas family.
   dpr?: number
   maxFps: number
 }
@@ -101,7 +103,6 @@ const ATLAS_COLUMNS = 16
 const FONT_SCALE = 0.78
 const DEFAULT_COLORS = ['#1e3fd8', '#f6f8ff', '#a5d8ff', '#38bdf8']
 const DEFAULT_CHARACTERS = ' =+xX0S8#@'
-const DEFAULT_FONT = '"Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace'
 const SHAPES: Record<string, number> = { horizon: 0, pinch: 1, rise: 2, eclipse: 3 }
 const CLICK_EFFECTS: Record<string, number> = { none: 0, wave: 1, burst: 2 }
 
@@ -538,7 +539,7 @@ const props = withDefaults(defineProps<GradientASCIIProps>(), {
   intro: true,
   lightMode: false,
   ignoreReducedMotion: false,
-  fontFamily: '"Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+  fontFamily: '',
   dpr: undefined,
   maxFps: 60,
   className: '',
@@ -576,7 +577,12 @@ const settings = computed<Settings>(() => {
     clickEffect: CLICK_EFFECTS[props.clickEffect] ?? 1,
     intro: props.intro,
     lightMode: props.lightMode,
-    fontFamily: props.fontFamily || DEFAULT_FONT,
+    // Canvas needs a resolved family rather than CSS inheritance; copy the
+    // container's typography and retain a generic fallback when styles are absent.
+    fontFamily:
+      props.fontFamily ||
+      getComputedStyle(containerRef.value ?? document.documentElement).fontFamily ||
+      'monospace',
     dpr: props.dpr,
     maxFps: clamp(props.maxFps, 10, 120),
   }

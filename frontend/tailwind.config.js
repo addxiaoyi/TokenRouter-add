@@ -143,28 +143,10 @@ export default {
         },
       },
       fontFamily: {
-        // Modern all-sans editorial typography: Plus Jakarta Sans for Latin, PingFang SC / Noto Sans SC for CJK.
-        sans: [
-          '"Plus Jakarta Sans Variable"',
-          '"PingFang SC"',
-          '"Noto Sans SC Variable"',
-          'system-ui',
-          '-apple-system',
-          'BlinkMacSystemFont',
-          'Helvetica Neue',
-          'Hiragino Sans GB',
-          'Microsoft YaHei',
-          'sans-serif',
-        ],
-        mono: [
-          '"Geist Mono Variable"',
-          'ui-monospace',
-          'SFMono-Regular',
-          'Menlo',
-          'Monaco',
-          'Consolas',
-          'monospace',
-        ],
+        // All text roles share the supplied face, including code and serif utilities.
+        sans: ['var(--font-app)'],
+        mono: ['var(--font-app)'],
+        serif: ['var(--font-app)'],
       },
       boxShadow: {
         // Refined ambient shadows supporting translucent Liquid Glass panels without heavy blur clutter.

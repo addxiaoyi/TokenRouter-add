@@ -1,115 +1,89 @@
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import postcss from 'postcss'
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
-import postcssConfig from '../../postcss.config.js'
 import tailwindConfig from '../../tailwind.config.js'
-import { applyTokens, cssRules, nodes, parseScript, readSource } from './helpers/sourceSyntax'
+import {
+  applyTokens,
+  cssRules,
+  declarations,
+  nodes,
+  parseScript,
+  readSource,
+} from './helpers/sourceSyntax'
 
-// fontTheme.spec.js checks font loading order, fallback families, and Chinese
-// font-face processing. Parsed import declarations and CSS rules protect these
-// choices independently of source formatting, while the actual PostCSS plugin
-// verifies the transformed weight range and Unicode coverage of generated faces.
+// fontTheme.spec.js checks the supplied font asset and its application-wide loading
+// contract. Body, code, and serif utilities share one stack, while preload and CSS
+// reference the same bundled file so navigation does not introduce another typeface.
 
-// fontFamily holds the configured fallback stacks used by the site's text and code utilities.
+// fontFamily and fontCss expose the configured text roles and their owning font declarations for these checks.
 const fontFamily = tailwindConfig.theme.extend.fontFamily
-
-// fontFace creates one minimal font-face fixture for the supplied Unicode coverage.
-function fontFace(unicodeRange) {
-  return `@font-face{font-family:x;font-weight:100 900;src:url(a.woff2);unicode-range:${unicodeRange}}`
-}
-
-// processFont applies the configured Chinese-font adjustment to a supplied stylesheet fixture.
-function processFont(css, from) {
-  return postcss([postcssConfig.plugins[0]]).process(css, { from })
-}
-
-// propertyValues collects matching property values from generated font-face declarations in traversal order.
-function propertyValues(root, property) {
-  const values = []
-  root.walkDecls(property, (node) => {
-    values.push(node.value)
-  })
-  return values
-}
+const fontCss = postcss.parse(readSource('styles/fonts.css'))
 
 describe('font theme', () => {
-  // Latin text uses Jakarta while Chinese text first prefers the local PingFang
-  // family. Noto Sans and common platform fonts remain available as additional fallbacks.
-  it('orders Latin and Chinese sans-serif fallbacks', () => {
-    expect(fontFamily.sans.slice(0, 3)).toEqual([
-      '"Plus Jakarta Sans Variable"',
-      '"PingFang SC"',
-      '"Noto Sans SC Variable"',
-    ])
-    expect(fontFamily.sans).toEqual(
-      expect.arrayContaining(['Hiragino Sans GB', 'Microsoft YaHei', 'sans-serif']),
-    )
+  // Text roles must agree even when a component explicitly requests monospace or serif.
+  // A shared variable keeps those utilities aligned with the document font.
+  it('uses the supplied font stack for every text role', () => {
+    for (const role of ['sans', 'mono', 'serif']) {
+      expect(fontFamily[role]).toEqual(['var(--font-app)'])
+    }
+    const stacks = cssRules(fontCss, ':root').flatMap((rule) => declarations(rule, '--font-app'))
+    expect(stacks).toEqual(["'Chang Ban Dian Song', monospace"])
   })
 
-  // Monospaced content uses Geist Mono first and then platform code fonts.
-  // The generic monospace fallback remains present for systems lacking the named families.
-  it('retains Geist Mono and platform monospace fallbacks', () => {
-    expect(fontFamily.mono[0]).toBe('"Geist Mono Variable"')
-    expect(fontFamily.mono).toEqual(
-      expect.arrayContaining([
-        'ui-monospace',
-        'SFMono-Regular',
-        'Menlo',
-        'Monaco',
-        'Consolas',
-        'monospace',
-      ]),
+  // The stylesheet must point to the actual supplied WOFF2 file with its regular weight.
+  // Swap keeps text visible while the font downloads.
+  it('serves the supplied font without changing its font face', () => {
+    const faces = []
+    fontCss.walkAtRules('font-face', (rule) => faces.push(rule))
+    expect(faces).toHaveLength(1)
+    const face = faces[0]
+    expect(declarations(face, 'font-family')).toEqual(["'Chang Ban Dian Song'"])
+    expect(declarations(face, 'font-weight')).toEqual(['400'])
+    expect(declarations(face, 'font-style')).toEqual(['normal'])
+    expect(declarations(face, 'font-display')).toEqual(['swap'])
+    const source = declarations(face, 'src')[0].match(/url\('([^']+)'\)/)[1]
+    const bytes = readFileSync(
+      resolve(dirname(fileURLToPath(import.meta.url)), '../styles', source),
     )
+    expect(bytes.subarray(0, 4).toString()).toBe('wOF2')
   })
 
-  // Font faces must load before the global stylesheet declares the text theme.
-  // Import syntax nodes preserve execution order across quote changes and wrapped declarations.
-  it('loads font faces before the global stylesheet', () => {
+  // A local preload and the font-face source must resolve to one asset.
+  // Remote font stylesheets would add a competing font download during startup.
+  it('preloads the local font without requesting remote font stylesheets', () => {
+    const document = new DOMParser().parseFromString(readSource('../index.html'), 'text/html')
+    const preload = document.querySelector('link[rel="preload"][as="font"]')
+    expect(preload?.getAttribute('href')).toBe(
+      '/src/assets/fonts/chang-ban-dian-song-monospaced-12px-square.woff2',
+    )
+    expect(preload?.getAttribute('type')).toBe('font/woff2')
+    expect(preload?.hasAttribute('crossorigin')).toBe(true)
+    expect(document.querySelector('link[href*="fonts.googleapis.com"]')).toBeNull()
+  })
+
+  // Font rules load before the global styles apply their shared token.
+  // Legacy font packages must not remain in the application's startup imports.
+  it('loads the shared face before the global stylesheet', () => {
     const imports = nodes(parseScript(readSource('main.ts')), ts.isImportDeclaration).map(
       (node) => node.moduleSpecifier.text,
     )
-    const styleIndex = imports.indexOf('./style.css')
-    expect(styleIndex).toBeGreaterThanOrEqual(0)
-    for (const font of [
-      '@fontsource-variable/plus-jakarta-sans',
-      '@fontsource-variable/plus-jakarta-sans/wght-italic.css',
-      '@fontsource-variable/geist-mono',
-      '@fontsource-variable/noto-sans-sc',
-    ]) {
-      expect(imports.indexOf(font)).toBeGreaterThanOrEqual(0)
-      expect(imports.indexOf(font)).toBeLessThan(styleIndex)
-    }
+    expect(imports.indexOf('./styles/fonts.css')).toBeGreaterThanOrEqual(0)
+    expect(imports.indexOf('./styles/fonts.css')).toBeLessThan(imports.indexOf('./style.css'))
+    expect(imports.some((path) => path.startsWith('@fontsource'))).toBe(false)
   })
 
-  // Chinese font slices cap weights and hand emoji codepoints to system fonts.
-  // Mixed slices retain text glyphs, emoji-only slices disappear, and other families stay untouched.
-  it('caps Chinese weights and removes emoji coverage', async () => {
-    const notoCss = '/repo/node_modules/@fontsource-variable/noto-sans-sc/index.css'
-    // U+2605 remains a text glyph, while the food and checkmark codepoints must leave the Chinese font slice.
-    const mixed = await processFont(fontFace('U+4e00-4e02,U+1f364-1f366,U+2605,U+2705'), notoCss)
-    expect(propertyValues(mixed.root, 'font-weight')).toEqual(['100 600'])
-    expect(propertyValues(mixed.root, 'unicode-range')).toEqual(['U+4e00-4e02,U+2605'])
-    const emojiOnly = await processFont(fontFace('U+1f364-1f366'), notoCss)
-    expect(emojiOnly.root.nodes).toEqual([])
-    const jakarta = await processFont(
-      fontFace('U+1f365'),
-      '/repo/node_modules/@fontsource-variable/plus-jakarta-sans/index.css',
-    )
-    expect(propertyValues(jakarta.root, 'font-weight')).toEqual(['100 900'])
-    expect(propertyValues(jakarta.root, 'unicode-range')).toEqual(['U+1f365'])
-  })
-
-  // The root document establishes the sans-serif theme and onboarding inherits
-  // its font. No onboarding rule should replace that stack with a local system stack.
+  // The root document supplies the shared font to normal content and onboarding.
+  // Third-party tour styles must inherit that font instead of replacing it.
   it('inherits the shared theme in the document and onboarding overlay', () => {
     expect(cssRules(postcss.parse(readSource('style.css')), 'html').flatMap(applyTokens)).toContain(
       'font-sans',
     )
     const onboarding = postcss.parse(readSource('styles/onboarding.css'))
     const fontDeclarations = []
-    onboarding.walkDecls('font-family', (node) => {
-      fontDeclarations.push(node)
-    })
+    onboarding.walkDecls('font-family', (node) => fontDeclarations.push(node))
     expect(fontDeclarations.some((node) => node.value === 'inherit' && node.important)).toBe(true)
     expect(fontDeclarations.some((node) => node.value.startsWith('ui-sans-serif'))).toBe(false)
   })

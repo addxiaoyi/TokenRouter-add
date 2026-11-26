@@ -1,0 +1,17 @@
+/*
+ * fonts.css loads the supplied Chang Ban Dian Song face and defines the shared
+ * application font stack. Tailwind text roles and canvas renderers use this
+ * family so Chinese, Latin, numeric, and code content share the same typeface;
+ * missing glyphs remain available through browser fallback.
+ */
+@font-face {
+  font-family: 'Chang Ban Dian Song';
+  src: url('../assets/fonts/chang-ban-dian-song-monospaced-12px-square.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+:root {
+  --font-app: 'Chang Ban Dian Song', monospace;
+}

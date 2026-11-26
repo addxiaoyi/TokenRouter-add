@@ -7,14 +7,11 @@ import { useAppStore } from '@/stores/app'
 import { initTheme } from '@/composables/useTheme'
 import { updateFavicon } from '@/utils/branding'
 import { isIOSDevice } from '@/utils/device'
-import '@fontsource-variable/plus-jakarta-sans'
-import '@fontsource-variable/plus-jakarta-sans/wght-italic.css'
-import '@fontsource-variable/geist-mono'
-import '@fontsource-variable/noto-sans-sc'
+import './styles/fonts.css'
 import './style.css'
 
 // main.ts initializes browser presentation and mounts the Vue application after its
-// initial route is ready. Font imports precede the global stylesheet, and theme
+// initial route is ready. The shared font precedes the global stylesheet, and theme
 // selection runs before mounting so the first rendered view uses the selected
 // appearance.
 //
