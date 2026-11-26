@@ -143,11 +143,11 @@ export default {
         },
       },
       fontFamily: {
-        // Headings opt into the supplied face; interface and code text retain their normal font roles.
+        // Every text utility resolves to the supplied face while semantic utility names remain stable.
         sans: ['var(--font-app)'],
-        display: ['var(--font-heading)'],
-        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
-        serif: ['ui-serif', 'Georgia', 'Cambria', 'Times New Roman', 'Times', 'serif'],
+        display: ['var(--font-app)'],
+        mono: ['var(--font-app)'],
+        serif: ['var(--font-app)'],
       },
       boxShadow: {
         // Refined ambient shadows supporting translucent Liquid Glass panels without heavy blur clutter.

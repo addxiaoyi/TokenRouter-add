@@ -122,6 +122,9 @@ describe('useChartTheme', () => {
 })
 
 describe('application chart font', () => {
+  // The fixture mirrors the root CSS token so chart loading tests cover the supplied face.
+  const applicationFont = '"Chang Ban Dian Song", monospace'
+
   // Browser font state and Chart.js defaults are restored after each isolated
   // loading fixture so the remaining palette tests retain their original environment.
   const previousFontSet = Object.getOwnPropertyDescriptor(document, 'fonts')
@@ -130,7 +133,7 @@ describe('application chart font', () => {
   const fontPlugin = ChartJS.registry.getPlugin('application-font')
 
   beforeEach(() => {
-    document.documentElement.style.fontFamily = 'system-ui, sans-serif'
+    document.documentElement.style.fontFamily = applicationFont
   })
 
   afterEach(() => {
@@ -152,8 +155,8 @@ describe('application chart font', () => {
     ChartJS.instances[chart.id] = chart
 
     fontPlugin.beforeInit?.(chart, {}, {})
-    expect(ChartJS.defaults.font.family).toBe('system-ui, sans-serif')
-    expect(load).toHaveBeenCalledWith('400 10px system-ui, sans-serif')
+    expect(ChartJS.defaults.font.family).toBe(applicationFont)
+    expect(load).toHaveBeenCalledWith(`400 10px ${applicationFont}`)
     expect(chart.update).not.toHaveBeenCalled()
 
     finishFont([])
@@ -189,7 +192,7 @@ describe('application chart font', () => {
 
     fontPlugin.beforeInit?.(chart, {}, {})
     await Promise.resolve()
-    expect(ChartJS.defaults.font.family).toBe('system-ui, sans-serif')
+    expect(ChartJS.defaults.font.family).toBe(applicationFont)
     expect(warning).toHaveBeenCalledExactlyOnceWith(
       '[useChartTheme.ts] Application font failed to load',
       failure,

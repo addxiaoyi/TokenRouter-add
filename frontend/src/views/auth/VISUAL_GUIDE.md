@@ -272,7 +272,7 @@ Centered: Both horizontally and vertically
 
 ### Font Family
 
-- **Default**: System font stack (`ui-sans-serif, system-ui, -apple-system, ...`)
+- **Default**: Supplied Chang Ban Dian Song face through `--font-app`
 
 ### Font Sizes
 

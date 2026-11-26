@@ -14,38 +14,33 @@ import {
   readSource,
 } from './helpers/sourceSyntax'
 
-// fontTheme.spec.js checks heading-only use of the supplied font and its loading
-// contract. Body and code retain their normal text roles, while heading selectors
-// opt into the bundled face. Preload and CSS reference the same local font asset.
+// fontTheme.spec.js checks the supplied font asset and its application-wide loading
+// contract. Semantic text roles retain their utility names while every role resolves
+// to the same bundled face, and preload and CSS reference the same local asset.
 
 // fontFamily and fontCss expose the configured text roles and their owning font declarations for these checks.
 const fontFamily = tailwindConfig.theme.extend.fontFamily
 const fontCss = postcss.parse(readSource('styles/fonts.css'))
 
 describe('font theme', () => {
-  // Headings explicitly select the supplied face while interface and code text keep their normal roles.
-  // This prevents a root token change from applying decorative glyphs to every label.
-  it('separates the supplied heading font from normal text roles', () => {
+  // Every semantic text role resolves to the supplied face so a component cannot
+  // accidentally reintroduce a system stack through a utility alias. This keeps
+  // semantic utility names useful without permitting separate font-family values.
+  it('uses the supplied font stack for every text role', () => {
     expect(fontFamily.sans).toEqual(['var(--font-app)'])
-    expect(fontFamily.display).toEqual(['var(--font-heading)'])
-    expect(fontFamily.mono).toContain('ui-monospace')
-    expect(fontFamily.serif).toContain('ui-serif')
+    expect(fontFamily.display).toEqual(['var(--font-app)'])
+    expect(fontFamily.mono).toEqual(['var(--font-app)'])
+    expect(fontFamily.serif).toEqual(['var(--font-app)'])
     const roots = cssRules(fontCss, ':root')
-    expect(roots.flatMap((rule) => declarations(rule, '--font-heading'))).toEqual([
+    expect(roots.flatMap((rule) => declarations(rule, '--font-app'))).toEqual([
       "'Chang Ban Dian Song', monospace",
     ])
-    expect(roots.flatMap((rule) => declarations(rule, '--font-app')).join()).toContain('system-ui')
-    expect(roots.flatMap((rule) => declarations(rule, '--font-app')).join()).not.toContain(
-      'Chang Ban Dian Song',
-    )
-    for (const role of ['sans', 'mono', 'serif']) {
-      expect(fontFamily[role].join()).not.toMatch(/Chang Ban Dian Song|--font-heading/)
-    }
   })
 
-  // Semantic headings and shared title classes opt into the decorative face without changing their containers.
-  // Paragraphs, navigation, controls, and experience statistics must retain the document font.
-  it('limits the decorative font utility to headings and shared title classes', () => {
+  // Semantic headings keep their display utility, but the shared token means body,
+  // controls, charts, and experience statistics resolve to the same family. The test
+  // also checks that the experience plugin does not override the application stack.
+  it('keeps semantic heading utilities on the shared font token', () => {
     const selectors = []
     postcss.parse(readSource('style.css')).walkRules((rule) => {
       if (applyTokens(rule).includes('font-display')) selectors.push(...rule.selectors)
