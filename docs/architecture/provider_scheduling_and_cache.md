@@ -145,7 +145,7 @@ Codex 自动审查请求与父线程的关联，仅在同时满足三项条件�
 | --- | --- | --- |
 | 调度快照与状态 | `sched:v6:` | 包含 buckets、outbox watermark、provider、meta、last_used、active、ready、ver、epoch、retired、group lifecycle lock |
 | Bucket 重建锁 | `sched:v4:lock:` | 随机 owner token 校验释放，防止旧持有者误删继任者锁；key、类型和 TTL 跨版本不变 |
-| API Key 认证缓存 | 版本 `48`（`KeyApiKeyAuthSnapshotVersion`） | 含准入集合、转换映射、Responses 图片策略、分组价卡和 Fast 策略，见[认证快照](#认证快照) |
+| API Key 认证缓存 | 版本 `49`（`KeyApiKeyAuthSnapshotVersion`） | 含准入集合、签到等级限制、转换映射、Responses 图片策略、分组价卡和 Fast 策略，见[认证快照](#认证快照) |
 
 ### 轻量快照与字段约束
 

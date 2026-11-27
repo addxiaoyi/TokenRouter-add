@@ -90,9 +90,13 @@ type User struct {
 	// membership rejects CanBindGroup even though other public groups need no
 	// exclusive grant.
 	DisabledPublicGroups []int64
-	// GroupRestrictionsLoaded distinguishes complete empty grant/denial lists from
-	// missing lookup data. Authentication snapshots set it after both restrictions
-	// are loaded.
+	// CheckinRestrictedGroups contains transient free-group restrictions derived
+	// from completed check-in history. Administrator updates persist only the
+	// separate DisabledPublicGroups field, allowing earned access to unlock automatically.
+	CheckinRestrictedGroups []int64
+	// GroupRestrictionsLoaded distinguishes loaded permissions from missing lookup
+	// data. Free-group authentication refreshes check-in restrictions independently
+	// so cached credentials observe the account's current earned access.
 	GroupRestrictionsLoaded bool
 	// TokenVersion is a seed until TokenVersionResolved marks the fingerprint
 	// result. Session callers use ResolvedTokenVersion rather than treat this
@@ -185,15 +189,15 @@ func (u *User) IsActive() bool {
 
 // CanBindGroup reports whether the account's current lists permit the group.
 // Nil users or nonpositive IDs return false. Public groups are accepted unless
-// specifically denied, while exclusive groups require an explicit AllowedGroups
-// entry.
+// specifically denied or still locked by check-in eligibility, while exclusive
+// groups require an explicit AllowedGroups entry.
 func (u *User) CanBindGroup(groupID int64, isExclusive bool) bool {
 	if u == nil || groupID <= 0 {
 		return false
 	}
 	if !isExclusive {
-		// Public groups use the user-specific deny list.
-		return !slices.Contains(u.DisabledPublicGroups, groupID)
+		return !slices.Contains(u.DisabledPublicGroups, groupID) &&
+			!slices.Contains(u.CheckinRestrictedGroups, groupID)
 	}
 	// Exclusive groups require membership in AllowedGroups.
 	return slices.Contains(u.AllowedGroups, groupID)

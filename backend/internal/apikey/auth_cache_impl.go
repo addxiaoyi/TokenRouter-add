@@ -37,7 +37,7 @@ import (
 // KeyApiKeyAuthSnapshotVersion identifies the serialized fields accepted by
 // positive-cache reconstruction, requiring older snapshots to reload
 // authentication data.
-const KeyApiKeyAuthSnapshotVersion = 48
+const KeyApiKeyAuthSnapshotVersion = 49
 
 // KeyApiKeyAuthCacheConfig stores captured local, shared and negative cache
 // lifetime choices.
@@ -604,6 +604,7 @@ func (s *APIKeyService) KeySnapshotFromAPIKey(ctx context.Context, apiKey *APIKe
 			TotalRecharged:             apiKey.User.TotalRecharged,
 			RPMLimit:                   apiKey.User.RPMLimit,
 			DisabledPublicGroups:       append([]int64(nil), apiKey.User.DisabledPublicGroups...),
+			CheckinRestrictedGroups:    slices.Clone(apiKey.User.CheckinRestrictedGroups),
 		},
 	}
 	if apiKey.ActorUser != nil {
@@ -711,6 +712,7 @@ func (s *APIKeyService) KeySnapshotToAPIKey(key string, snapshot *APIKeyAuthSnap
 			RPMLimit:                   snapshot.User.RPMLimit,
 			UserGroupRPMOverride:       clonePointer(snapshot.User.UserGroupRPMOverride),
 			DisabledPublicGroups:       append([]int64(nil), snapshot.User.DisabledPublicGroups...),
+			CheckinRestrictedGroups:    slices.Clone(snapshot.User.CheckinRestrictedGroups),
 			GroupRestrictionsLoaded:    true,
 		},
 	}

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"html"
+	"log/slog"
 	"math"
 	"strconv"
 	"strings"
@@ -847,10 +848,22 @@ func (s *APIKeyService) KeyIncrementAPIKeyErrorCount(ctx context.Context, userID
 	_ = s.cache.IncrementCreateAttemptCount(ctx, userID)
 }
 
-// KeyCanUserBindGroup delegates binding eligibility to the supplied user view
-// for the selected group. Callers provide a nonnil group; a nil user returns
-// false under identity's permission rule.
+// KeyCanUserBindGroup checks binding eligibility for the selected group.
+// Callers provide a nonnil group. Free public groups reload current account
+// permissions so a previously cached view observes check-in access changes;
+// failed reads reject binding, while other groups use the supplied user view.
 func (s *APIKeyService) KeyCanUserBindGroup(ctx context.Context, user *User, group *routing.Group) bool {
+	if group.RateMultiplier == 0 && !group.IsExclusive {
+		if user == nil || s.userRepo == nil {
+			return false
+		}
+		current, err := s.userRepo.GetByID(ctx, user.ID)
+		if err != nil {
+			slog.ErrorContext(ctx, "load free-group eligibility", "user_id", user.ID, "error", err)
+			return false
+		}
+		return current.CanBindGroup(group.ID, group.IsExclusive)
+	}
 	return user.CanBindGroup(group.ID, group.IsExclusive)
 }
 
@@ -982,10 +995,11 @@ func (s *APIKeyService) KeyBillingUserForAPIKey(ctx context.Context, apiKey *API
 // KeyCanUserUseBoundGroup checks composite binding scope and public-group
 // permissions for an existing Key view. Missing binding data returns true;
 // otherwise a target outside composite bindings rejects before permission
-// handling. Exclusive groups pass this check. A loaded restriction set is used
-// directly, while missing user data or repository and failed user reads permit
-// it. ResolveRuntimeGroup independently validates payer binding permission for
-// a selected runtime target.
+// handling. Exclusive groups pass this check. Free public groups reload current
+// eligibility so cached credentials observe earned access and level restrictions.
+// Other public groups use loaded restrictions or the existing optional lookup.
+// ResolveRuntimeGroup independently validates payer binding permission for a
+// selected runtime target.
 func (s *APIKeyService) KeyCanUserUseBoundGroup(ctx context.Context, apiKey *APIKey) bool {
 	if apiKey == nil || apiKey.GroupID == nil || apiKey.Group == nil {
 		return true
@@ -998,7 +1012,14 @@ func (s *APIKeyService) KeyCanUserUseBoundGroup(ctx context.Context, apiKey *API
 	}
 	user := apiKey.User
 	if user == nil {
-		return true
+		return apiKey.Group.RateMultiplier != 0
+	}
+	if apiKey.Group.RateMultiplier == 0 {
+		if err := s.refreshCheckinRestrictions(ctx, apiKey); err != nil {
+			slog.ErrorContext(ctx, "refresh free-group eligibility", "user_id", user.ID, "error", err)
+			return false
+		}
+		return apiKey.User.CanBindGroup(apiKey.Group.ID, apiKey.Group.IsExclusive)
 	}
 	if user.GroupRestrictionsLoaded {
 		return user.CanBindGroup(apiKey.Group.ID, apiKey.Group.IsExclusive)
@@ -1013,6 +1034,27 @@ func (s *APIKeyService) KeyCanUserUseBoundGroup(ctx context.Context, apiKey *API
 		return true
 	}
 	return loadedUser.CanBindGroup(apiKey.Group.ID, apiKey.Group.IsExclusive)
+}
+
+// refreshCheckinRestrictions updates one request's payer permissions from current storage.
+// The cached account view remains unchanged. Missing payer or repository rejects
+// the read, and storage errors propagate before a free-group request is admitted.
+func (s *APIKeyService) refreshCheckinRestrictions(ctx context.Context, apiKey *APIKey) error {
+	if apiKey.User == nil || s.userRepo == nil {
+		return fmt.Errorf("free-group eligibility requires an account repository")
+	}
+	current, err := s.userRepo.GetByID(ctx, apiKey.User.ID)
+	if err != nil {
+		return fmt.Errorf("load free-group eligibility: %w", err)
+	}
+	// Authentication caches share account collections. Replace the request's account
+	// copy before publishing current restrictions so other in-flight requests retain their own view.
+	user := *apiKey.User
+	user.DisabledPublicGroups = current.DisabledPublicGroups
+	user.CheckinRestrictedGroups = current.CheckinRestrictedGroups
+	user.GroupRestrictionsLoaded = true
+	apiKey.User = &user
+	return nil
 }
 
 // Create validates and persists a personal or team Key with its configured
@@ -1396,8 +1438,21 @@ func (s *APIKeyService) GetByKey(ctx context.Context, key string) (*APIKey, erro
 // loading or snapshot reconstruction. Ordinary Keys resolve configured fallback
 // before public-group permission checks; composite Keys defer group selection
 // to the request's model prefix. Permission rejection returns the wrapped
-// group error before compiling the selected view's IP rules.
+// group error before compiling the selected view's IP rules. Composite views
+// containing free public bindings refresh payer restrictions before catalogue
+// consumers inspect individual bindings, including model-list requests that
+// have no model prefix to select a group.
 func (s *APIKeyService) prepareKeyForAuthentication(ctx context.Context, apiKey *APIKey) (*APIKey, error) {
+	if apiKey.IsComposite {
+		for _, binding := range apiKey.CompositeGroups {
+			if binding.Group != nil && !binding.Group.IsExclusive && binding.Group.RateMultiplier == 0 {
+				if err := s.refreshCheckinRestrictions(ctx, apiKey); err != nil {
+					return nil, err
+				}
+				break
+			}
+		}
+	}
 	if !apiKey.IsComposite {
 		// A disabled source group can be forbidden while its configured target is
 		// allowed, so permission follows target selection for this request.

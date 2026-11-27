@@ -254,10 +254,10 @@ func (r *UserStore) IdentityCreateWithNormalizationGuard(ctx context.Context, us
 	return nil
 }
 
-// GetByID loads the account and separately reads sorted grant and denial lists
-// through the configured client. Missing accounts map to ErrUserNotFound;
-// successful restriction reads mark GroupRestrictionsLoaded even when their
-// maps contain no entries.
+// GetByID loads the account, saved group permissions and derived check-in
+// restrictions. Missing accounts map to ErrUserNotFound; storage errors reject
+// the account read. Successful permission reads mark GroupRestrictionsLoaded
+// even when the account has no grants or restrictions.
 func (r *UserStore) GetByID(ctx context.Context, id int64) (*identitycore.User, error) {
 	m, err := r.client.User.Query().Where(dbuser.IDEQ(id)).Only(ctx)
 	if err != nil {
@@ -279,6 +279,11 @@ func (r *UserStore) GetByID(ctx context.Context, id int64) (*identitycore.User, 
 	if v, ok := disabledPublicGroups[id]; ok {
 		out.DisabledPublicGroups = v
 	}
+	checkinGroups, err := r.loadCheckinGroupRestrictions(ctx, []int64{id})
+	if err != nil {
+		return nil, err
+	}
+	out.CheckinRestrictedGroups = checkinGroups[id]
 	out.GroupRestrictionsLoaded = true
 	return out, nil
 }
@@ -308,6 +313,11 @@ func (r *UserStore) GetByIDIncludeDeleted(ctx context.Context, id int64) (*ident
 	if v, ok := disabledPublicGroups[id]; ok {
 		out.DisabledPublicGroups = v
 	}
+	checkinGroups, err := r.loadCheckinGroupRestrictions(ctx, []int64{id})
+	if err != nil {
+		return nil, err
+	}
+	out.CheckinRestrictedGroups = checkinGroups[id]
 	out.GroupRestrictionsLoaded = true
 	return out, nil
 }
@@ -347,6 +357,11 @@ func (r *UserStore) GetByEmail(ctx context.Context, email string) (*identitycore
 	if v, ok := disabledPublicGroups[m.ID]; ok {
 		out.DisabledPublicGroups = v
 	}
+	checkinGroups, err := r.loadCheckinGroupRestrictions(ctx, []int64{m.ID})
+	if err != nil {
+		return nil, err
+	}
+	out.CheckinRestrictedGroups = checkinGroups[m.ID]
 	out.GroupRestrictionsLoaded = true
 	return out, nil
 }
@@ -839,10 +854,15 @@ func (r *UserStore) ListWithFilters(ctx context.Context, params pagination.Pagin
 	if err != nil {
 		return nil, nil, err
 	}
+	checkinGroups, err := r.loadCheckinGroupRestrictions(ctx, userIDs)
+	if err != nil {
+		return nil, nil, err
+	}
 	for id, u := range userMap {
 		if groups, ok := disabledPublicGroupsByUser[id]; ok {
 			u.DisabledPublicGroups = groups
 		}
+		u.CheckinRestrictedGroups = checkinGroups[id]
 		u.GroupRestrictionsLoaded = true
 	}
 
@@ -1643,6 +1663,11 @@ func (r *UserStore) GetFirstAdmin(ctx context.Context) (*identitycore.User, erro
 	if v, ok := disabledPublicGroups[m.ID]; ok {
 		out.DisabledPublicGroups = v
 	}
+	checkinGroups, err := r.loadCheckinGroupRestrictions(ctx, []int64{m.ID})
+	if err != nil {
+		return nil, err
+	}
+	out.CheckinRestrictedGroups = checkinGroups[m.ID]
 	out.GroupRestrictionsLoaded = true
 	return out, nil
 }

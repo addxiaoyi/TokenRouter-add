@@ -15,10 +15,10 @@ import (
 //
 // The composite binding restriction is checked before loading the target. An
 // inactive or missing group rejects selection, and the payer is resolved
-// before group permission is tested. After acceptance, the key and payer views
-// are copied and the old group RPM override is cleared before attempting its
-// replacement lookup. This keeps the earlier request view available while the
-// selected target uses its own admission settings.
+// before group permission is tested. The copied key and payer views receive
+// current free-group eligibility before permission is checked. After acceptance,
+// the old group RPM override is cleared before its replacement lookup, keeping
+// the earlier request view available with its own admission settings.
 
 // ResolveRuntimeGroup returns a copied Key bound to an active group the payer
 // can use. Composite keys restrict the target to their saved bindings; ordinary
@@ -42,9 +42,6 @@ func (s *APIKeyService) ResolveRuntimeGroup(ctx context.Context, key *APIKey, id
 	if err != nil {
 		return nil, err
 	}
-	if !s.KeyCanUserBindGroupInternal(payer, group) {
-		return nil, ErrGroupNotAllowed
-	}
 	// Apply the selected group to a copy so the previous request view retains
 	// its binding when a caller compares or retries the attempted fallback.
 	resolved := CopyAPIKey(key)
@@ -52,6 +49,11 @@ func (s *APIKeyService) ResolveRuntimeGroup(ctx context.Context, key *APIKey, id
 	resolved.Group = group
 	payerCopy := *payer
 	resolved.User = &payerCopy
+	// Refresh free-group restrictions on the selected copy before admission so a
+	// cached account observes newly earned access throughout the request's remaining checks.
+	if !s.KeyCanUserUseBoundGroup(ctx, resolved) || !s.KeyCanUserBindGroupInternal(resolved.User, group) {
+		return nil, ErrGroupNotAllowed
+	}
 	// The prior RPM override belongs to another group. Reload it for this
 	// payer and target so admission does not reuse the prior group's override.
 	s.KeyRefreshFallbackUserGroupRPMOverride(ctx, resolved, id)

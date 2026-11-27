@@ -159,6 +159,10 @@ type APIKeyAuthUserSnapshot struct {
 	UserGroupRPMOverride *int `json:"user_group_rpm_override,omitempty"`
 	// copied denied public group identifiers.
 	DisabledPublicGroups []int64 `json:"disabled_public_groups,omitempty"`
+	// CheckinRestrictedGroups retains earned-access restrictions independently of
+	// administrator denials. Free-group authentication reloads these identifiers
+	// before admission so an earned level takes effect on cached credentials.
+	CheckinRestrictedGroups []int64 `json:"checkin_restricted_groups,omitempty"`
 }
 
 // APIKeyAuthGroupSnapshot stores group policy fields reconstructed for a
