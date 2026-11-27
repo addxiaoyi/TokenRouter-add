@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"entgo.io/ent/dialect"
 	"github.com/lib/pq"
 )
 
@@ -68,12 +69,18 @@ ORDER BY requested_users.user_id, groups.id
 )
 
 // loadCheckinGroupRestrictions returns derived free-group denials by account ID.
-// Empty input and Ent-only stores return an empty map; production stores supply
-// the plugin SQL executor. One query serves the complete requested account batch,
-// and storage failures propagate before callers mark permissions as loaded.
+// Empty input, Ent-only stores, and configured non-PostgreSQL clients return an
+// empty map because plugin policy storage requires PostgreSQL. One query serves
+// the complete requested account batch, and storage failures propagate before
+// callers mark permissions as loaded.
 func (r *UserStore) loadCheckinGroupRestrictions(ctx context.Context, userIDs []int64) (_ map[int64][]int64, returnErr error) {
 	groups := make(map[int64][]int64, len(userIDs))
 	if len(userIDs) == 0 || r.sql == nil {
+		return groups, nil
+	}
+	// SQLite account stores exercise Ent-managed schemas; plugin installations
+	// and check-in records belong to the PostgreSQL plugin storage adapter.
+	if r.client != nil && r.client.Driver().Dialect() != dialect.Postgres {
 		return groups, nil
 	}
 	rows, err := r.sql.QueryContext(ctx, checkinFreeGroupRestrictionsSQL, pq.Array(userIDs))

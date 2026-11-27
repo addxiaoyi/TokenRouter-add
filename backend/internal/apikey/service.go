@@ -849,12 +849,12 @@ func (s *APIKeyService) KeyIncrementAPIKeyErrorCount(ctx context.Context, userID
 }
 
 // KeyCanUserBindGroup checks binding eligibility for the selected group.
-// Callers provide a nonnil group. Free public groups reload current account
-// permissions so a previously cached view observes check-in access changes;
-// failed reads reject binding, while other groups use the supplied user view.
+// Callers provide a nonnil group. Free public groups reload current permissions
+// when an account repository is configured; failed reads reject binding.
+// Services using supplied account views apply those views' restrictions directly.
 func (s *APIKeyService) KeyCanUserBindGroup(ctx context.Context, user *User, group *routing.Group) bool {
-	if group.RateMultiplier == 0 && !group.IsExclusive {
-		if user == nil || s.userRepo == nil {
+	if group.RateMultiplier == 0 && !group.IsExclusive && s.userRepo != nil {
+		if user == nil {
 			return false
 		}
 		current, err := s.userRepo.GetByID(ctx, user.ID)
@@ -996,7 +996,8 @@ func (s *APIKeyService) KeyBillingUserForAPIKey(ctx context.Context, apiKey *API
 // permissions for an existing Key view. Missing binding data returns true;
 // otherwise a target outside composite bindings rejects before permission
 // handling. Exclusive groups pass this check. Free public groups reload current
-// eligibility so cached credentials observe earned access and level restrictions.
+// eligibility through the configured repository so cached credentials observe
+// earned access and level restrictions; services without it use their account view.
 // Other public groups use loaded restrictions or the existing optional lookup.
 // ResolveRuntimeGroup independently validates payer binding permission for a
 // selected runtime target.
@@ -1037,11 +1038,15 @@ func (s *APIKeyService) KeyCanUserUseBoundGroup(ctx context.Context, apiKey *API
 }
 
 // refreshCheckinRestrictions updates one request's payer permissions from current storage.
-// The cached account view remains unchanged. Missing payer or repository rejects
-// the read, and storage errors propagate before a free-group request is admitted.
+// A payer view is required. Services without an account repository retain that
+// view's restrictions; configured storage errors propagate before admission.
+// Refreshing replaces the request's payer copy while preserving the cached view.
 func (s *APIKeyService) refreshCheckinRestrictions(ctx context.Context, apiKey *APIKey) error {
-	if apiKey.User == nil || s.userRepo == nil {
-		return fmt.Errorf("free-group eligibility requires an account repository")
+	if apiKey.User == nil {
+		return ErrUserNotFound
+	}
+	if s.userRepo == nil {
+		return nil
 	}
 	current, err := s.userRepo.GetByID(ctx, apiKey.User.ID)
 	if err != nil {
