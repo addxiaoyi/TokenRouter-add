@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+<!--
+gpt-vs-claude.svg provides the article-specific Helstare sharing illustration and its editable layout.
+The card uses the site palette and system fonts, keeping its title and supporting text within generous canvas margins for social previews.
+-->
+<title id="title">Helstare：GPT 与 Claude，API 中转对比。协议、客户端配置与实际费用。</title>
+<desc id="desc">暖色背景上的 Helstare 文章标题、说明和主题示意图。</desc>
+<rect x="0" y="0" width="1200" height="630" rx="0" fill="#f5f4ed"/>
+<rect x="72" y="58" width="8" height="36" rx="2" fill="#c96442"/>
+<rect x="88" y="58" width="8" height="15" rx="2" fill="#141413"/>
+<rect x="88" y="81" width="8" height="13" rx="2" fill="#141413"/>
+<text x="112" y="58" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="32" font-weight="700" fill="#141413" dominant-baseline="text-before-edge">Helstare</text>
+<text x="986" y="67" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="22" font-weight="400" fill="#5e5d59" dominant-baseline="text-before-edge">接入指南</text>
+<polyline points="72,126 1128,126" fill="none" stroke="#e8e6dc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="72" y="180" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="60" font-weight="700" fill="#141413" dominant-baseline="text-before-edge">GPT 与 Claude</text>
+<text x="72" y="264" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="56" font-weight="700" fill="#141413" dominant-baseline="text-before-edge">API 中转对比</text>
+<text x="76" y="374" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="27" font-weight="400" fill="#5e5d59" dominant-baseline="text-before-edge">协议、客户端配置与实际费用</text>
+<text x="76" y="425" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="22" font-weight="400" fill="#5e5d59" dominant-baseline="text-before-edge">结合具体模型和自己的用量比较。</text>
+<rect x="800" y="160" width="328" height="336" rx="24" fill="#e8e6dc"/>
+<rect x="820" y="192" width="130" height="254" rx="14" fill="#faf9f5"/>
+<text x="836" y="218" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="24" font-weight="700" fill="#141413" dominant-baseline="text-before-edge">GPT</text>
+<polyline points="836,261 934,261" fill="none" stroke="#e8e6dc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="836" y="286" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="21" font-weight="400" fill="#5e5d59" dominant-baseline="text-before-edge">协议</text>
+<polyline points="902,298 929,298" fill="none" stroke="#c96442" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="836" y="341" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="21" font-weight="400" fill="#5e5d59" dominant-baseline="text-before-edge">配置</text>
+<polyline points="902,353 929,353" fill="none" stroke="#c96442" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="836" y="396" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="21" font-weight="400" fill="#5e5d59" dominant-baseline="text-before-edge">费用</text>
+<polyline points="902,408 929,408" fill="none" stroke="#c96442" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="978" y="192" width="130" height="254" rx="14" fill="#faf9f5"/>
+<text x="994" y="218" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="24" font-weight="700" fill="#141413" dominant-baseline="text-before-edge">Claude</text>
+<polyline points="994,261 1092,261" fill="none" stroke="#e8e6dc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="994" y="286" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="21" font-weight="400" fill="#5e5d59" dominant-baseline="text-before-edge">协议</text>
+<polyline points="1060,298 1087,298" fill="none" stroke="#c96442" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="994" y="341" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="21" font-weight="400" fill="#5e5d59" dominant-baseline="text-before-edge">配置</text>
+<polyline points="1060,353 1087,353" fill="none" stroke="#c96442" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="994" y="396" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="21" font-weight="400" fill="#5e5d59" dominant-baseline="text-before-edge">费用</text>
+<polyline points="1060,408 1087,408" fill="none" stroke="#c96442" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="72,532 1128,532" fill="none" stroke="#e8e6dc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="76" y="556" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="22" font-weight="400" fill="#5e5d59" dominant-baseline="text-before-edge">协议与费用</text>
+<text x="880" y="555" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="23" font-weight="400" fill="#5e5d59" dominant-baseline="text-before-edge">api.star-mc.top</text>
+</svg>

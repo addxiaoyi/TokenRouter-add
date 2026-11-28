@@ -14,33 +14,42 @@ import {
   readSource,
 } from './helpers/sourceSyntax'
 
-// fontTheme.spec.js checks the supplied font asset and its application-wide loading
-// contract. Semantic text roles retain their utility names while every role resolves
-// to the same bundled face, and preload and CSS reference the same local asset.
+// fontTheme.spec.js checks the supplied heading font and the system stacks used
+// for body, code, and serif text. Semantic utilities keep their distinct roles,
+// while bundled font loading and heading selectors preserve the intended display scope.
 
 // fontFamily and fontCss expose the configured text roles and their owning font declarations for these checks.
 const fontFamily = tailwindConfig.theme.extend.fontFamily
 const fontCss = postcss.parse(readSource('styles/fonts.css'))
 
 describe('font theme', () => {
-  // Every semantic text role resolves to the supplied face so a component cannot
-  // accidentally reintroduce a system stack through a utility alias. This keeps
-  // semantic utility names useful without permitting separate font-family values.
-  it('uses the supplied font stack for every text role', () => {
+  // Headings use the supplied pixel face while other semantic text roles retain
+  // system stacks. The display fallback keeps headings readable before the bundled font loads.
+  it('separates the supplied heading face from system text stacks', () => {
     expect(fontFamily.sans).toEqual(['var(--font-app)'])
-    expect(fontFamily.display).toEqual(['var(--font-app)'])
-    expect(fontFamily.mono).toEqual(['var(--font-app)'])
-    expect(fontFamily.serif).toEqual(['var(--font-app)'])
+    expect(fontFamily.display).toEqual(['var(--font-display)'])
+    expect(fontFamily.mono).toEqual(['var(--font-mono)'])
+    expect(fontFamily.serif).toEqual(['var(--font-serif)'])
     const roots = cssRules(fontCss, ':root')
-    expect(roots.flatMap((rule) => declarations(rule, '--font-app'))).toEqual([
-      "'Chang Ban Dian Song', monospace",
+    const bodyFonts = roots.flatMap((rule) => declarations(rule, '--font-app'))
+    expect(bodyFonts).toHaveLength(1)
+    expect(bodyFonts[0]).toMatch(/^-apple-system,\s*BlinkMacSystemFont,/)
+    expect(bodyFonts[0]).toContain('sans-serif')
+    expect(bodyFonts[0]).not.toContain('Chang Ban Dian Song')
+    expect(roots.flatMap((rule) => declarations(rule, '--font-display'))).toEqual([
+      "'Chang Ban Dian Song', var(--font-app)",
+    ])
+    expect(roots.flatMap((rule) => declarations(rule, '--font-mono'))).toEqual([
+      expect.stringMatching(/^ui-monospace,\s*SFMono-Regular,/),
+    ])
+    expect(roots.flatMap((rule) => declarations(rule, '--font-serif'))).toEqual([
+      "ui-serif, Georgia, Cambria, 'Times New Roman', serif",
     ])
   })
 
-  // Semantic headings keep their display utility, but the shared token means body,
-  // controls, charts, and experience statistics resolve to the same family. The test
-  // also checks that the experience plugin does not override the application stack.
-  it('keeps semantic heading utilities on the shared font token', () => {
+  // Semantic headings select the display utility while the experience plugin's
+  // ordinary content inherits the body token. The selector list keeps global pixel styling scoped to titles.
+  it('scopes display utilities to headings and keeps experience content on the body token', () => {
     const selectors = []
     postcss.parse(readSource('style.css')).walkRules((rule) => {
       if (applyTokens(rule).includes('font-display')) selectors.push(...rule.selectors)

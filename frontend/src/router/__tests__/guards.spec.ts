@@ -11,7 +11,8 @@ import {
 // guards.spec.ts checks authentication, installation, and backend-mode access
 // using the guard installed by the application router. Resolved route records
 // supply permission metadata, while controlled stores expose redirect targets
-// and session restoration to each navigation assertion.
+// and session restoration to each navigation assertion. Completed navigation
+// also verifies document titles after redirects and successful route changes.
 
 beforeEach(resetRouterHarness)
 
@@ -94,13 +95,34 @@ describe('application authentication guard', () => {
     expect(authStore.checkAuth).toHaveBeenCalledTimes(1)
   })
 
-  // An unauthenticated protected-page visit still assigns its document title.
-  // The resolved route title and current site name reach the browser before
-  // redirect completion.
-  it('updates the document title before redirecting', async () => {
+  // Redirected navigation publishes the login page's title after it completes.
+  // An authenticated visit then publishes the missing-page title through the same real navigation lifecycle.
+  it('publishes titles for completed destinations after redirects', async () => {
     appStore.siteName = 'Example Site'
-    const { navigation } = runGuard('/missing-route')
-    await navigation
+    const { i18n } = await import('@/i18n')
+    i18n.global.locale.value = 'en'
+    const router = getRouter()
+    const destinations = router
+      .getRoutes()
+      .filter((route) => route.name === 'Login' || route.name === 'NotFound')
+    expect(destinations).toHaveLength(2)
+    // Keep the production matcher, guards, and afterEach while replacing view imports,
+    // so title checks depend on completed navigation rather than unrelated page initialization.
+    destinations.forEach((route) => {
+      route.components = { default: { render: () => null } }
+    })
+    document.title = 'Previous page'
+
+    await router.push('/missing-route')
+    await router.isReady()
+    expect(router.currentRoute.value.path).toBe('/login')
+    expect(router.currentRoute.value.query.redirect).toBe('/missing-route')
+    expect(document.title).toBe('Login - Example Site')
+
+    authStore.isAuthenticated = true
+    await router.push('/missing-route')
+    expect(router.currentRoute.value.name).toBe('NotFound')
+    expect(router.currentRoute.value.path).toBe('/missing-route')
     expect(document.title).toBe('404 Not Found - Example Site')
   })
 })

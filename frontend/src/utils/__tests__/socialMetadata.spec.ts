@@ -6,26 +6,34 @@ import { renderSocialMetadata } from '../../../socialMetadata'
 // destinations, and missing covers, preserving crawler-visible behavior in local HTML.
 
 describe('social metadata', () => {
-  // Custom sharing copy contains HTML-sensitive text and a cover resource path.
-  // Both protocols must receive escaped copy and absolute URLs without request query secrets.
+  // Homepage sharing copy contains HTML-sensitive text and a cover resource path.
+  // Both protocols receive escaped copy and absolute URLs, while model pages retain their own titles.
   it('renders escaped sharing cards and configured destinations', () => {
-    const tags = renderSocialMetadata(
-      {
-        site_share_title: 'Share "<title>',
-        site_share_description: 'A & B',
-        site_share_image_url: '/api/v1/settings/share-image/abc',
-        site_share_image_type: 'image/png',
-        site_share_image_width: 1200,
-        site_share_image_height: 630,
-        frontend_url: 'https://public.test',
-      },
-      'http://localhost:3000/models?secret=value',
-    )
+    const settings = {
+      site_share_title: 'Share "<title>',
+      site_share_description: 'A & B',
+      site_share_image_url: '/api/v1/settings/share-image/abc',
+      site_share_image_type: 'image/png',
+      site_share_image_width: 1200,
+      site_share_image_height: 630,
+      frontend_url: 'https://public.test',
+    }
+    const tags = renderSocialMetadata(settings, 'http://localhost:3000/?secret=value')
     expect(tags).toContain('summary_large_image')
-    expect(tags).toContain('Share &quot;&lt;title&gt;')
-    expect(tags).toContain('https://public.test/models')
+    expect(tags).toContain('property="og:title" content="Share &quot;&lt;title&gt;"')
+    expect(tags).toContain('name="twitter:title" content="Share &quot;&lt;title&gt;"')
+    expect(tags).toContain('property="og:description" content="A &amp; B"')
+    expect(tags).toContain('rel="canonical" href="https://public.test/"')
     expect(tags).toContain('https://public.test/api/v1/settings/share-image/abc')
     expect(tags).not.toContain('secret')
+
+    const models = renderSocialMetadata(settings, 'http://localhost:3000/models?secret=value')
+    expect(models).toContain('property="og:title" content="Models &amp; pricing | TokenRouter"')
+    expect(models).toContain('name="twitter:title" content="Models &amp; pricing | TokenRouter"')
+    expect(models).toContain('rel="canonical" href="https://public.test/models"')
+    expect(models).toContain('https://public.test/api/v1/settings/share-image/abc')
+    expect(models).not.toContain('Share &quot;&lt;title&gt;')
+    expect(models).not.toContain('secret')
   })
 
   // Older public settings contain only site branding and no cover. Development

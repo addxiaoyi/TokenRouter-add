@@ -706,6 +706,8 @@ func TestFrontendServer_Middleware(t *testing.T) {
 		}
 	})
 
+	// Browser navigation selects the model directory instead of the JSON endpoint.
+	// HTML serialization preserves the document type independently of its letter casing.
 	t.Run("serves_model_marketplace_for_browser_navigation", func(t *testing.T) {
 		provider := &mockSettingsProvider{
 			settings: map[string]string{"test": "value"},
@@ -732,7 +734,7 @@ func TestFrontendServer_Middleware(t *testing.T) {
 		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Contains(t, w.Header().Values("Vary"), "Accept")
 		assert.Contains(t, w.Header().Get("Content-Type"), "text/html")
-		assert.Contains(t, w.Body.String(), "<!doctype html>")
+		assert.Contains(t, strings.ToLower(w.Body.String()), "<!doctype html>")
 	})
 
 	t.Run("skips_responses_compact_post_routes", func(t *testing.T) {
@@ -787,7 +789,9 @@ func TestFrontendServer_Middleware(t *testing.T) {
 		assert.JSONEq(t, `{"ok":true}`, w.Body.String())
 	})
 
-	t.Run("serves_index_for_spa_routes", func(t *testing.T) {
+	// Declared destinations, aliases, plugins, and callbacks retain the application shell.
+	// Unknown addresses return missing-page status while private shells expose their indexing restrictions.
+	t.Run("preserves_spa_shells_and_rejects_unknown_routes", func(t *testing.T) {
 		provider := &mockSettingsProvider{
 			settings: map[string]string{"test": "value"},
 		}
@@ -802,21 +806,35 @@ func TestFrontendServer_Middleware(t *testing.T) {
 		})
 		router.Use(server.Middleware())
 
-		spaPaths := []string{
-			"/",
-			"/dashboard",
-			"/users/123",
-			"/settings/profile",
+		spaRoutes := []struct {
+			path   string // requested browser address
+			status int    // expected HTTP status
+			robots string // expected crawler policy
+		}{
+			{"/", http.StatusOK, "index, follow"},
+			{"/dashboard", http.StatusOK, "noindex, nofollow"},
+			{"/profile", http.StatusOK, "noindex, nofollow"},
+			{"/pricing", http.StatusOK, "index, follow"},
+			{"/permissions", http.StatusOK, "noindex, nofollow"},
+			{"/ext/helstare.exp", http.StatusOK, "noindex, nofollow"},
+			{"/ext/helstare.exp/history", http.StatusOK, "noindex, nofollow"},
+			{"/admin/ext/example/settings", http.StatusOK, "noindex, nofollow"},
+			{"/auth/oauth/callback", http.StatusOK, "noindex, nofollow"},
+			{"/users/123", http.StatusNotFound, "noindex, nofollow"},
+			{"/settings/profile", http.StatusNotFound, "noindex, nofollow"},
 		}
 
-		for _, path := range spaPaths {
-			t.Run(path, func(t *testing.T) {
+		for _, route := range spaRoutes {
+			t.Run(route.path, func(t *testing.T) {
 				w := httptest.NewRecorder()
-				req := httptest.NewRequest(http.MethodGet, path, nil)
+				req := httptest.NewRequest(http.MethodGet, route.path, nil)
+				req.Header.Set("Accept", "text/html")
 				router.ServeHTTP(w, req)
 
-				assert.Equal(t, http.StatusOK, w.Code)
+				assert.Equal(t, route.status, w.Code)
 				assert.Contains(t, w.Header().Get("Content-Type"), "text/html")
+				assert.Equal(t, route.robots, w.Header().Get("X-Robots-Tag"))
+				assert.Contains(t, w.Body.String(), `name="robots" content="`+route.robots+`"`)
 			})
 		}
 	})
@@ -1213,7 +1231,9 @@ func (p *blockingPublic) GetPublicSettingsForInjection(context.Context) (any, er
 }
 
 // TestFrontendServer_SocialMetadataCache serves multiple destinations from one language cache.
-// Final validators distinguish host and path, and invalidation publishes updated sharing copy without retaining stale metadata or cover URLs.
+// Final validators distinguish host and path, and invalidation publishes updated
+// homepage sharing copy while model pages retain their own identity. Unknown
+// destinations keep their missing-page status and indexing restrictions.
 func TestFrontendServer_SocialMetadataCache(t *testing.T) {
 	provider := &mockSettingsProvider{settings: map[string]string{
 		"site_name": "Site", "site_share_title": "Before", "site_share_image_url": "/api/v1/settings/share-image/first",
@@ -1229,24 +1249,40 @@ func TestFrontendServer_SocialMetadataCache(t *testing.T) {
 		router.ServeHTTP(recorder, req)
 		return recorder
 	}
-	first := request("https://one.test/models?private=secret", "")
+	first := request("https://one.test/?private=secret", "")
+	require.Equal(t, http.StatusOK, first.Code)
 	require.Contains(t, first.Body.String(), `property="og:title" content="Before"`)
-	require.Contains(t, first.Body.String(), `property="og:url" content="https://one.test/models"`)
+	require.Contains(t, first.Body.String(), `property="og:url" content="https://one.test/"`)
 	require.NotContains(t, first.Body.String(), "secret")
 	etag := first.Header().Get("ETag")
-	require.Equal(t, http.StatusNotModified, request("https://one.test/models", etag).Code)
-	for _, address := range []string{"https://two.test/models", "https://one.test/other"} {
+	require.Equal(t, http.StatusNotModified, request("https://one.test/", etag).Code)
+	for _, address := range []string{"https://two.test/", "https://one.test/docs"} {
 		changed := request(address, etag)
 		require.Equal(t, http.StatusOK, changed.Code)
 		require.NotEqual(t, etag, changed.Header().Get("ETag"))
 	}
+	models := request("https://one.test/models", etag)
+	require.Equal(t, http.StatusOK, models.Code)
+	require.Contains(t, models.Body.String(), `property="og:title" content="Models &amp; pricing | Site"`)
+	require.Contains(t, models.Body.String(), `property="og:url" content="https://one.test/models"`)
+	require.NotContains(t, models.Body.String(), `content="Before"`)
+	unknown := request("https://one.test/other", etag)
+	require.Equal(t, http.StatusNotFound, unknown.Code)
+	require.Equal(t, "noindex, nofollow", unknown.Header().Get("X-Robots-Tag"))
+	require.NotContains(t, unknown.Body.String(), `property="og:url"`)
 	require.Equal(t, 1, provider.called)
 	provider.settings = map[string]string{"site_name": "Site", "site_share_title": "After"}
 	server.InvalidateCache()
-	changed := request("https://one.test/models", etag)
+	changed := request("https://one.test/", etag)
 	require.Equal(t, http.StatusOK, changed.Code)
 	require.Contains(t, changed.Body.String(), `property="og:title" content="After"`)
 	require.Contains(t, changed.Body.String(), `name="twitter:card" content="summary"`)
 	require.NotContains(t, changed.Body.String(), "share-image/first")
+	changedModels := request("https://one.test/models", models.Header().Get("ETag"))
+	require.Equal(t, http.StatusOK, changedModels.Code)
+	require.Contains(t, changedModels.Body.String(), `property="og:title" content="Models &amp; pricing | Site"`)
+	require.Contains(t, changedModels.Body.String(), `name="twitter:card" content="summary"`)
+	require.NotContains(t, changedModels.Body.String(), `content="After"`)
+	require.NotContains(t, changedModels.Body.String(), "share-image/first")
 	require.Equal(t, 2, provider.called)
 }

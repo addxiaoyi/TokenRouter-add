@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+<!--
+gpt-zhongzhuan.svg provides the article-specific Helstare sharing illustration and its editable layout.
+The card uses the site palette and system fonts, keeping its title and supporting text within generous canvas margins for social previews.
+-->
+<title id="title">Helstare：GPT API，接入与价格查询。在模型广场核对协议与当前计价。</title>
+<desc id="desc">暖色背景上的 Helstare 文章标题、说明和主题示意图。</desc>
+<rect x="0" y="0" width="1200" height="630" rx="0" fill="#f5f4ed"/>
+<rect x="72" y="58" width="8" height="36" rx="2" fill="#c96442"/>
+<rect x="88" y="58" width="8" height="15" rx="2" fill="#141413"/>
+<rect x="88" y="81" width="8" height="13" rx="2" fill="#141413"/>
+<text x="112" y="58" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="32" font-weight="700" fill="#141413" dominant-baseline="text-before-edge">Helstare</text>
+<text x="986" y="67" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="22" font-weight="400" fill="#5e5d59" dominant-baseline="text-before-edge">接入指南</text>
+<polyline points="72,126 1128,126" fill="none" stroke="#e8e6dc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="72" y="180" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="60" font-weight="700" fill="#141413" dominant-baseline="text-before-edge">GPT API</text>
+<text x="72" y="264" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="56" font-weight="700" fill="#141413" dominant-baseline="text-before-edge">接入与价格查询</text>
+<text x="76" y="374" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="27" font-weight="400" fill="#5e5d59" dominant-baseline="text-before-edge">在模型广场核对协议与当前计价</text>
+<text x="76" y="425" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="22" font-weight="400" fill="#5e5d59" dominant-baseline="text-before-edge">使用所选分组提供的实际模型 ID。</text>
+<rect x="800" y="160" width="328" height="336" rx="24" fill="#e8e6dc"/>
+<rect x="834" y="190" width="260" height="73" rx="14" fill="#faf9f5"/>
+<text x="858" y="214" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="22" font-weight="400" fill="#141413" dominant-baseline="text-before-edge">OpenAI 兼容客户端</text>
+<polyline points="964,279 964,310" fill="none" stroke="#c96442" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="958.7731277106934,301.4747547794049 964,310 969.2268722893066,301.4747547794049" fill="none" stroke="#c96442" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="834" y="326" width="260" height="122" rx="14" fill="#faf9f5"/>
+<text x="858" y="346" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="25" font-weight="700" fill="#141413" dominant-baseline="text-before-edge">Helstare API</text>
+<text x="858" y="393" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="23" font-weight="400" fill="#5e5d59" dominant-baseline="text-before-edge">Base URL  /v1</text>
+<polyline points="72,532 1128,532" fill="none" stroke="#e8e6dc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="76" y="556" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="22" font-weight="400" fill="#5e5d59" dominant-baseline="text-before-edge">模型接入</text>
+<text x="880" y="555" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="23" font-weight="400" fill="#5e5d59" dominant-baseline="text-before-edge">api.star-mc.top</text>
+</svg>

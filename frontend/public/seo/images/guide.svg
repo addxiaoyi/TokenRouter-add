@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+<!--
+guide.svg provides the article-specific Helstare sharing illustration and its editable layout.
+The card uses the site palette and system fonts, keeping its title and supporting text within generous canvas margins for social previews.
+-->
+<title id="title">Helstare：AI API 中转，选站指南。从协议、费用与使用需求出发。</title>
+<desc id="desc">暖色背景上的 Helstare 文章标题、说明和主题示意图。</desc>
+<rect x="0" y="0" width="1200" height="630" rx="0" fill="#f5f4ed"/>
+<rect x="72" y="58" width="8" height="36" rx="2" fill="#c96442"/>
+<rect x="88" y="58" width="8" height="15" rx="2" fill="#141413"/>
+<rect x="88" y="81" width="8" height="13" rx="2" fill="#141413"/>
+<text x="112" y="58" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="32" font-weight="700" fill="#141413" dominant-baseline="text-before-edge">Helstare</text>
+<text x="986" y="67" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="22" font-weight="400" fill="#5e5d59" dominant-baseline="text-before-edge">接入指南</text>
+<polyline points="72,126 1128,126" fill="none" stroke="#e8e6dc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="72" y="180" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="60" font-weight="700" fill="#141413" dominant-baseline="text-before-edge">AI API 中转</text>
+<text x="72" y="264" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="56" font-weight="700" fill="#141413" dominant-baseline="text-before-edge">选站指南</text>
+<text x="76" y="374" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="27" font-weight="400" fill="#5e5d59" dominant-baseline="text-before-edge">从协议、费用与使用需求出发</text>
+<text x="76" y="425" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="22" font-weight="400" fill="#5e5d59" dominant-baseline="text-before-edge">结合自己的请求记录判断是否合适。</text>
+<rect x="800" y="160" width="328" height="336" rx="24" fill="#e8e6dc"/>
+<rect x="848" y="192" width="250" height="260" rx="14" fill="#faf9f5"/>
+<rect x="826" y="209" width="15" height="226" rx="6" fill="#c96442"/>
+<text x="868" y="216" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="27" font-weight="700" fill="#141413" dominant-baseline="text-before-edge">选站指南</text>
+<polyline points="868,294 874,300 886,287" fill="none" stroke="#c96442" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="902" y="284" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="21" font-weight="400" fill="#5e5d59" dominant-baseline="text-before-edge">确认模型协议</text>
+<polyline points="868,350 874,356 886,343" fill="none" stroke="#c96442" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="902" y="340" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="21" font-weight="400" fill="#5e5d59" dominant-baseline="text-before-edge">核对当前计价</text>
+<polyline points="868,406 874,412 886,399" fill="none" stroke="#c96442" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="902" y="396" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="21" font-weight="400" fill="#5e5d59" dominant-baseline="text-before-edge">查看请求记录</text>
+<polyline points="72,532 1128,532" fill="none" stroke="#e8e6dc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="76" y="556" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="22" font-weight="400" fill="#5e5d59" dominant-baseline="text-before-edge">接入指南</text>
+<text x="880" y="555" font-family="Microsoft YaHei, system-ui, sans-serif" font-size="23" font-weight="400" fill="#5e5d59" dominant-baseline="text-before-edge">api.star-mc.top</text>
+</svg>

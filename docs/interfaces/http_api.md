@@ -314,6 +314,7 @@ POST /api/v1/creative/runs/{id}/outputs/{index}/ack
 3. sitemap 与 llms 共用公开页面清单，列出规范地址、随前端发布的公开接入文章和可读取的已发布政策；模型数量、实时价格及账户数据由各自业务接口提供。`HEAD` 保留对应 GET 的内容类型与长度，响应正文为空。
 4. 页面地址复用 `frontend_url` 的配置优先级，见[社交分享](configuration.md#社交分享)。公开 HTML 的正文与页面元数据规则见[公开页面的初始内容](../architecture/frontend_modules.md#public_page_delivery)。
 5. 已声明的 SPA 路由、别名和插件路由族保留应用外壳；私有页面返回 200 和 `noindex`。未知路径返回 404 和 `noindex`，不参与 304 条件响应；`HEAD` 保留对应状态和内容长度，正文为空。不存在的公开法律文档返回 404，读取失败返回 503。
+6. `/seo/` 下的公开文章使用随前端发布的 `/seo/images/` 静态封面，在初始 HTML 中声明绝对地址、图片类型、尺寸和替代文本，Twitter Card 使用 `summary_large_image`。文章封面与后台维护的站点封面分别发布，后台更换站点封面时文章图片地址保持有效。
 
 <a id="site_pages"></a>
 ### 站点页面

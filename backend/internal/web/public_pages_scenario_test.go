@@ -4,6 +4,7 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -68,28 +69,52 @@ func publicPageResponse(fixture publicPageFixture, path, validator string) *http
 }
 
 // TestPublicPagesAnonymousHome requests the landing page without account state.
-// Initial HTML must contain the brand, existing product summary, and published
-// policy links while retaining the application script and replacing old children.
+// Initial HTML uses configured sharing copy before the subtitle and default
+// summary. Each response retains the brand, gateway purpose, policy links, and
+// application script while replacing old children in its own document.
 func TestPublicPagesAnonymousHome(t *testing.T) {
-	fixture := newPublicPageFixture(func(context.Context, string) (PublicDocument, error) {
-		t.Fatal("home rendering must not look up a legal body")
-		return PublicDocument{}, nil
-	})
-	before := string(fixture.Snapshot.Content)
-	response := publicPageResponse(fixture, "/", "")
+	pages := []struct {
+		name        string // description selection scenario
+		description string // preferred sharing description
+		subtitle    string // configured homepage subtitle
+		summary     string // expected visible summary
+	}{
+		{"subtitle", "", "Public gateway", "Public gateway"},
+		{"sharing_description", "Preferred gateway summary", "Public gateway", "Preferred gateway summary"},
+		{"default_summary", "", "", publicHomeSummaryEnglish},
+	}
+	for _, page := range pages {
+		t.Run(page.name, func(t *testing.T) {
+			fixture := newPublicPageFixture(func(context.Context, string) (PublicDocument, error) {
+				t.Fatal("home rendering must not look up a legal body")
+				return PublicDocument{}, nil
+			})
+			var settings map[string]any
+			require.NoError(t, json.Unmarshal(fixture.Snapshot.SettingsJSON, &settings))
+			settings["site_share_description"] = page.description
+			settings["site_subtitle"] = page.subtitle
+			settingsJSON, err := json.Marshal(settings)
+			require.NoError(t, err)
+			fixture.Snapshot.SettingsJSON = settingsJSON
+			before := string(fixture.Snapshot.Content)
+			response := publicPageResponse(fixture, "/", "")
 
-	require.Equal(t, http.StatusOK, response.Code)
-	require.Contains(t, response.Body.String(), `<h1 class="text-3xl font-semibold">Demo Gateway</h1>`)
-	require.Contains(t, response.Body.String(), publicHomeSummaryEnglish)
-	require.Contains(t, response.Body.String(), `href="/legal/privacy"`)
-	require.Contains(t, response.Body.String(), `nonce="fixture-nonce"`)
-	require.NotContains(t, response.Body.String(), "old mount content")
-	require.Equal(t, before, string(fixture.Snapshot.Content))
+			require.Equal(t, http.StatusOK, response.Code)
+			require.Contains(t, response.Body.String(), `<h1 class="text-3xl font-semibold">Demo Gateway | AI API gateway</h1>`)
+			require.Contains(t, response.Body.String(), `<p class="text-base leading-relaxed">`+page.summary+`</p>`)
+			require.Contains(t, response.Body.String(), `name="description" content="`+page.summary+`"`)
+			require.Contains(t, response.Body.String(), `href="/legal/privacy"`)
+			require.Contains(t, response.Body.String(), `nonce="fixture-nonce"`)
+			require.NotContains(t, response.Body.String(), "old mount content")
+			require.Equal(t, before, string(fixture.Snapshot.Content))
+		})
+	}
 }
 
 // TestPublicPagesLegalText requests published copy before application startup.
 // The HTML response must expose the selected policy source and language without
-// converting operator markup into a second executable script element.
+// converting operator markup into executable elements. The retained application
+// script and the public structured-data script keep distinct content and roles.
 func TestPublicPagesLegalText(t *testing.T) {
 	fixture := newPublicPageFixture(func(ctx context.Context, id string) (PublicDocument, error) {
 		require.Equal(t, "privacy", id)
@@ -107,7 +132,32 @@ func TestPublicPagesLegalText(t *testing.T) {
 	require.Equal(t, "en", response.Header().Get("Content-Language"))
 	require.Contains(t, response.Body.String(), "Account records are described here.")
 	require.Contains(t, response.Body.String(), "&lt;script&gt;unexpected()&lt;/script&gt;")
-	require.Equal(t, 1, strings.Count(response.Body.String(), "<script"))
+	// Escaped policy text stays outside script elements. Inspect both trusted
+	// script roles separately so structured metadata cannot mask lost startup code.
+	scripts := strings.Split(response.Body.String(), "<script")
+	require.Len(t, scripts, 3)
+	appScripts := 0
+	structuredScripts := 0
+	for _, element := range scripts[1:] {
+		attributes, content, hasContent := strings.Cut(element, ">")
+		require.True(t, hasContent)
+		script, _, hasClosingTag := strings.Cut(content, "</script>")
+		require.True(t, hasClosingTag)
+		require.Contains(t, attributes, `nonce="fixture-nonce"`)
+		if strings.Contains(attributes, `type="application/ld+json"`) {
+			structuredScripts++
+			require.Contains(t, attributes, `id="site-structured-data"`)
+			require.True(t, json.Valid([]byte(script)))
+			require.Contains(t, script, `"url":"http://example.com/legal/privacy"`)
+			require.Contains(t, script, `"name":"Privacy policy | Demo Gateway"`)
+			continue
+		}
+		appScripts++
+		require.NotContains(t, attributes, "type=")
+		require.Equal(t, "window.ready=true;", script)
+	}
+	require.Equal(t, 1, appScripts)
+	require.Equal(t, 1, structuredScripts)
 }
 
 // TestPublicPagesKeepLoginSnapshot renders home before the account entry route.
