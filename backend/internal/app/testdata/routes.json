@@ -352,6 +352,7 @@
   "GET /api/v1/user/api-keys/:id/usage/daily",
   "GET /api/v1/user/passkeys",
   "GET /api/v1/user/profile",
+  "GET /api/v1/user/experience",
   "GET /api/v1/user/totp/status",
   "GET /api/v1/user/totp/verification-method",
   "GET /backend-api/codex/:call_id",

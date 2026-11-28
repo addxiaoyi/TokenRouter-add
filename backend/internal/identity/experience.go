@@ -28,11 +28,9 @@ const (
 	ExperienceLevelStep int64 = 7
 )
 
-var (
-	// ErrExperienceUnavailable reports that the account store cannot supply the
-	// persisted observations required to calculate the current account's experience.
-	ErrExperienceUnavailable = infraerrors.ServiceUnavailable("EXPERIENCE_UNAVAILABLE", "Experience is unavailable for this account store")
-)
+// ErrExperienceUnavailable reports that the account store cannot supply the
+// persisted observations required to calculate the current account's experience.
+var ErrExperienceUnavailable = infraerrors.ServiceUnavailable("EXPERIENCE_UNAVAILABLE", "Experience is unavailable for this account store")
 
 // ExperienceTotals contains the stored observations needed to calculate account growth.
 type ExperienceTotals struct {
