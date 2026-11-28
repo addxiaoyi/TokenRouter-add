@@ -143,11 +143,11 @@ export default {
         },
       },
       fontFamily: {
-        // Every text utility resolves to the supplied face while semantic utility names remain stable.
+        // Display headings use the supplied face; body, code, and serif utilities retain system font stacks.
         sans: ['var(--font-app)'],
-        display: ['var(--font-app)'],
-        mono: ['var(--font-app)'],
-        serif: ['var(--font-app)'],
+        display: ['var(--font-display)'],
+        mono: ['var(--font-mono)'],
+        serif: ['var(--font-serif)'],
       },
       boxShadow: {
         // Refined ambient shadows supporting translucent Liquid Glass panels without heavy blur clutter.

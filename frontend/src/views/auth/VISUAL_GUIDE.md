@@ -272,7 +272,7 @@ Centered: Both horizontally and vertically
 
 ### Font Family
 
-- **Default**: Supplied Chang Ban Dian Song face through `--font-app`
+- **Default**: System body font stack through `--font-app`
 
 ### Font Sizes
 

@@ -334,7 +334,7 @@ const attemptHasDetails = (attempt: Attempt) =>
       <section v-if="attemptRows.length" class="px-6 py-5">
         <h3 class="mb-3 text-sm font-semibold text-gray-900 dark:text-dark-50">
           {{ t('requests.attempts') }}
-          <span class="ml-1 font-normal text-gray-400 dark:text-dark-400">{{
+          <span class="ml-1 font-sans font-normal text-gray-400 dark:text-dark-400">{{
             attemptRows.length
           }}</span>
         </h3>

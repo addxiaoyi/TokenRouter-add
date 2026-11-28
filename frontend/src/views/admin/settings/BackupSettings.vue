@@ -337,7 +337,7 @@
               class="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white"
             >
               <span
-                class="flex h-6 w-6 items-center justify-center rounded-full bg-primary-100 text-xs font-bold text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
+                class="flex h-6 w-6 items-center justify-center rounded-full bg-primary-100 font-sans text-xs font-bold text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
                 >1</span
               >
               {{ t('admin.backup.r2Guide.step1.title') }}
@@ -355,7 +355,7 @@
               class="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white"
             >
               <span
-                class="flex h-6 w-6 items-center justify-center rounded-full bg-primary-100 text-xs font-bold text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
+                class="flex h-6 w-6 items-center justify-center rounded-full bg-primary-100 font-sans text-xs font-bold text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
                 >2</span
               >
               {{ t('admin.backup.r2Guide.step2.title') }}
@@ -379,7 +379,7 @@
               class="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white"
             >
               <span
-                class="flex h-6 w-6 items-center justify-center rounded-full bg-primary-100 text-xs font-bold text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
+                class="flex h-6 w-6 items-center justify-center rounded-full bg-primary-100 font-sans text-xs font-bold text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
                 >3</span
               >
               {{ t('admin.backup.r2Guide.step3.title') }}
@@ -401,7 +401,7 @@
               class="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white"
             >
               <span
-                class="flex h-6 w-6 items-center justify-center rounded-full bg-primary-100 text-xs font-bold text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
+                class="flex h-6 w-6 items-center justify-center rounded-full bg-primary-100 font-sans text-xs font-bold text-primary-700 dark:bg-primary-900/40 dark:text-primary-300"
                 >4</span
               >
               {{ t('admin.backup.r2Guide.step4.title') }}

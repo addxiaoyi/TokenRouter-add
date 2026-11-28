@@ -1,7 +1,7 @@
 /*
- * fonts.css loads the supplied Chang Ban Dian Song face for every application text role.
- * The shared tokens keep headings, body copy, controls, code labels, charts, and plugin
- * surfaces on one typeface while browser fallback preserves characters outside the WOFF2.
+ * fonts.css loads Chang Ban Dian Song for application headings and defines the
+ * system font stacks for other text. Separate display, body, code, and serif tokens
+ * keep controls, tables, charts, and plugin content on their intended font roles.
  */
 @font-face {
   font-family: 'Chang Ban Dian Song';
@@ -12,5 +12,12 @@
 }
 
 :root {
-  --font-app: 'Chang Ban Dian Song', monospace;
+  --font-app:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Noto Sans CJK SC', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+  --font-display: 'Chang Ban Dian Song', var(--font-app);
+  --font-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+    monospace;
+  --font-serif: ui-serif, Georgia, Cambria, 'Times New Roman', serif;
 }

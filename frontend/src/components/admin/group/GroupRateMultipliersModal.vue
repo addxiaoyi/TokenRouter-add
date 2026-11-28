@@ -121,7 +121,7 @@
       <div>
         <h4 class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
           {{ t('admin.groups.rateMultipliers') }}
-          <span v-if="!loading">({{ localEntries.length }})</span>
+          <span v-if="!loading" class="font-sans">({{ localEntries.length }})</span>
         </h4>
 
         <div
