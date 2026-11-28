@@ -15,7 +15,7 @@
   - [身份登录与 One Tap](#身份登录与-one-tap)、[API Key 结算策略](#api-key-结算策略)、[API Key 凭据轮换](#api_key_rotation)。
   - [分组协议、价格与路由策略](#分组协议价格与路由策略)、[提供商管理、测试与调度诊断](#提供商管理测试与调度诊断)、[创作台接口与管理设置](#创作台接口与管理设置)。
   - [支付管理恢复](#payment_admin_recovery)、[用户专属充值倍率与下单校验](#personal_recharge_multiplier_api)、[订阅自助撤销](#subscription_self_revoke_api)、[使用记录后台导出与统计筛选](#usage_export_tasks_api)。
-  - [公告接口](#announcement_api)、[社交分享封面](#social_share_image)、[站点页面](#site_pages)、[备份与系统维护](#备份与系统维护)、[SystemOne 与 MCP OAuth 入口](#systemone-与-mcp-oauth-入口)。
+  - [公告接口](#announcement_api)、[社交分享封面](#social_share_image)、[公开页面与抓取入口](#public_discovery)、[站点页面](#site_pages)、[备份与系统维护](#备份与系统维护)、[SystemOne 与 MCP OAuth 入口](#systemone-与-mcp-oauth-入口)。
 - [面板命令幂等](#write_idempotency)：幂等键构成、重放、冲突和存储故障策略。
 - [响应、错误与性能计时](#response_errors)：面板 envelope、协议错误格式与 `usage_logs.timings` 指标口径。
 - [请求关联](#请求关联)：本地请求 ID 透传、资金去重与诊断查询。
@@ -305,6 +305,15 @@ POST /api/v1/creative/runs/{id}/outputs/{index}/ack
 `GET/HEAD /api/v1/settings/share-image/:hash` 无须登录，返回当前已保存封面的图片字节，继承公开设置接口限流。路径中的 SHA-256 摘要必须与当前图片一致；图片已替换、已移除或摘要错误返回 404，存储故障返回错误响应。
 
 成功响应带实际图片 `Content-Type`、`X-Content-Type-Options: nosniff`、摘要 `ETag` 和 `Cache-Control: public, max-age=3600, must-revalidate`，支持条件请求与 `HEAD`，错误响应使用 `no-store`。更换图片会生成新地址；移除图片后源站停止提供旧内容，但客户端和平台此前缓存的图片可能仍会显示。
+
+<a id="public_discovery"></a>
+### 公开页面与抓取入口
+
+1. 内嵌前端在 SPA fallback 之前响应 `GET/HEAD /robots.txt`、`/sitemap.xml` 和 `/llms.txt`，分别使用纯文本、XML 和 Markdown 纯文本内容。其他方法返回 405；读取公开设置或已发布政策失败时返回 503 和 `no-store`。
+2. robots 允许公开页面、SPA 页面外壳及 `/api/v1/settings/share-image/` 下的公开分享图抓取，排除其他 API、网关、认证回调和安装接口。账户、后台、插件及后端模式下受限页面的外壳允许抓取，以便爬虫读取响应中的 `noindex`；访问权限仍由现有认证中间件执行。代理层需转发这些地址，保持同一份规则生效。
+3. sitemap 与 llms 共用公开页面清单，列出规范地址、随前端发布的公开接入文章和可读取的已发布政策；模型数量、实时价格及账户数据由各自业务接口提供。`HEAD` 保留对应 GET 的内容类型与长度，响应正文为空。
+4. 页面地址复用 `frontend_url` 的配置优先级，见[社交分享](configuration.md#社交分享)。公开 HTML 的正文与页面元数据规则见[公开页面的初始内容](../architecture/frontend_modules.md#public_page_delivery)。
+5. 已声明的 SPA 路由、别名和插件路由族保留应用外壳；私有页面返回 200 和 `noindex`。未知路径返回 404 和 `noindex`，不参与 304 条件响应；`HEAD` 保留对应状态和内容长度，正文为空。不存在的公开法律文档返回 404，读取失败返回 503。
 
 <a id="site_pages"></a>
 ### 站点页面

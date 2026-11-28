@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<!--
+gpt-zhongzhuan.html describes GPT access through Helstare's compatible gateway.
+Current model identifiers, supported protocols, and prices belong to the model
+catalog; this article explains how readers select an offer and configure access.
+-->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GPT API 中转接入与价格查询 | Helstare</title>
+  <meta name="description" content="通过 Helstare 配置 GPT API 的基础地址、API 密钥和模型 ID。当前分组、协议与价格见模型广场，Free 组从 Lv.1（累计 7 XP）起开放。">
+  <link rel="canonical" href="https://api.star-mc.top/seo/gpt-zhongzhuan.html">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <meta property="og:title" content="GPT API 中转接入与价格查询 | Helstare">
+  <meta property="og:description" content="通过 Helstare 配置 GPT API 的基础地址、API 密钥和模型 ID。当前分组、协议与价格见模型广场，Free 组从 Lv.1（累计 7 XP）起开放。">
+  <meta property="og:url" content="https://api.star-mc.top/seo/gpt-zhongzhuan.html">
+  <meta property="og:type" content="article">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="GPT API 中转接入与价格查询 | Helstare">
+  <meta name="twitter:description" content="通过 Helstare 配置 GPT API 的基础地址、API 密钥和模型 ID。当前分组、协议与价格见模型广场，Free 组从 Lv.1（累计 7 XP）起开放。">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Helstare","item":"https://api.star-mc.top/home"},{"@type":"ListItem","position":2,"name":"GPT API 中转接入与价格查询","item":"https://api.star-mc.top/seo/gpt-zhongzhuan.html"}]}
+  </script>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"GPT API 的 Base URL 怎么填？","acceptedAnswer":{"@type":"Answer","text":"OpenAI 兼容客户端的 Base URL 使用 https://api.star-mc.top/v1，API 密钥使用在 Helstare 创建的密钥。模型 ID 和接口协议按所选分组的当前配置填写。"}},{"@type":"Question","name":"GPT 中转支持哪些模型和接口？","acceptedAnswer":{"@type":"Answer","text":"在模型广场搜索 GPT，查看当前模型 ID、分组及支持的接口。按模型标注选择 Responses 或 Chat Completions，具体配置可从 API 密钥页生成。"}},{"@type":"Question","name":"如何获得 Free 组权限？","acceptedAnswer":{"@type":"Answer","text":"累计 7 XP 达到 Lv.1 后可获得免费公开分组资格。每天完成签到得 1 XP，每位成功注册并绑定邀请关系的好友得 1 XP，断签保留已得经验；可调用模型以 Free 组当前目录为准。"}}]}
+  </script>
+  <style>
+    @font-face{font-family:'Chang Ban Dian Song';src:url('/seo/chang-ban-dian-song-monospaced-12px-square.woff2') format('woff2');font-style:normal;font-weight:400;font-display:swap}
+    body{font-family:system-ui,-apple-system,sans-serif;max-width:900px;margin:0 auto;padding:20px;line-height:1.7;color:#222}
+    /* Keep the display face on headings so controls, tables, and prose retain system fonts. */
+    h1,h2,h3{font-family:'Chang Ban Dian Song',system-ui,-apple-system,sans-serif}
+    h1{font-size:28px}h2{font-size:22px;margin-top:32px;border-bottom:1px solid #eee;padding-bottom:8px}h3{font-size:18px;margin-top:24px}
+    table{border-collapse:collapse;width:100%;margin:16px 0}th,td{border:1px solid #ddd;padding:10px;text-align:left}th{background:#f5f5f5}
+    a{color:#0066cc}.cta{background:#0066cc;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin:16px 0}
+    nav{margin-top:40px;padding-top:16px;border-top:1px solid #eee;font-size:14px}nav a{margin-right:14px}
+  </style>
+</head>
+<body>
+  <h1>GPT API 中转接入与价格查询</h1>
+  <p>Helstare 提供 OpenAI 兼容入口。使用 GPT 前，在模型广场搜索目标模型，核对接口协议与分组，再把 Helstare API 密钥填入客户端。模型目录和价格会随配置更新。</p>
+  <p><a class="cta" href="/models">查看 GPT 模型与定价</a> <a href="/register">注册账号</a> <a href="/docs">接入文档</a></p>
+  <h2>怎样比较分组费用？</h2>
+  <p>比较同一模型在不同分组中的计价方式，并结合实际输入、输出及缓存用量估算费用。当前单价和分组信息见<a href="/models">模型广场</a>。</p>
+  <table>
+    <tr><th>需要核对的项目</th><th>用途</th></tr>
+    <tr><td>模型 ID</td><td>保证客户端提交的名称与分组提供的模型一致</td></tr>
+    <tr><td>接口协议</td><td>选择模型支持的 Responses 或 Chat Completions</td></tr>
+    <tr><td>价格与分组</td><td>按当前计价和自己的使用量评估成本</td></tr>
+    <tr><td>分组权限</td><td>在 API 密钥页选择账号可以使用的分组</td></tr>
+  </table>
+  <h2>GPT API 怎么接入？</h2>
+  <ol>
+    <li>在<a href="/models">模型广场</a>确认模型和接口，在<a href="/keys">API 密钥页</a>创建对应分组的密钥。</li>
+    <li>将 OpenAI 兼容客户端的 Base URL 设置为 <code>https://api.star-mc.top/v1</code>。</li>
+    <li>填写 Helstare API 密钥和所选模型 ID；客户端需要 Responses 或 Chat Completions 时按模型协议配置。</li>
+  </ol>
+  <h2>如何查看请求结果？</h2>
+  <p>在控制台查看请求错误与使用记录。比较回答质量或延迟时，保持模型、请求内容和客户端设置一致，并关注结果对应的时间范围。</p>
+  <h2>常见问题</h2>
+  <h3>GPT API 的 Base URL 怎么填？</h3>
+  <p>OpenAI 兼容客户端的 Base URL 使用 https://api.star-mc.top/v1，API 密钥使用在 Helstare 创建的密钥。模型 ID 和接口协议按所选分组的当前配置填写。</p>
+  <h3>GPT 中转支持哪些模型和接口？</h3>
+  <p>在模型广场搜索 GPT，查看当前模型 ID、分组及支持的接口。按模型标注选择 Responses 或 Chat Completions，具体配置可从 API 密钥页生成。</p>
+  <h3>如何获得 Free 组权限？</h3>
+  <p>累计 7 XP 达到 Lv.1 后可获得免费公开分组资格。每天完成签到得 1 XP，每位成功注册并绑定邀请关系的好友得 1 XP，断签保留已得经验；可调用模型以 Free 组当前目录为准。</p>
+  <p>经验和可用权限见<a href="/ext/helstare.exp">经验等级页</a>与<a href="/keys">API 密钥页</a>。</p>
+  <nav aria-label="相关指南"><a href="/seo/claude-zhongzhuan.html">Claude API</a><a href="/seo/gemini-zhongzhuan.html">Gemini API</a><a href="/seo/deepseek-api.html">DeepSeek API</a><a href="/seo/grok-zhongzhuan.html">Grok API</a><a href="/seo/free-api.html">Free 分组规则</a><a href="/seo/gpt-vs-claude.html">GPT 与 Claude 对比</a><a href="/seo/faq.html">常见问题</a><a href="/home">首页</a></nav>
+</body>
+</html>

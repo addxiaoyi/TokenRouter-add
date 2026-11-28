@@ -8,5 +8,10 @@
     "rewriteRelativeImportExtensions": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["vite.config.ts", "socialMetadata.ts"]
+  "include": [
+    "vite.config.ts",
+    "socialMetadata.ts",
+    "src/i18n/locales/en/seo.ts",
+    "src/i18n/locales/zh/seo.ts"
+  ]
 }

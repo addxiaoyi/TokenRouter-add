@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<!--
+gpt-vs-claude.html compares configuration and pricing considerations for two
+model families. Current offers remain in the model catalog; the comparison explains
+protocol choices and account access without treating changing prices as permanent facts.
+-->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GPT 与 Claude API 中转：协议、配置与费用对比 | Helstare</title>
+  <meta name="description" content="比较 Helstare 上 GPT 与 Claude 的接入协议、客户端配置和费用查询方式。当前模型、分组与价格见模型广场，Free 组资格从 Lv.1 起开放。">
+  <link rel="canonical" href="https://api.star-mc.top/seo/gpt-vs-claude.html">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <meta property="og:title" content="GPT 与 Claude API 中转：协议、配置与费用对比 | Helstare">
+  <meta property="og:description" content="比较 Helstare 上 GPT 与 Claude 的接入协议、客户端配置和费用查询方式。当前模型、分组与价格见模型广场，Free 组资格从 Lv.1 起开放。">
+  <meta property="og:url" content="https://api.star-mc.top/seo/gpt-vs-claude.html">
+  <meta property="og:type" content="article">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="GPT 与 Claude API 中转：协议、配置与费用对比 | Helstare">
+  <meta name="twitter:description" content="比较 Helstare 上 GPT 与 Claude 的接入协议、客户端配置和费用查询方式。当前模型、分组与价格见模型广场，Free 组资格从 Lv.1 起开放。">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Helstare","item":"https://api.star-mc.top/home"},{"@type":"ListItem","position":2,"name":"GPT 与 Claude API 中转：协议、配置与费用对比","item":"https://api.star-mc.top/seo/gpt-vs-claude.html"}]}
+  </script>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"GPT 和 Claude 哪个更便宜？","acceptedAnswer":{"@type":"Answer","text":"费用取决于具体模型、分组计价与实际输入、输出和缓存用量。请在模型广场查看当前价格，再结合自己的请求记录比较。"}},{"@type":"Question","name":"GPT 与 Claude 使用相同的 Base URL 吗？","acceptedAnswer":{"@type":"Answer","text":"OpenAI 兼容客户端使用 https://api.star-mc.top/v1；Claude Code 的标准 Anthropic 基础地址为 https://api.star-mc.top。请按所选模型支持的协议，使用 API 密钥页生成的客户端配置。"}},{"@type":"Question","name":"Free 组是否同时包含 GPT 和 Claude？","acceptedAnswer":{"@type":"Answer","text":"以模型广场的 Free 组当前目录为准。账号累计 7 XP 达到 Lv.1 后获得免费公开分组等级资格，每天完成签到或每位成功绑定邀请关系的好友各贡献 1 XP，断签保留已得经验。"}}]}
+  </script>
+  <style>
+    @font-face{font-family:'Chang Ban Dian Song';src:url('/seo/chang-ban-dian-song-monospaced-12px-square.woff2') format('woff2');font-style:normal;font-weight:400;font-display:swap}
+    body{font-family:system-ui,-apple-system,sans-serif;max-width:900px;margin:0 auto;padding:20px;line-height:1.7;color:#222}
+    /* Keep the display face on headings so controls, tables, and prose retain system fonts. */
+    h1,h2,h3{font-family:'Chang Ban Dian Song',system-ui,-apple-system,sans-serif}
+    h1{font-size:28px}h2{font-size:22px;margin-top:32px;border-bottom:1px solid #eee;padding-bottom:8px}h3{font-size:18px;margin-top:24px}
+    table{border-collapse:collapse;width:100%;margin:16px 0}th,td{border:1px solid #ddd;padding:10px;text-align:left}th{background:#f5f5f5}
+    a{color:#0066cc}.cta{background:#0066cc;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin:16px 0}
+    nav{margin-top:40px;padding-top:16px;border-top:1px solid #eee;font-size:14px}nav a{margin-right:14px}
+  </style>
+</head>
+<body>
+  <h1>GPT 与 Claude API 中转：协议、配置与费用对比</h1>
+  <p>选择 GPT 或 Claude 时，先确认任务需要的模型和客户端协议。Helstare 的模型广场提供当前模型、分组与价格，API 密钥页生成对应客户端的接入配置。</p>
+  <p><a class="cta" href="/models">查看模型与当前价格</a> <a href="/seo/claude-code-guide.html">Claude Code 配置</a> <a href="/docs">接入文档</a></p>
+  <h2>协议和地址如何选择？</h2>
+  <table>
+    <tr><th>客户端方式</th><th>基础地址</th><th>选择依据</th></tr>
+    <tr><td>OpenAI 兼容客户端</td><td><code>https://api.star-mc.top/v1</code></td><td>目标模型支持对应的 Responses 或 Chat Completions</td></tr>
+    <tr><td>Claude Code / Anthropic 配置</td><td><code>https://api.star-mc.top</code></td><td>目标模型和分组支持 Messages 协议</td></tr>
+  </table>
+  <p>最终模型 ID 和协议以<a href="/models">模型广场</a>为准。选择模型后，使用<a href="/keys">API 密钥页</a>生成的配置填写客户端。</p>
+  <h2>怎样比较实际费用？</h2>
+  <p>先在<a href="/models">模型广场</a>核对模型和分组当前的计价方式，再结合自己的输入、输出与缓存用量估算。具体请求费用可在控制台使用记录中查看。</p>
+  <h2>怎样比较响应和可用情况？</h2>
+  <p>用自己的任务观察回答质量、工具调用、延迟和错误记录。查看统计时核对时间范围、请求数量与分组，按相同条件比较结果。</p>
+  <h2>常见问题</h2>
+  <h3>GPT 和 Claude 哪个更便宜？</h3>
+  <p>费用取决于具体模型、分组计价与实际输入、输出和缓存用量。请在模型广场查看当前价格，再结合自己的请求记录比较。</p>
+  <h3>GPT 与 Claude 使用相同的 Base URL 吗？</h3>
+  <p>OpenAI 兼容客户端使用 https://api.star-mc.top/v1；Claude Code 的标准 Anthropic 基础地址为 https://api.star-mc.top。请按所选模型支持的协议，使用 API 密钥页生成的客户端配置。</p>
+  <h3>Free 组是否同时包含 GPT 和 Claude？</h3>
+  <p>以模型广场的 Free 组当前目录为准。账号累计 7 XP 达到 Lv.1 后获得免费公开分组等级资格，每天完成签到或每位成功绑定邀请关系的好友各贡献 1 XP，断签保留已得经验。</p>
+  <nav aria-label="相关指南"><a href="/seo/gpt-zhongzhuan.html">GPT API</a><a href="/seo/claude-zhongzhuan.html">Claude API</a><a href="/seo/claude-code-guide.html">Claude Code 接入</a><a href="/seo/free-api.html">Free 分组规则</a><a href="/seo/faq.html">常见问题</a><a href="/seo/guide.html">选站指南</a><a href="/home">首页</a></nav>
+</body>
+</html>

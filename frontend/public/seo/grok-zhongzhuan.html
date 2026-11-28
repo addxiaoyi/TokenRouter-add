@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<!--
+grok-zhongzhuan.html guides readers through Grok model selection and gateway
+configuration. The current catalog owns available models, protocols, and prices,
+while this page explains how those offers connect to account permissions and clients.
+-->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Grok API 中转接入与模型查询 | Helstare</title>
+  <meta name="description" content="了解 Helstare 的 Grok API 接入、模型 ID 和分组查询方式。当前模型与价格见模型广场；Free 组从 Lv.1（累计 7 XP）起开放。">
+  <link rel="canonical" href="https://api.star-mc.top/seo/grok-zhongzhuan.html">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <meta property="og:title" content="Grok API 中转接入与模型查询 | Helstare">
+  <meta property="og:description" content="了解 Helstare 的 Grok API 接入、模型 ID 和分组查询方式。当前模型与价格见模型广场；Free 组从 Lv.1（累计 7 XP）起开放。">
+  <meta property="og:url" content="https://api.star-mc.top/seo/grok-zhongzhuan.html">
+  <meta property="og:type" content="article">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Grok API 中转接入与模型查询 | Helstare">
+  <meta name="twitter:description" content="了解 Helstare 的 Grok API 接入、模型 ID 和分组查询方式。当前模型与价格见模型广场；Free 组从 Lv.1（累计 7 XP）起开放。">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Helstare","item":"https://api.star-mc.top/home"},{"@type":"ListItem","position":2,"name":"Grok API 中转接入与模型查询","item":"https://api.star-mc.top/seo/grok-zhongzhuan.html"}]}
+  </script>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Grok 当前有哪些模型和分组？","acceptedAnswer":{"@type":"Answer","text":"在模型广场搜索 Grok，查看当前模型 ID、分组、协议和价格。账号可绑定的分组以 API 密钥页为准。"}},{"@type":"Question","name":"Grok API 怎么配置？","acceptedAnswer":{"@type":"Answer","text":"目标模型支持 OpenAI 兼容协议时，Base URL 使用 https://api.star-mc.top/v1，并填写 Helstare API 密钥与模型 ID。其他客户端按 API 密钥页生成的配置接入。"}},{"@type":"Question","name":"Free 组可以调用 Grok 吗？","acceptedAnswer":{"@type":"Answer","text":"以模型广场的 Free 组当前目录为准。Free 组从 Lv.1（累计 7 XP）起开放，每完成一天签到得 1 XP，每位成功注册并绑定邀请关系的好友得 1 XP，断签保留已得经验。"}}]}
+  </script>
+  <style>
+    @font-face{font-family:'Chang Ban Dian Song';src:url('/seo/chang-ban-dian-song-monospaced-12px-square.woff2') format('woff2');font-style:normal;font-weight:400;font-display:swap}
+    body{font-family:system-ui,-apple-system,sans-serif;max-width:900px;margin:0 auto;padding:20px;line-height:1.7;color:#222}
+    /* Keep the display face on headings so controls, tables, and prose retain system fonts. */
+    h1,h2,h3{font-family:'Chang Ban Dian Song',system-ui,-apple-system,sans-serif}
+    h1{font-size:28px}h2{font-size:22px;margin-top:32px;border-bottom:1px solid #eee;padding-bottom:8px}h3{font-size:18px;margin-top:24px}
+    table{border-collapse:collapse;width:100%;margin:16px 0}th,td{border:1px solid #ddd;padding:10px;text-align:left}th{background:#f5f5f5}
+    a{color:#0066cc}.cta{background:#0066cc;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin:16px 0}
+    nav{margin-top:40px;padding-top:16px;border-top:1px solid #eee;font-size:14px}nav a{margin-right:14px}
+  </style>
+</head>
+<body>
+  <h1>Grok API 中转接入与模型查询</h1>
+  <p>Helstare 的模型广场可以查询 Grok 模型和相关分组。选择时核对实际模型 ID、协议与价格，再到 API 密钥页创建符合账号权限的密钥。</p>
+  <p><a class="cta" href="/models">查看 Grok 模型与定价</a> <a href="/register">注册账号</a> <a href="/docs">接入文档</a></p>
+  <h2>分组选择需要哪些信息？</h2>
+  <table>
+    <tr><th>项目</th><th>说明</th></tr>
+    <tr><td>模型 ID</td><td>以模型广场当前提供的 ID 为准</td></tr>
+    <tr><td>协议</td><td>核对客户端调用接口与模型支持范围</td></tr>
+    <tr><td>价格</td><td>查看所选分组的当前计价</td></tr>
+    <tr><td>权限</td><td>在 API 密钥页查看账号可以绑定的分组</td></tr>
+  </table>
+  <h2>Grok API 怎么接入？</h2>
+  <ol>
+    <li>在<a href="/models">模型广场</a>搜索 Grok，选择目标模型与分组。</li>
+    <li>在<a href="/keys">API 密钥页</a>创建密钥，并选择所用客户端配置。</li>
+    <li>使用 OpenAI 兼容客户端时，将 Base URL 设置为 <code>https://api.star-mc.top/v1</code>，填写密钥与模型 ID。</li>
+  </ol>
+  <h2>常见问题</h2>
+  <h3>Grok 当前有哪些模型和分组？</h3>
+  <p>在模型广场搜索 Grok，查看当前模型 ID、分组、协议和价格。账号可绑定的分组以 API 密钥页为准。</p>
+  <h3>Grok API 怎么配置？</h3>
+  <p>目标模型支持 OpenAI 兼容协议时，Base URL 使用 https://api.star-mc.top/v1，并填写 Helstare API 密钥与模型 ID。其他客户端按 API 密钥页生成的配置接入。</p>
+  <h3>Free 组可以调用 Grok 吗？</h3>
+  <p>以模型广场的 Free 组当前目录为准。Free 组从 Lv.1（累计 7 XP）起开放，每完成一天签到得 1 XP，每位成功注册并绑定邀请关系的好友得 1 XP，断签保留已得经验。</p>
+  <p>经验进度见<a href="/ext/helstare.exp">经验等级页</a>。分组名称和说明用于了解配置，回答质量与延迟需要结合实际请求记录判断。</p>
+  <nav aria-label="相关指南"><a href="/seo/gpt-zhongzhuan.html">GPT API</a><a href="/seo/claude-zhongzhuan.html">Claude API</a><a href="/seo/gemini-zhongzhuan.html">Gemini API</a><a href="/seo/deepseek-api.html">DeepSeek API</a><a href="/seo/free-api.html">Free 分组规则</a><a href="/seo/faq.html">常见问题</a><a href="/seo/guide.html">选站指南</a><a href="/home">首页</a></nav>
+</body>
+</html>

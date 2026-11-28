@@ -33,10 +33,10 @@ import (
 // browser model marketplace at /models. Request negotiation checks methods,
 // credential hints, and Accept preferences before the frontend serves a page.
 // Embedded asset existence controls local override checks, while other non-API
-// paths resolve to the SPA entry.
+// paths resolve to the SPA entry with 404 reserved for unknown client routes.
 //
 // Injected HTML is cached by language with a reusable nonce placeholder, and
-// rendered 200 responses substitute the nonce supplied by SecurityHeaders. Settings
+// rendered page responses substitute the nonce supplied by SecurityHeaders. Settings
 // reads and rendering can overlap invalidation, so HTMLCache compares the
 // observed generation before storing a rendered page. A rejected stale
 // publication can still be served to its initiating request. The separate
@@ -167,6 +167,9 @@ func (s *FrontendServer) Middleware() gin.HandlerFunc {
 			c.Next()
 			return
 		}
+		if s.serveDiscovery(c) {
+			return
+		}
 
 		cleanPath := strings.TrimPrefix(path, "/")
 		if cleanPath == "" {
@@ -226,6 +229,10 @@ func (s *FrontendServer) serveIndexHTML(c *gin.Context) {
 	// Retrieve this request's trusted nonce before rendering. Cached pages keep
 	// the placeholder so response substitution uses this value rather than a prior request's nonce.
 	nonce := middleware.GetNonceFromContext(c)
+	status := http.StatusOK
+	if !knownSPARoute(c.Request.URL.Path) {
+		status = http.StatusNotFound
+	}
 
 	language := locale.FromContext(c.Request.Context())
 	c.Writer.Header().Add("Vary", "Accept-Language, Cookie")
@@ -245,7 +252,9 @@ func (s *FrontendServer) serveIndexHTML(c *gin.Context) {
 	if err != nil {
 		// Failed public-data lookup leaves the raw embedded entry usable for browser
 		// startup. This branch skips injected settings, cache publication, and response nonce substitution.
-		c.Data(http.StatusOK, "text/html; charset=utf-8", s.baseHTML)
+		c.Header("Cache-Control", "no-store")
+		c.Header("X-Robots-Tag", "noindex, nofollow")
+		c.Data(status, "text/html; charset=utf-8", s.baseHTML)
 		c.Abort()
 		return
 	}
@@ -254,7 +263,9 @@ func (s *FrontendServer) serveIndexHTML(c *gin.Context) {
 	if err != nil {
 		// Unencodable settings cannot form the inline configuration script. Return raw
 		// entry bytes so browser startup still receives a page, without caching this failed rendering.
-		c.Data(http.StatusOK, "text/html; charset=utf-8", s.baseHTML)
+		c.Header("Cache-Control", "no-store")
+		c.Header("X-Robots-Tag", "noindex, nofollow")
+		c.Data(status, "text/html; charset=utf-8", s.baseHTML)
 		c.Abort()
 		return
 	}
@@ -270,7 +281,8 @@ func (s *FrontendServer) serveIndexHTML(c *gin.Context) {
 
 // writeIndexHTML completes public content and metadata before conditional response handling.
 // The validator excludes the CSP nonce, but includes the destination URL and
-// language snapshot. Both successful and not-modified responses carry cache headers.
+// language snapshot. Only successful pages participate in conditional responses;
+// unknown routes retain their 404 status for both GET and HEAD.
 func (s *FrontendServer) writeIndexHTML(c *gin.Context, snapshot CachedHTML, nonce string) {
 	// Complete request-specific public content before hashing. The language cache
 	// retains startup bytes while final validators include the selected legal body.
@@ -281,22 +293,33 @@ func (s *FrontendServer) writeIndexHTML(c *gin.Context, snapshot CachedHTML, non
 		// available to middleware after the plain failure response is written.
 		_ = c.Error(err)
 		c.Header("Cache-Control", "no-store")
+		c.Header("X-Robots-Tag", "noindex, nofollow")
 		c.String(status, "Public page is currently unavailable.")
 		c.Abort()
 		return
 	}
 	content, etag := renderSocialMetadata(c, page)
-	c.Header("ETag", etag)
 	c.Header("Cache-Control", "no-cache")
-	if c.GetHeader("If-None-Match") == etag {
-		c.Status(http.StatusNotModified)
-		c.Abort()
-		return
+	if status == http.StatusOK {
+		c.Header("ETag", etag)
+		isRead := c.Request.Method == http.MethodGet || c.Request.Method == http.MethodHead
+		if isRead && c.GetHeader("If-None-Match") == etag {
+			c.Status(http.StatusNotModified)
+			c.Abort()
+			return
+		}
 	}
 	// Keep nonce replacement after metadata hashing so random per-request CSP
 	// values do not prevent conditional requests from reusing otherwise identical HTML.
 	content = replaceNoncePlaceholder(content, nonce)
-	c.Data(http.StatusOK, "text/html; charset=utf-8", content)
+	if c.Request.Method == http.MethodHead {
+		c.Header("Content-Type", "text/html; charset=utf-8")
+		c.Header("Content-Length", strconv.Itoa(len(content)))
+		c.Status(status)
+		c.Abort()
+		return
+	}
+	c.Data(status, "text/html; charset=utf-8", content)
 	c.Abort()
 }
 

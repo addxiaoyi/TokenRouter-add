@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<!--
+claude-code-guide.html explains Claude Code configuration through the site's
+Anthropic-compatible entry point. It distinguishes that base address from an
+OpenAI-compatible SDK URL and directs readers to generated account-specific
+configuration and model choices.
+-->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Code 接入配置：地址、密钥与模型 | Helstare</title>
+  <meta name="description" content="使用 Helstare API 密钥页生成 Claude Code 配置，核对 Anthropic 基础地址、认证信息和模型 ID。分组与当前价格见模型广场。">
+  <link rel="canonical" href="https://api.star-mc.top/seo/claude-code-guide.html">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <meta property="og:title" content="Claude Code 接入配置：地址、密钥与模型 | Helstare">
+  <meta property="og:description" content="使用 Helstare API 密钥页生成 Claude Code 配置，核对 Anthropic 基础地址、认证信息和模型 ID。分组与当前价格见模型广场。">
+  <meta property="og:url" content="https://api.star-mc.top/seo/claude-code-guide.html">
+  <meta property="og:type" content="article">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Claude Code 接入配置：地址、密钥与模型 | Helstare">
+  <meta name="twitter:description" content="使用 Helstare API 密钥页生成 Claude Code 配置，核对 Anthropic 基础地址、认证信息和模型 ID。分组与当前价格见模型广场。">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Helstare","item":"https://api.star-mc.top/home"},{"@type":"ListItem","position":2,"name":"Claude Code 接入配置：地址、密钥与模型","item":"https://api.star-mc.top/seo/claude-code-guide.html"}]}
+  </script>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Claude Code 的基础地址怎么填？","acceptedAnswer":{"@type":"Answer","text":"标准 Anthropic 入口的基础地址为 https://api.star-mc.top，对应 Messages 路径为 /v1/messages。ANTHROPIC_BASE_URL 使用基础地址；具体值和认证变量以 API 密钥页生成的 Claude Code 配置为准。"}},{"@type":"Question","name":"Claude Code 的模型名应该填什么？","acceptedAnswer":{"@type":"Answer","text":"使用所选分组当前提供的实际模型 ID。模型广场用于查询，API 密钥页可以按模型和协议生成客户端配置。"}},{"@type":"Question","name":"可以使用 Free 组吗？","acceptedAnswer":{"@type":"Answer","text":"需要先达到 Lv.1（累计 7 XP），再确认 Free 组当前目录支持所用模型和客户端协议。每天完成签到得 1 XP，每位成功注册并绑定邀请关系的好友得 1 XP，断签保留已得经验。"}}]}
+  </script>
+  <style>
+    @font-face{font-family:'Chang Ban Dian Song';src:url('/seo/chang-ban-dian-song-monospaced-12px-square.woff2') format('woff2');font-style:normal;font-weight:400;font-display:swap}
+    body{font-family:system-ui,-apple-system,sans-serif;max-width:900px;margin:0 auto;padding:20px;line-height:1.7;color:#222}
+    /* Keep the display face on headings so controls, tables, and prose retain system fonts. */
+    h1,h2,h3{font-family:'Chang Ban Dian Song',system-ui,-apple-system,sans-serif}
+    h1{font-size:28px}h2{font-size:22px;margin-top:32px;border-bottom:1px solid #eee;padding-bottom:8px}h3{font-size:18px;margin-top:24px}
+    table{border-collapse:collapse;width:100%;margin:16px 0}th,td{border:1px solid #ddd;padding:10px;text-align:left}th{background:#f5f5f5}
+    a{color:#0066cc}.cta{background:#0066cc;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin:16px 0}
+    nav{margin-top:40px;padding-top:16px;border-top:1px solid #eee;font-size:14px}nav a{margin-right:14px}
+  </style>
+</head>
+<body>
+  <h1>Claude Code 接入配置：地址、密钥与模型</h1>
+  <p>Claude Code 使用 Anthropic 协议。Helstare 的标准基础地址为 <code>https://api.star-mc.top</code>，Messages 请求路径为 <code>/v1/messages</code>。在 API 密钥页选择 Claude Code，可以获得对应模型和分组的客户端配置。</p>
+  <p><a class="cta" href="/keys">打开 API 密钥页</a> <a href="/models">查看模型与分组</a> <a href="/docs">接入文档</a></p>
+  <h2>第一步：选择模型并创建密钥</h2>
+  <p>在模型广场确认目标模型与协议，登录后在 API 密钥页创建对应分组的密钥。填写客户端时使用自己的 Helstare 密钥，保管好认证信息。</p>
+  <h2>第二步：使用 Claude Code 客户端配置</h2>
+  <p>打开 API 密钥页的客户端配置，选择 Claude Code 和所用终端，复制页面生成的环境变量。配置包括基础地址、认证信息与模型 ID；按当前页面生成的值填写。</p>
+  <table>
+    <tr><th>配置</th><th>含义</th></tr>
+    <tr><td><code>ANTHROPIC_BASE_URL</code></td><td>标准入口使用 <code>https://api.star-mc.top</code></td></tr>
+    <tr><td><code>ANTHROPIC_AUTH_TOKEN</code></td><td>填写当前 API 密钥</td></tr>
+    <tr><td><code>ANTHROPIC_MODEL</code></td><td>填写所选分组提供的模型 ID</td></tr>
+  </table>
+  <p>OpenAI 兼容客户端使用的 Base URL 是 <code>https://api.star-mc.top/v1</code>。为 Claude Code 配置时，使用页面生成的 Anthropic 基础地址。</p>
+  <h2>第三步：查看模型与请求结果</h2>
+  <p>启动客户端后，确认所用模型与配置一致。需要排查错误或费用时，在控制台查看使用记录，并核对当前密钥所属分组、模型协议和账号权限。</p>
+  <h2>常见问题</h2>
+  <h3>Claude Code 的基础地址怎么填？</h3>
+  <p>标准 Anthropic 入口的基础地址为 https://api.star-mc.top，对应 Messages 路径为 /v1/messages。ANTHROPIC_BASE_URL 使用基础地址；具体值和认证变量以 API 密钥页生成的 Claude Code 配置为准。</p>
+  <h3>Claude Code 的模型名应该填什么？</h3>
+  <p>使用所选分组当前提供的实际模型 ID。模型广场用于查询，API 密钥页可以按模型和协议生成客户端配置。</p>
+  <h3>可以使用 Free 组吗？</h3>
+  <p>需要先达到 Lv.1（累计 7 XP），再确认 Free 组当前目录支持所用模型和客户端协议。每天完成签到得 1 XP，每位成功注册并绑定邀请关系的好友得 1 XP，断签保留已得经验。</p>
+  <nav aria-label="相关指南"><a href="/seo/claude-zhongzhuan.html">Claude API</a><a href="/seo/gpt-zhongzhuan.html">GPT API</a><a href="/seo/free-api.html">Free 分组规则</a><a href="/seo/faq.html">常见问题</a><a href="/seo/guide.html">选站指南</a><a href="/home">首页</a></nav>
+</body>
+</html>

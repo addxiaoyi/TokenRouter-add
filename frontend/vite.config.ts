@@ -4,7 +4,7 @@ import checker from 'vite-plugin-checker'
 import { resolve } from 'path'
 // Native config loading requires source extensions; tsconfig.node.json rewrites
 // this extension so emitted JavaScript resolves the compiled metadata module.
-import { renderSocialMetadata } from './socialMetadata.ts'
+import { renderSocialMetadata, resolvePageMetadata } from './socialMetadata.ts'
 
 // vite.config.ts configures development proxying and the browser assets embedded
 // in release builds. Development documents receive public settings and branding
@@ -44,25 +44,21 @@ function isSafeImageUrl(value: string): boolean {
   }
 }
 
-// injectBranding replaces existing title and icon tags using nonempty site settings.
-// Text and attribute characters are escaped before insertion, and icon replacement
-// requires an allowed source URL. Missing tags or unavailable settings retain the
-// corresponding markup from the supplied document template.
+// injectBranding replaces the existing title with the resolved route title and updates
+// the icon from site settings. Values are escaped before insertion, and icon replacement
+// requires an allowed source URL. Missing template tags remain absent from the result.
 function injectBranding(
   html: string,
   config: {
-    site_name?: string // Optional title branding text.
     site_logo?: string // Optional favicon source URL.
   },
+  documentTitle: string,
 ): string {
   let brandedHtml = html
-  const siteName = config.site_name?.trim()
-  if (siteName) {
-    brandedHtml = brandedHtml.replace(
-      /<title>[^<]*<\/title>/i,
-      `<title>${escapeHtml(siteName)} - AI API Gateway</title>`,
-    )
-  }
+  brandedHtml = brandedHtml.replace(
+    /<title>[^<]*<\/title>/i,
+    `<title>${escapeHtml(documentTitle)}</title>`,
+  )
 
   const siteLogo = config.site_logo?.trim()
   if (siteLogo && isSafeImageUrl(siteLogo)) {
@@ -99,14 +95,15 @@ function injectPublicSettings(backendUrl: string, devOrigin: string): Plugin {
             const data = await response.json()
             if (data.code === 0 && data.data) {
               const script = `<script>window.__APP_CONFIG__=${JSON.stringify(data.data)};</script>`
-              const metadata = renderSocialMetadata(
+              const requestURL = new URL(context.path, devOrigin).href
+              const metadata = renderSocialMetadata(data.data, requestURL)
+              // Replace the static description before inserting route-specific metadata so crawlers and browsers see one current value.
+              const branded = injectBranding(
+                html,
                 data.data,
-                new URL(context.path, devOrigin).href,
-              )
-              return injectBranding(html, data.data).replace(
-                '</head>',
-                `${metadata}\n${script}\n</head>`,
-              )
+                resolvePageMetadata(data.data, requestURL).title,
+              ).replace(/<meta\b[^>]*\bname=["']description["'][^>]*>/gi, '')
+              return branded.replace('</head>', `${metadata}\n${script}\n</head>`)
             }
           }
         } catch (e) {

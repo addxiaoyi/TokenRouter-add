@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<!--
+gemini-zhongzhuan.html explains how readers find and configure Gemini access.
+The live catalog provides model identifiers, protocols, and pricing, while this
+standalone guide connects those details with API key setup and free-group eligibility.
+-->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gemini API 中转接入与分组查询 | Helstare</title>
+  <meta name="description" content="了解 Helstare 的 Gemini 模型查询、协议选择和 API 密钥配置。模型与价格以模型广场为准；Free 组从 Lv.1（累计 7 XP）起开放。">
+  <link rel="canonical" href="https://api.star-mc.top/seo/gemini-zhongzhuan.html">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <meta property="og:title" content="Gemini API 中转接入与分组查询 | Helstare">
+  <meta property="og:description" content="了解 Helstare 的 Gemini 模型查询、协议选择和 API 密钥配置。模型与价格以模型广场为准；Free 组从 Lv.1（累计 7 XP）起开放。">
+  <meta property="og:url" content="https://api.star-mc.top/seo/gemini-zhongzhuan.html">
+  <meta property="og:type" content="article">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Gemini API 中转接入与分组查询 | Helstare">
+  <meta name="twitter:description" content="了解 Helstare 的 Gemini 模型查询、协议选择和 API 密钥配置。模型与价格以模型广场为准；Free 组从 Lv.1（累计 7 XP）起开放。">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Helstare","item":"https://api.star-mc.top/home"},{"@type":"ListItem","position":2,"name":"Gemini API 中转接入与分组查询","item":"https://api.star-mc.top/seo/gemini-zhongzhuan.html"}]}
+  </script>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Gemini 当前支持哪些模型？","acceptedAnswer":{"@type":"Answer","text":"在模型广场搜索 Gemini，查看当前可选模型、模型 ID、分组和协议。可用范围以当时的目录和账号权限为准。"}},{"@type":"Question","name":"Gemini 可以使用 OpenAI 兼容客户端吗？","acceptedAnswer":{"@type":"Answer","text":"所选模型和分组支持 OpenAI 兼容协议时，可将客户端 Base URL 设置为 https://api.star-mc.top/v1，并填写 Helstare API 密钥和模型 ID。使用 Gemini 客户端时，请选择 API 密钥页生成的对应配置。"}},{"@type":"Question","name":"Free 组包含 Gemini 吗？","acceptedAnswer":{"@type":"Answer","text":"请在模型广场查看 Free 组当前目录。该组从 Lv.1（累计 7 XP）起开放，每天完成签到得 1 XP，每位成功注册并绑定邀请关系的好友得 1 XP，断签保留已得经验。"}}]}
+  </script>
+  <style>
+    @font-face{font-family:'Chang Ban Dian Song';src:url('/seo/chang-ban-dian-song-monospaced-12px-square.woff2') format('woff2');font-style:normal;font-weight:400;font-display:swap}
+    body{font-family:system-ui,-apple-system,sans-serif;max-width:900px;margin:0 auto;padding:20px;line-height:1.7;color:#222}
+    /* Keep the display face on headings so controls, tables, and prose retain system fonts. */
+    h1,h2,h3{font-family:'Chang Ban Dian Song',system-ui,-apple-system,sans-serif}
+    h1{font-size:28px}h2{font-size:22px;margin-top:32px;border-bottom:1px solid #eee;padding-bottom:8px}h3{font-size:18px;margin-top:24px}
+    table{border-collapse:collapse;width:100%;margin:16px 0}th,td{border:1px solid #ddd;padding:10px;text-align:left}th{background:#f5f5f5}
+    a{color:#0066cc}.cta{background:#0066cc;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin:16px 0}
+    nav{margin-top:40px;padding-top:16px;border-top:1px solid #eee;font-size:14px}nav a{margin-right:14px}
+  </style>
+</head>
+<body>
+  <h1>Gemini API 中转接入与分组查询</h1>
+  <p>在 Helstare 使用 Gemini 时，先确认目标模型支持的接口，再选择客户端配置。模型广场列出的模型 ID、分组、协议和价格是当前接入的查询入口。</p>
+  <p><a class="cta" href="/models">查看 Gemini 模型与定价</a> <a href="/register">注册账号</a> <a href="/docs">接入文档</a></p>
+  <h2>Gemini 分组如何选择？</h2>
+  <table>
+    <tr><th>项目</th><th>需要确认的内容</th></tr>
+    <tr><td>协议</td><td>客户端使用的接口是否在目标模型支持范围内</td></tr>
+    <tr><td>模型 ID</td><td>使用模型广场列出的实际 ID</td></tr>
+    <tr><td>分组与价格</td><td>在模型广场查看当前计价与可选分组</td></tr>
+    <tr><td>权限</td><td>在 API 密钥页选择账号可使用的分组</td></tr>
+  </table>
+  <h2>Gemini API 怎么接入？</h2>
+  <ol>
+    <li>在<a href="/models">模型广场</a>搜索 Gemini，选择模型和分组。</li>
+    <li>在<a href="/keys">API 密钥页</a>创建密钥，打开所用客户端的配置说明。</li>
+    <li>复制对应的地址、密钥和模型 ID。OpenAI 兼容配置使用 <code>https://api.star-mc.top/v1</code>，其他客户端按对应协议配置。</li>
+  </ol>
+  <h2>常见问题</h2>
+  <h3>Gemini 当前支持哪些模型？</h3>
+  <p>在模型广场搜索 Gemini，查看当前可选模型、模型 ID、分组和协议。可用范围以当时的目录和账号权限为准。</p>
+  <h3>Gemini 可以使用 OpenAI 兼容客户端吗？</h3>
+  <p>所选模型和分组支持 OpenAI 兼容协议时，可将客户端 Base URL 设置为 https://api.star-mc.top/v1，并填写 Helstare API 密钥和模型 ID。使用 Gemini 客户端时，请选择 API 密钥页生成的对应配置。</p>
+  <h3>Free 组包含 Gemini 吗？</h3>
+  <p>请在模型广场查看 Free 组当前目录。该组从 Lv.1（累计 7 XP）起开放，每天完成签到得 1 XP，每位成功注册并绑定邀请关系的好友得 1 XP，断签保留已得经验。</p>
+  <p>累计经验与升级进度见<a href="/ext/helstare.exp">经验等级页</a>，账号可绑定的分组见<a href="/keys">API 密钥页</a>。</p>
+  <nav aria-label="相关指南"><a href="/seo/gpt-zhongzhuan.html">GPT API</a><a href="/seo/claude-zhongzhuan.html">Claude API</a><a href="/seo/deepseek-api.html">DeepSeek API</a><a href="/seo/grok-zhongzhuan.html">Grok API</a><a href="/seo/free-api.html">Free 分组规则</a><a href="/seo/faq.html">常见问题</a><a href="/seo/guide.html">选站指南</a><a href="/home">首页</a></nav>
+</body>
+</html>

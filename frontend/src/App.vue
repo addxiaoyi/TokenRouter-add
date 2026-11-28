@@ -3,7 +3,7 @@ import { RouterView, useRouter, useRoute } from 'vue-router'
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import Toast from '@/components/common/Toast.vue'
 import NavigationProgress from '@/components/common/NavigationProgress.vue'
-import { resolveRouteDocumentTitle } from '@/router/title'
+import { applyRouteMetadata } from '@/router/metadata'
 import { defineLazyComponent } from '@/components/common/asyncComponent'
 import { globalSearchOpen } from '@/components/layout/search/globalSearchState'
 import {
@@ -22,7 +22,7 @@ import { usePluginsStore } from '@/stores/plugins'
 // search surfaces. Search downloads on its first opening and remains mounted so a
 // later opening retains its query. Announcement code waits for an actual queued popup;
 // the loaded instance remains available through closing transitions and queue changes.
-// It updates branding and document titles from reactive configuration, and refreshes
+// It updates branding and route metadata from reactive configuration, and refreshes
 // shared translated data when the locale changes. Announcement popups stay hidden on the
 // root destination and Home page.
 //
@@ -82,7 +82,7 @@ const shouldShowAnnouncementPopup = computed(() => route.path !== '/' && route.n
 
 // onLocaleChanged refreshes public settings after a language-change event and then
 // refreshes authenticated shared data. Announcement and subscription requests settle
-// independently before the document title is recalculated; component drafts remain owned
+// independently before route metadata is recalculated; component drafts remain owned
 // by their mounted pages.
 async function onLocaleChanged() {
   await appStore.fetchPublicSettings(true)
@@ -92,23 +92,23 @@ async function onLocaleChanged() {
       subscriptionStore.fetchActiveSubscriptions(true),
     ])
   }
-  updateDocumentTitle()
+  updateDocumentMetadata()
 }
 
-// updateDocumentTitle applies route, site, custom-menu, and accepted plugin page titles
-// to the browser tab. Discovery updates preserve the selected audience when descriptions
-// arrive after navigation or another branding refresh completes.
-function updateDocumentTitle() {
+// updateDocumentMetadata publishes the current route's title and complete public head
+// metadata. Menu and plugin discovery preserve audience-specific private titles while
+// settings and locale refreshes replace public summaries, URLs, and structured data.
+function updateDocumentMetadata() {
   const customMenuItems = [
     ...(appStore.cachedPublicSettings?.custom_menu_items ?? []),
     ...(authStore.isAdmin ? adminSettingsStore.customMenuItems : []),
   ]
-  document.title = resolveRouteDocumentTitle(
-    route,
-    appStore.siteName,
+  applyRouteMetadata(route, {
+    settings: appStore.cachedPublicSettings,
+    siteName: appStore.siteName,
     customMenuItems,
-    pluginsStore.plugins,
-  )
+    plugins: pluginsStore.plugins,
+  })
 }
 
 watch(
@@ -127,13 +127,13 @@ watch(
     () => route.meta.title,
     () => route.meta.titleKey,
     () => appStore.siteName,
-    () => appStore.cachedPublicSettings?.custom_menu_items,
+    () => appStore.cachedPublicSettings,
     () => authStore.isAdmin,
     () => adminSettingsStore.customMenuItems,
     () => pluginsStore.plugins,
   ],
-  updateDocumentTitle,
-  { deep: true },
+  updateDocumentMetadata,
+  { deep: true, immediate: true },
 )
 
 // onVisibilityChange requests announcements when the authenticated document becomes
@@ -211,7 +211,7 @@ onMounted(async () => {
     // settings so the normal shell remains usable during that endpoint failure.
   }
   await appStore.fetchPublicSettings()
-  updateDocumentTitle()
+  updateDocumentMetadata()
 })
 </script>
 

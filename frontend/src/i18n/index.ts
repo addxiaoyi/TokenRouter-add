@@ -6,7 +6,7 @@ export { availableLocales } from './catalog'
 export type { LocaleCode } from './catalog'
 
 // index.ts initializes interface translations and coordinates language changes
-// across the document, browser storage, route title, and authenticated account.
+// across the document, browser storage, route metadata, and authenticated account.
 // Message catalogs load on demand using directories declared by the shared
 // manifest. Initial selection follows saved browser preferences before browser
 // languages and the injected site default.
@@ -156,7 +156,7 @@ function applyDocumentLocale(locale: LocaleCode): void {
 //
 // Each accepted request advances switchGeneration before loading. A stale
 // completion stops before publishing the locale or, after dynamic imports,
-// before title updates and refresh events. Account saves wait for earlier saves,
+// before metadata updates and refresh events. Account saves wait for earlier saves,
 // then recheck the generation and captured user ID. The response updates the
 // local preference only while both still match; an already dispatched HTTP
 // request continues independently of later switches.
@@ -179,7 +179,7 @@ export async function setLocale(value: string, persistAccount = true): Promise<v
   // Load router and store dependencies after publishing the locale to respect
   // their runtime initialization cycle, then recheck ownership before refreshing
   // page metadata.
-  const { resolveRouteDocumentTitle } = await import('@/router/title')
+  const { applyRouteMetadata } = await import('@/router/metadata')
   const { default: router } = await import('@/router')
   const { useAppStore } = await import('@/stores/app')
   const { useAuthStore } = await import('@/stores/auth')
@@ -194,12 +194,12 @@ export async function setLocale(value: string, persistAccount = true): Promise<v
     ...(appStore.cachedPublicSettings?.custom_menu_items ?? []),
     ...(authStore.isAdmin ? adminSettingsStore.customMenuItems : []),
   ]
-  document.title = resolveRouteDocumentTitle(
-    route,
-    appStore.siteName,
+  applyRouteMetadata(route, {
+    settings: appStore.cachedPublicSettings,
+    siteName: appStore.siteName,
     customMenuItems,
-    usePluginsStore().plugins,
-  )
+    plugins: usePluginsStore().plugins,
+  })
   window.dispatchEvent(new CustomEvent('locale-changed', { detail: locale }))
   if (persistAccount && authStore.isAuthenticated) {
     const { apiClient } = await import('@/api/client')

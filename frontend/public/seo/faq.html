@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<!--
+faq.html answers practical questions about Helstare access, experience, pricing,
+and client configuration. Visible answers match their structured counterparts so
+readers and crawlers receive the same account rules and current-information links.
+-->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI API 中转常见问题：Free 组、经验与配置 | Helstare</title>
+  <meta name="description" content="查询 Helstare Free 组 Lv.1（7 XP）门槛、每日签到与邀请经验规则，了解当前模型价格查询、API 地址和 Claude Code 配置。">
+  <link rel="canonical" href="https://api.star-mc.top/seo/faq.html">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <meta property="og:title" content="AI API 中转常见问题：Free 组、经验与配置 | Helstare">
+  <meta property="og:description" content="查询 Helstare Free 组 Lv.1（7 XP）门槛、每日签到与邀请经验规则，了解当前模型价格查询、API 地址和 Claude Code 配置。">
+  <meta property="og:url" content="https://api.star-mc.top/seo/faq.html">
+  <meta property="og:type" content="article">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="AI API 中转常见问题：Free 组、经验与配置 | Helstare">
+  <meta name="twitter:description" content="查询 Helstare Free 组 Lv.1（7 XP）门槛、每日签到与邀请经验规则，了解当前模型价格查询、API 地址和 Claude Code 配置。">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Helstare","item":"https://api.star-mc.top/home"},{"@type":"ListItem","position":2,"name":"AI API 中转常见问题：Free 组、经验与配置","item":"https://api.star-mc.top/seo/faq.html"}]}
+  </script>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Free 组需要达到几级？","acceptedAnswer":{"@type":"Answer","text":"从 Lv.1 起开放，累计门槛为 7 XP。达到等级后，账号仍需符合具体分组的权限设置。"}},{"@type":"Question","name":"签到和邀请分别给多少经验？","acceptedAnswer":{"@type":"Answer","text":"每个已完成的唯一签到日期贡献 1 XP，每位成功注册并绑定邀请关系的好友贡献 1 XP。两种来源合并累计，断签保留已得经验。"}},{"@type":"Question","name":"后续等级的门槛是多少？","acceptedAnswer":{"@type":"Answer","text":"Lv.1、Lv.2、Lv.3、Lv.4 的累计门槛分别是 7、21、42、70 XP。首次升级需要 7 XP，此后每级升级所需 XP 增加 7。"}},{"@type":"Question","name":"当前模型、分组和价格在哪里查？","acceptedAnswer":{"@type":"Answer","text":"在模型广场查看当前模型 ID、分组、协议和价格。创建密钥时，在 API 密钥页选择账号可用的分组；具体费用可在使用记录中查看。"}},{"@type":"Question","name":"OpenAI 兼容客户端怎么配置？","acceptedAnswer":{"@type":"Answer","text":"Base URL 使用 https://api.star-mc.top/v1，填写 Helstare API 密钥及所选分组中的模型 ID。接口类型按该模型支持的协议配置。"}},{"@type":"Question","name":"Claude Code 怎么配置？","acceptedAnswer":{"@type":"Answer","text":"Claude Code 使用 Anthropic 协议，标准基础地址为 https://api.star-mc.top。到 API 密钥页选择 Claude Code，复制生成的地址、认证信息和模型配置。"}},{"@type":"Question","name":"怎样判断某个分组适合自己的应用？","acceptedAnswer":{"@type":"Answer","text":"结合目标模型的协议、当前计价、账号权限与自己的请求结果判断。比较延迟或可用情况时核对时间范围和样本量，模型质量需要结合实际任务观察。"}}]}
+  </script>
+  <style>
+    @font-face{font-family:'Chang Ban Dian Song';src:url('/seo/chang-ban-dian-song-monospaced-12px-square.woff2') format('woff2');font-style:normal;font-weight:400;font-display:swap}
+    body{font-family:system-ui,-apple-system,sans-serif;max-width:900px;margin:0 auto;padding:20px;line-height:1.7;color:#222}
+    /* Keep the display face on headings so controls, tables, and prose retain system fonts. */
+    h1,h2,h3{font-family:'Chang Ban Dian Song',system-ui,-apple-system,sans-serif}
+    h1{font-size:28px}h2{font-size:22px;margin-top:32px;border-bottom:1px solid #eee;padding-bottom:8px}h3{font-size:18px;margin-top:24px}
+    a{color:#0066cc}.cta{background:#0066cc;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin:16px 0}
+    nav{margin-top:40px;padding-top:16px;border-top:1px solid #eee;font-size:14px}nav a{margin-right:14px}
+  </style>
+</head>
+<body>
+  <h1>AI API 中转常见问题：Free 组、经验与配置</h1>
+  <p>这里介绍 Helstare 的账号经验、免费分组权限和客户端接入方式。模型目录、分组与价格在模型广场查询，账号当前进度在经验等级页查看。</p>
+  <p><a class="cta" href="/models">查看模型与定价</a> <a href="/ext/helstare.exp">查看经验等级</a> <a href="/docs">接入文档</a></p>
+  <h2>免费分组与经验</h2>
+  <h3>Free 组需要达到几级？</h3>
+  <p>从 Lv.1 起开放，累计门槛为 7 XP。达到等级后，账号仍需符合具体分组的权限设置。</p>
+  <h3>签到和邀请分别给多少经验？</h3>
+  <p>每个已完成的唯一签到日期贡献 1 XP，每位成功注册并绑定邀请关系的好友贡献 1 XP。两种来源合并累计，断签保留已得经验。</p>
+  <h3>后续等级的门槛是多少？</h3>
+  <p>Lv.1、Lv.2、Lv.3、Lv.4 的累计门槛分别是 7、21、42、70 XP。首次升级需要 7 XP，此后每级升级所需 XP 增加 7。</p>
+  <h2>模型与价格</h2>
+  <h3>当前模型、分组和价格在哪里查？</h3>
+  <p>在模型广场查看当前模型 ID、分组、协议和价格。创建密钥时，在 API 密钥页选择账号可用的分组；具体费用可在使用记录中查看。</p>
+  <p><a href="/models">打开模型广场</a>，或查看<a href="/seo/free-api.html">Free 分组完整说明</a>。</p>
+  <h2>接入与使用</h2>
+  <h3>OpenAI 兼容客户端怎么配置？</h3>
+  <p>Base URL 使用 https://api.star-mc.top/v1，填写 Helstare API 密钥及所选分组中的模型 ID。接口类型按该模型支持的协议配置。</p>
+  <h3>Claude Code 怎么配置？</h3>
+  <p>Claude Code 使用 Anthropic 协议，标准基础地址为 https://api.star-mc.top。到 API 密钥页选择 Claude Code，复制生成的地址、认证信息和模型配置。</p>
+  <p><a href="/keys">打开 API 密钥页</a>，或查看<a href="/seo/claude-code-guide.html">Claude Code 接入教程</a>。</p>
+  <h3>怎样判断某个分组适合自己的应用？</h3>
+  <p>结合目标模型的协议、当前计价、账号权限与自己的请求结果判断。比较延迟或可用情况时核对时间范围和样本量，模型质量需要结合实际任务观察。</p>
+  <nav aria-label="相关指南"><a href="/seo/gpt-zhongzhuan.html">GPT API</a><a href="/seo/claude-zhongzhuan.html">Claude API</a><a href="/seo/gemini-zhongzhuan.html">Gemini API</a><a href="/seo/deepseek-api.html">DeepSeek API</a><a href="/seo/grok-zhongzhuan.html">Grok API</a><a href="/seo/free-api.html">Free 分组规则</a><a href="/seo/gpt-vs-claude.html">GPT 与 Claude 对比</a><a href="/seo/guide.html">选站指南</a><a href="/home">首页</a></nav>
+</body>
+</html>

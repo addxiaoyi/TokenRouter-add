@@ -3,7 +3,6 @@
 package web
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -30,16 +29,19 @@ import (
 
 // socialSettings contains only the public fields needed to render social cards.
 type socialSettings struct {
-	SiteName     string `json:"site_name"`               // resolved site name
-	SiteTitle    string `json:"site_title"`              // resolved homepage title
-	SiteSubtitle string `json:"site_subtitle"`           // resolved homepage subtitle
-	Title        string `json:"site_share_title"`        // resolved sharing title
-	Description  string `json:"site_share_description"`  // resolved sharing description
-	Image        string `json:"site_share_image_url"`    // digest-addressed cover path
-	ImageType    string `json:"site_share_image_type"`   // validated cover MIME
-	ImageWidth   int    `json:"site_share_image_width"`  // pixels
-	ImageHeight  int    `json:"site_share_image_height"` // pixels
-	FrontendURL  string `json:"frontend_url"`            // configured frontend address
+	SiteName     string                  `json:"site_name"`                 // resolved site name
+	SiteTitle    string                  `json:"site_title"`                // resolved homepage title
+	SiteSubtitle string                  `json:"site_subtitle"`             // resolved homepage subtitle
+	Title        string                  `json:"site_share_title"`          // resolved sharing title
+	Description  string                  `json:"site_share_description"`    // resolved sharing description
+	Image        string                  `json:"site_share_image_url"`      // public cover resource
+	ImageType    string                  `json:"site_share_image_type"`     // validated cover MIME
+	ImageWidth   int                     `json:"site_share_image_width"`    // pixels
+	ImageHeight  int                     `json:"site_share_image_height"`   // pixels
+	FrontendURL  string                  `json:"frontend_url"`              // configured frontend address
+	Locale       string                  `json:"locale"`                    // selected interface language
+	BackendMode  bool                    `json:"backend_mode_enabled"`      // restricted public navigation
+	Documents    []publicDocumentSummary `json:"login_agreement_documents"` // published policy summaries
 }
 
 // renderSocialMetadata completes one cached language page for the request URL.
@@ -49,6 +51,8 @@ type socialSettings struct {
 // Request-specific markup is never published back into the language cache. The
 // final content digest includes both canonical and image destinations, preventing
 // a validator from another host or path from suppressing the current response.
+// Account and unknown routes receive only indexing restrictions, keeping their
+// addresses outside the public canonical and sharing metadata contract.
 func renderSocialMetadata(c *gin.Context, snapshot CachedHTML) ([]byte, string) {
 	var settings socialSettings
 	content := snapshot.Content
@@ -57,8 +61,33 @@ func renderSocialMetadata(c *gin.Context, snapshot CachedHTML) ([]byte, string) 
 		if base == "" {
 			base = middleware.GetRequestOrigin(c)
 		}
-		tags := settings.tags(base, c.Request.URL.EscapedPath())
-		content = bytes.Replace(content, []byte("</head>"), []byte(tags+"</head>"), 1)
+		page := settings.pageMetadata(c.Request.URL.Path)
+		robots := "noindex, nofollow"
+		tags := ""
+		if page.Indexable {
+			robots = "index, follow"
+			sharing := settings
+			sharing.Title = page.Title
+			sharing.Description = page.Description
+			if page.Path == "/" && strings.TrimSpace(settings.Title) != "" && !strings.EqualFold(strings.TrimSpace(settings.Title), settings.siteName()) {
+				sharing.Title = settings.Title
+			}
+			tags = sharing.tags(base, (&url.URL{Path: page.Path}).EscapedPath())
+			if page.Description != "" {
+				tags += `<meta name="description" content="` + html.EscapeString(page.Description) + `" />` + "\n"
+			}
+			if canonical := publicAbsoluteURL(base, page.Path); canonical != "" {
+				tags += `<link rel="canonical" href="` + html.EscapeString(canonical) + `" />` + "\n"
+			}
+			tags += settings.structuredPageMetadata(page, base)
+		}
+		c.Header("X-Robots-Tag", robots)
+		tags += `<meta name="robots" content="` + robots + `" />` + "\n"
+		content = replacePageMetadata(content, page.Title, tags)
+	} else {
+		// Invalid settings cannot establish whether a public page is available.
+		// Keep browser startup usable while excluding this incomplete envelope from indexing.
+		c.Header("X-Robots-Tag", "noindex, nofollow")
 	}
 	hash := sha256.Sum256(append([]byte(snapshot.ETag), content...))
 	return content, `"` + hex.EncodeToString(hash[:]) + `"`

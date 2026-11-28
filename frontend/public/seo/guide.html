@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<!--
+guide.html explains how readers evaluate AI API gateway offers using current
+catalog details and their own request requirements. It links protocol, pricing,
+account access, and observed results without publishing unsupported service rankings.
+-->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI API 中转选站指南：协议、费用与可用情况 | Helstare</title>
+  <meta name="description" content="从模型协议、当前计价、账号权限和请求结果评估 AI API 中转。Helstare 模型与价格见模型广场，Free 组从 Lv.1（累计 7 XP）起开放。">
+  <link rel="canonical" href="https://api.star-mc.top/seo/guide.html">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <meta property="og:title" content="AI API 中转选站指南：协议、费用与可用情况 | Helstare">
+  <meta property="og:description" content="从模型协议、当前计价、账号权限和请求结果评估 AI API 中转。Helstare 模型与价格见模型广场，Free 组从 Lv.1（累计 7 XP）起开放。">
+  <meta property="og:url" content="https://api.star-mc.top/seo/guide.html">
+  <meta property="og:type" content="article">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="AI API 中转选站指南：协议、费用与可用情况 | Helstare">
+  <meta name="twitter:description" content="从模型协议、当前计价、账号权限和请求结果评估 AI API 中转。Helstare 模型与价格见模型广场，Free 组从 Lv.1（累计 7 XP）起开放。">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Helstare","item":"https://api.star-mc.top/home"},{"@type":"ListItem","position":2,"name":"AI API 中转选站指南：协议、费用与可用情况","item":"https://api.star-mc.top/seo/guide.html"}]}
+  </script>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"选择中转站先看什么？","acceptedAnswer":{"@type":"Answer","text":"先明确目标模型和客户端需要的接口，再查看当前模型 ID、分组计价、使用限制及账号权限。Helstare 的这些信息可从模型广场和 API 密钥页查询。"}},{"@type":"Question","name":"怎样比较价格和可用情况？","acceptedAnswer":{"@type":"Answer","text":"价格结合实际输入、输出与缓存用量估算。可用情况结合自己的请求记录判断，阅读统计时核对时间范围、请求数量和错误类型。"}},{"@type":"Question","name":"怎样获得 Helstare Free 组资格？","acceptedAnswer":{"@type":"Answer","text":"累计 7 XP 达到 Lv.1 后获得免费公开分组等级资格。每天完成签到得 1 XP，每位成功注册并绑定邀请关系的好友得 1 XP，断签保留已得经验；当前模型与具体分组权限以站内页面为准。"}}]}
+  </script>
+  <style>
+    @font-face{font-family:'Chang Ban Dian Song';src:url('/seo/chang-ban-dian-song-monospaced-12px-square.woff2') format('woff2');font-style:normal;font-weight:400;font-display:swap}
+    body{font-family:system-ui,-apple-system,sans-serif;max-width:900px;margin:0 auto;padding:20px;line-height:1.7;color:#222}
+    /* Keep the display face on headings so controls, tables, and prose retain system fonts. */
+    h1,h2,h3{font-family:'Chang Ban Dian Song',system-ui,-apple-system,sans-serif}
+    h1{font-size:28px}h2{font-size:22px;margin-top:32px;border-bottom:1px solid #eee;padding-bottom:8px}h3{font-size:18px;margin-top:24px}
+    table{border-collapse:collapse;width:100%;margin:16px 0}th,td{border:1px solid #ddd;padding:10px;text-align:left}th{background:#f5f5f5}
+    a{color:#0066cc}.cta{background:#0066cc;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block;margin:16px 0}
+    nav{margin-top:40px;padding-top:16px;border-top:1px solid #eee;font-size:14px}nav a{margin-right:14px}
+  </style>
+</head>
+<body>
+  <h1>AI API 中转选站指南：协议、费用与可用情况</h1>
+  <p>选站时从自己的应用需求出发：明确所用模型与客户端协议，查看当前计价和权限，再结合请求结果判断是否合适。Helstare 的当前模型、分组和价格见模型广场。</p>
+  <p><a class="cta" href="/models">查看模型与定价</a> <a href="/seo/faq.html">常见问题</a> <a href="/docs">接入文档</a></p>
+  <h2>第一步：确认模型和协议</h2>
+  <p>核对目标模型实际 ID 以及支持的接口。OpenAI 兼容客户端、Claude Code 和 Gemini 客户端按各自协议配置；API 密钥页提供对应客户端的配置入口。</p>
+  <table>
+    <tr><th>要确认的项目</th><th>在 Helstare 的查询位置</th></tr>
+    <tr><td>模型 ID、分组与协议</td><td><a href="/models">模型广场</a></td></tr>
+    <tr><td>账号可以绑定的分组</td><td><a href="/keys">API 密钥页</a></td></tr>
+    <tr><td>经验等级与免费资格</td><td><a href="/ext/helstare.exp">经验等级页</a></td></tr>
+  </table>
+  <h2>第二步：按当前计价估算费用</h2>
+  <p>结合模型和分组的当前价格，按自己的输入、输出和缓存用量估算。需要比较实际支出时，在控制台使用记录中核对具体请求费用。</p>
+  <h2>第三步：结合请求记录观察可用情况</h2>
+  <p>查看请求是否成功、响应时间与错误类型。阅读可用率或延迟统计时，核对时间范围、样本数量和分组；这些条件决定数据能说明的范围。</p>
+  <h2>第四步：查看渠道和使用限制</h2>
+  <p>阅读分组说明和使用限制，确认账号权限及客户端要求。渠道名称可以帮助理解配置，服务表现需要结合实际请求观察。</p>
+  <table>
+    <tr><th>问题</th><th>需要查看的内容</th></tr>
+    <tr><td>客户端能否接入？</td><td>模型协议、密钥所属分组和生成的客户端配置</td></tr>
+    <tr><td>当前是否有权使用？</td><td>账号状态、分组权限与使用限制</td></tr>
+    <tr><td>是否适合当前任务？</td><td>自己的回答结果、工具调用和请求记录</td></tr>
+  </table>
+  <h2>第五步：确认 Free 组资格</h2>
+  <p>Helstare Free 组从 Lv.1（累计 7 XP）起开放。每天完成签到得 1 XP，每位成功注册并绑定邀请关系的好友得 1 XP，两种来源合并累计，断签保留经验。当前可调用模型在模型广场的 Free 组中查询。</p>
+  <h2>常见问题</h2>
+  <h3>选择中转站先看什么？</h3>
+  <p>先明确目标模型和客户端需要的接口，再查看当前模型 ID、分组计价、使用限制及账号权限。Helstare 的这些信息可从模型广场和 API 密钥页查询。</p>
+  <h3>怎样比较价格和可用情况？</h3>
+  <p>价格结合实际输入、输出与缓存用量估算。可用情况结合自己的请求记录判断，阅读统计时核对时间范围、请求数量和错误类型。</p>
+  <h3>怎样获得 Helstare Free 组资格？</h3>
+  <p>累计 7 XP 达到 Lv.1 后获得免费公开分组等级资格。每天完成签到得 1 XP，每位成功注册并绑定邀请关系的好友得 1 XP，断签保留已得经验；当前模型与具体分组权限以站内页面为准。</p>
+  <nav aria-label="相关指南"><a href="/seo/gpt-zhongzhuan.html">GPT API</a><a href="/seo/claude-zhongzhuan.html">Claude API</a><a href="/seo/gemini-zhongzhuan.html">Gemini API</a><a href="/seo/deepseek-api.html">DeepSeek API</a><a href="/seo/grok-zhongzhuan.html">Grok API</a><a href="/seo/claude-code-guide.html">Claude Code 接入</a><a href="/seo/gpt-vs-claude.html">GPT 与 Claude 对比</a><a href="/seo/free-api.html">Free 分组规则</a><a href="/seo/faq.html">常见问题</a><a href="/home">首页</a></nav>
+</body>
+</html>

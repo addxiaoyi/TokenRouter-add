@@ -280,7 +280,8 @@ setup 使用与主服务一致的配置文件查找规则（含 `CONFIG_FILE` �
 - 文案与回退：分享标题和简介通过 `site_texts.site_share_title`、`site_texts.site_share_description` 维护（沿用译文核对和版本冲突规则）。标题留空依次回退首页标题、站点名称，简介留空回退副标题。
 - 封面上传：`site_share_image` 接受 data URL，支持 PNG、JPEG、WebP，上限 2 MiB、每边上限 4096 像素；选图仅改草稿，保存设置才发布。
 - 存储与脱敏：校验后与派生只读 `site_share_image_meta` 同事务保存；省略保留现值，空字符串移除。封面随数据库备份恢复，无需独立文件目录；公开设置与 HTML 仅含文案、图片地址、格式和尺寸，不含 Base64。图片接口见 [HTTP 接口](http_api.md#social_share_image)。
-- HTML 元标签：内嵌前端在原始 HTML 输出 Twitter Card（有封面用 `summary_large_image`，否则 `summary`）与 Open Graph 标签，按语言缓存并在响应时补齐绝对地址和含地址差异的 ETag，保存后失效缓存。地址优先取数据库 `frontend_url`，其次 `site.frontend_url`，均空时取请求来源（仅显式可信代理可经转发头改来源）。
+- HTML 元标签：内嵌前端在原始 HTML 输出页面标题、简介、canonical、索引策略和 JSON-LD，以及 Twitter Card（有封面用 `summary_large_image`，否则 `summary`）与 Open Graph 标签。首页复用站点文案，其他公开页面使用对应用途文案，规范地址去除查询参数和片段；原始 HTML 与 SPA 导航遵守同一页面规则。
+- 地址与缓存：地址优先取数据库 `frontend_url`，其次 `site.frontend_url`，均空时取请求来源（仅显式可信代理可经转发头改来源）。语言级启动配置在响应时补齐页面元数据和绝对地址，最终 ETag 包含页面差异，保存设置后失效缓存。公开抓取文件复用该地址与公开文案，见 [HTTP 接口](http_api.md#public_discovery)。
 - 开发与托管：Vite 开发服务器同样注入（未配前端地址时用本地开发端口）；独立静态托管须由服务端完成相同注入，前端 JS 补写无法替代。社交平台缓存旧预览不随保存立即刷新。
 
 ### 注册、邮箱和登录

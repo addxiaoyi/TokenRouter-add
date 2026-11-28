@@ -16,6 +16,7 @@ import taskHistory from './taskHistory'
 import apiDocs from './apiDocs'
 import groupTemplates from './groupTemplates'
 import permissions from './permissions'
+import seo from './seo'
 
 // index.ts assembles the English interface catalog from domain dictionaries and
 // shared legal and localization messages. Named request and administrator
@@ -23,6 +24,7 @@ import permissions from './permissions'
 // retained if domain modules define the same key.
 
 export default {
+  seo,
   groupTemplates,
   apiDocs,
   permissions,

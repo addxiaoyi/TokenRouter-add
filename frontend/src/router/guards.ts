@@ -5,7 +5,7 @@ import { useAdminSettingsStore } from '@/stores/adminSettings'
 import { useRoutePrefetch } from '@/composables/useRoutePrefetch'
 import { getSetupStatus } from '@/api/setup'
 import { resolveCompletedSetupRedirectPath } from './setupRedirect'
-import { resolveRouteDocumentTitle } from './title'
+import { applyRouteMetadata } from './metadata'
 
 // guards.ts installs access checks, successful-navigation link warming, and chunk-load
 // recovery on an application router. Session restoration runs once per installation
@@ -24,10 +24,10 @@ import { resolveRouteDocumentTitle } from './title'
 // installRouteGuards attaches access, prefetch, and error handlers once to the supplied
 // router. Call it after navigation-progress installation and before starting navigation.
 // The installation retains its own first-navigation flag and lazily created prefetch
-// controller. Access checks restore authentication before resolving the title, then
-// apply public-route, role, feature, and backend-mode rules in order. Successful
-// navigation enables link-intent prefetching, while chunk failures may reload the browser using a
-// session-scoped retry timestamp.
+// controller. Access checks restore authentication before applying public-route,
+// role, feature, and backend-mode rules in order. Successful navigation publishes
+// route metadata and enables link-intent prefetching, while chunk failures may reload
+// the browser using a session-scoped retry timestamp.
 export function installRouteGuards(router: Router): void {
   // The installation owns one authentication-restoration marker and one lazy prefetch
   // controller, preventing repeated startup work during subsequent navigation.
@@ -92,19 +92,13 @@ export function installRouteGuards(router: Router): void {
     // remove queued hover work before authentication or route loaders begin awaiting.
     routePrefetch?.cancelPendingPrefetch()
     const authStore = useAuthStore()
-    // Restore browser authentication before title and permission evaluation, then retain
-    // the initialization marker for later navigations on this router.
+    // Restore browser authentication before permission evaluation, then retain the
+    // initialization marker for later navigations on this router.
     if (!authInitialized) {
       authStore.checkAuth()
       authInitialized = true
     }
     const appStore = useAppStore()
-    const adminSettingsStore = useAdminSettingsStore()
-    const customMenuItems = [
-      ...(appStore.cachedPublicSettings?.custom_menu_items ?? []),
-      ...(authStore.isAdmin ? adminSettingsStore.customMenuItems : []),
-    ]
-    document.title = resolveRouteDocumentTitle(to, appStore.siteName, customMenuItems)
     const requiresAuth = to.meta.requiresAuth !== false // Default to true
     const requiresAdmin = to.meta.requiresAdmin === true
 
@@ -236,9 +230,20 @@ export function installRouteGuards(router: Router): void {
   })
 
   router.afterEach((to, _from, failure) => {
-    // Cancelled and aborted destinations do not enable prefetching because they did
-    // not become the successfully displayed route for this navigation.
+    // Publish head metadata only for completed navigation so a redirected or cancelled
+    // destination cannot replace the identity of the page that remains visible.
     if (failure) return
+    const appStore = useAppStore()
+    const authStore = useAuthStore()
+    const customMenuItems = [
+      ...(appStore.cachedPublicSettings?.custom_menu_items ?? []),
+      ...(authStore.isAdmin ? useAdminSettingsStore().customMenuItems : []),
+    ]
+    applyRouteMetadata(to, {
+      settings: appStore.cachedPublicSettings,
+      siteName: appStore.siteName,
+      customMenuItems,
+    })
     if (!routePrefetch) {
       routePrefetch = useRoutePrefetch(router)
     }
