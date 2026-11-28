@@ -2,21 +2,22 @@ package httpapi
 
 import "github.com/gin-gonic/gin"
 
-// routes_user.go registers authenticated profile, identity binding,
+// routes_user.go registers authenticated profile, experience, identity binding,
 // notification email, and authentication-factor endpoints.
 // User profile and authentication-factor operations share an authenticated
 // panel group. Email and provider binding, notification recipients, TOTP, and
 // Passkey endpoints all use that account context; public Passkey login is
 // registered separately with the public auth routes.
 
-// RegisterUserRoutes adds current-account profile, binding, notification,
-// TOTP, and Passkey-management endpoints. The caller supplies initialized
+// RegisterUserRoutes adds current-account profile, experience, binding,
+// notification, TOTP, and Passkey-management endpoints. The caller supplies initialized
 // handlers and installs shared authentication, panel limits, auditing, and
 // backend-mode checks on the group.
 func RegisterUserRoutes(authenticated *gin.RouterGroup, endpoint *UserHandler, totpEndpoint *TotpHandler, passkeyEndpoint *PasskeyHandler) {
 	user := authenticated.Group("/user")
 	{
 		user.GET("/profile", endpoint.GetProfile)
+		user.GET("/experience", endpoint.GetExperience)
 		user.PUT("/password", endpoint.ChangePassword)
 		user.PUT("", endpoint.UpdateProfile)
 		user.POST("/account-bindings/email/send-code", endpoint.SendEmailBindingCode)

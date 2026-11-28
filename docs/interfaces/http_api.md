@@ -131,6 +131,15 @@ RequestLogger
 - Google One Tap 响应：已有用户返回 `status=authenticated` 及 `access_token`、`refresh_token`、`expires_in`、`token_type`。新用户只返回 `status=registration_required` 和本地 `redirect`，经 HttpOnly pending cookie 继续 `/auth/oauth/callback` 补全。
 - One Tap 拒绝条件：One Tap 设置或 Google OAuth 配置无效、backend mode、启用腾讯或阿里云验证码、注册关闭、token 无效或用户不可登录时拒绝请求；仅开启 Turnstile 时校验范围不变。
 
+<a id="user_experience"></a>
+### 用户经验与免费分组资格
+
+`GET /api/v1/user/experience` 使用当前用户 JWT，返回用户累计经验、等级进度和签到状态。`data` 包含 `level`、`exp`、`checkin_exp`、`invite_exp`、`streak`、`total`、`level_exp`、`level_required_exp`、`next_level_exp`、`exp_to_next`、`free_unlocked` 和 `checked_in_today`。
+
+`checkin_exp` 与 `total` 为已完成的唯一签到日期数，`invite_exp` 为已成功绑定到该邀请人的累计被邀请人数；每个日期与每位被邀请用户各贡献 1 XP，`exp` 为二者之和。`streak` 与 `checked_in_today` 单独描述当前签到状态，断签保留已累计的 XP。
+
+`free_unlocked` 表示累计 XP 已达到 Lv.1 门槛，管理员单独禁用的公开分组仍按当前分组权限生效。等级累计门槛和免费分组授权规则见[身份与租户](../domains/identity_and_tenancy.md#free_group_experience)。
+
 ### API Key 结算策略
 
 普通 Key 必须绑定可用分组，系统无不经分组的调度入口；历史未绑定分组的 Key 保留字符串，调用前须先绑定。`fallback_when_group_unavailable` 仅可回退至管理员配置的回退分组，目标分组重新检查权限、模型、协议、团队和订阅范围。

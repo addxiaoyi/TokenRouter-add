@@ -2,42 +2,45 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 
 	"entgo.io/ent/dialect"
 	"github.com/lib/pq"
+
+	"github.com/TokenFlux/TokenRouter/internal/identity"
 )
 
-// checkin_access.go derives temporary public-group restrictions from completed
-// check-in records and the installed experience policy. The repository merges
-// these restrictions into user views so authentication can apply earned access
-// without overwriting administrator-managed group denials.
+// checkin_access.go reads cumulative account experience and derives temporary
+// public-group restrictions from the same completed dates and invitation counts.
+// Every stored completed check-in date contributes one point, regardless of
+// interruptions or row expiry; only active dates determine the current streak
+// and today's status. The affiliate profile's accumulated count supplies
+// invitation points, and account status uses the site calendar date.
 //
 // The installed experience plugin enables this site-specific rule; installations
-// without that plugin retain ordinary public-group permissions. A completed
-// consecutive block earns the first experience point and unlocks level one.
-// Interrupted blocks remain separate, and pending rewards contribute no
-// completed day to this eligibility decision.
-//
-// These restrictions are a separate transient field on account views, so group
-// selection and consumers of CanBindGroup share one decision. They are computed
-// rather than persisted as administrator settings: earning the required point
-// removes only the derived restriction. Administrator forms continue to receive
-// their explicitly saved public-group denials and retain those denials after an
-// account reaches the required level.
+// without that plugin retain ordinary public-group permissions. The shared domain
+// threshold unlocks free groups when cumulative experience reaches level one.
+// Restrictions remain a transient account field, so earning access removes only
+// the derived denial while administrator-managed public-group denials retain their
+// independent effect. PostgreSQL plugin storage owns these observations, and
+// unsupported experience readers report service unavailability.
 
-// checkinFreeGroupRestrictionsSQL identifies zero-rate public groups unavailable
-// to an account until it completes its first configured check-in block.
+// Experience queries share completed-date deduplication and the saved invitation
+// count so account progress and free-group authorization evaluate identical points.
 const (
-	checkinFreeGroupRestrictionsSQL = `
+	experienceTotalsSQL = `
 WITH requested_users AS (
 	SELECT unnest($1::bigint[]) AS user_id
-), policy AS (
-	SELECT COALESCE((config->>'exp_days_per_point')::integer, 7) AS days_per_point
-	FROM plugin_installations
-	WHERE plugin_id = 'helstare.exp'
 ), completed_days AS (
+	SELECT DISTINCT (value->>'user_id')::bigint AS user_id,
+		(value->>'day')::date AS day
+	FROM plugin_kv
+	WHERE plugin_id = 'tokenflux.checkin' AND collection = 'checkins'
+		AND value->>'completed' = 'true'
+		AND (value->>'user_id')::bigint = ANY($1::bigint[])
+), active_days AS (
 	SELECT DISTINCT (value->>'user_id')::bigint AS user_id,
 		(value->>'day')::date AS day
 	FROM plugin_kv
@@ -45,28 +48,81 @@ WITH requested_users AS (
 		AND value->>'completed' = 'true'
 		AND (expires_at IS NULL OR expires_at > NOW())
 		AND (value->>'user_id')::bigint = ANY($1::bigint[])
-), consecutive_days AS (
-	SELECT user_id, day - ROW_NUMBER() OVER (
-		PARTITION BY user_id ORDER BY day
-	)::integer AS block
-	FROM completed_days
-), eligible AS (
-	SELECT user_id FROM consecutive_days
-	GROUP BY user_id, block
-	HAVING COUNT(*) >= (SELECT days_per_point FROM policy)
+), experience_totals AS (
+	SELECT requested_users.user_id, COUNT(completed_days.day)::bigint AS checkin_exp,
+		COALESCE(user_affiliates.aff_count, 0)::bigint AS invite_exp
+	FROM requested_users
+	LEFT JOIN completed_days ON completed_days.user_id = requested_users.user_id
+	LEFT JOIN user_affiliates ON user_affiliates.user_id = requested_users.user_id
+	GROUP BY requested_users.user_id, user_affiliates.aff_count
 )
-SELECT requested_users.user_id, groups.id
-FROM requested_users
-CROSS JOIN policy
+`
+
+	checkinFreeGroupRestrictionsSQL = experienceTotalsSQL + `
+SELECT experience_totals.user_id, groups.id
+FROM experience_totals
 CROSS JOIN groups
 WHERE groups.rate_multiplier = 0 AND groups.is_exclusive = false
 	AND groups.deleted_at IS NULL
-	AND NOT EXISTS (
-		SELECT 1 FROM eligible WHERE eligible.user_id = requested_users.user_id
+	AND experience_totals.checkin_exp + experience_totals.invite_exp < $2
+	AND EXISTS (
+		SELECT 1 FROM plugin_installations WHERE plugin_id = 'helstare.exp'
 	)
-ORDER BY requested_users.user_id, groups.id
+ORDER BY experience_totals.user_id, groups.id
+`
+
+	experienceStatusSQL = experienceTotalsSQL + `
+, consecutive_days AS (
+	SELECT user_id, day, day - ROW_NUMBER() OVER (
+		PARTITION BY user_id ORDER BY day
+	)::integer AS block
+	FROM active_days
+	WHERE day <= $2::date
+), current_streak AS (
+	SELECT user_id, COUNT(*)::bigint AS streak
+	FROM consecutive_days
+	GROUP BY user_id, block
+	HAVING MAX(day) >= $2::date - 1
+)
+SELECT checkin_exp, invite_exp,
+	COALESCE(current_streak.streak, 0),
+	EXISTS(SELECT 1 FROM active_days WHERE active_days.user_id = experience_totals.user_id AND day = $2::date)
+FROM experience_totals
+LEFT JOIN current_streak ON current_streak.user_id = experience_totals.user_id
 `
 )
+
+// GetExperienceTotals reads completed check-in dates, accumulated invitations,
+// and the current calendar streak for an account. Experience counts every
+// completed unique date still stored, including expired rows, while streak and
+// today status use active records. Today uses the site timezone supplied by
+// UserService, and streak ends today or yesterday; older interrupted dates still
+// contribute experience.
+//
+// PostgreSQL is required because plugin records and affiliate profiles share its
+// storage schema. Missing SQL access and other database dialects return service
+// unavailability, while query, scan, iteration, and row-close failures remain
+// visible to the calling account service.
+func (r *UserStore) GetExperienceTotals(ctx context.Context, userID int64, today string) (_ *identity.ExperienceTotals, returnErr error) {
+	if r.sql == nil || r.client != nil && r.client.Driver().Dialect() != dialect.Postgres {
+		return nil, identity.ErrExperienceUnavailable
+	}
+	rows, err := r.sql.QueryContext(ctx, experienceStatusSQL, pq.Array([]int64{userID}), today)
+	if err != nil {
+		return nil, fmt.Errorf("load account experience: %w", err)
+	}
+	// Return the query connection after reading statistics, preserving close
+	// failures alongside an earlier read failure for the account service.
+	defer func() { returnErr = errors.Join(returnErr, rows.Close()) }()
+	if !rows.Next() {
+		return nil, fmt.Errorf("read account experience: %w", errors.Join(sql.ErrNoRows, rows.Err()))
+	}
+	var totals identity.ExperienceTotals
+	if err := rows.Scan(&totals.CheckinExp, &totals.InviteExp, &totals.Streak, &totals.CheckedInToday); err != nil {
+		return nil, fmt.Errorf("read account experience: %w", err)
+	}
+	return &totals, rows.Err()
+}
 
 // loadCheckinGroupRestrictions returns derived free-group denials by account ID.
 // Empty input, Ent-only stores, and configured non-PostgreSQL clients return an
@@ -83,7 +139,7 @@ func (r *UserStore) loadCheckinGroupRestrictions(ctx context.Context, userIDs []
 	if r.client != nil && r.client.Driver().Dialect() != dialect.Postgres {
 		return groups, nil
 	}
-	rows, err := r.sql.QueryContext(ctx, checkinFreeGroupRestrictionsSQL, pq.Array(userIDs))
+	rows, err := r.sql.QueryContext(ctx, checkinFreeGroupRestrictionsSQL, pq.Array(userIDs), identity.ExperienceLevelStep)
 	if err != nil {
 		return nil, fmt.Errorf("load check-in group restrictions: %w", err)
 	}

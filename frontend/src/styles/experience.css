@@ -1,10 +1,364 @@
 /*
- * experience.css presents the installed experience plugin as a focused progress
- * dashboard. The host owns this scoped presentation because the current plugin
- * bundle targets its template identifier and therefore misses its installed root.
- * Existing values, request states, controls, and progress semantics stay owned by
- * the plugin; its authenticated status endpoint remains the source of truth.
+ * experience.css presents the host-owned experience page and legacy plugin as a
+ * focused progress dashboard under the installed plugin root. Both presentations
+ * share the site's surface and accent tokens. The host page reads XP, level
+ * thresholds, check-in state, and Free-group eligibility from the main application's
+ * authenticated user experience endpoint; styles arrange that server-provided progress.
  */
+
+[data-tr-plugin='helstare.exp'] .experience-page {
+  display: grid;
+  gap: 1.5rem;
+  max-width: 70rem;
+  margin-inline: auto;
+  color: var(--tr-color-text);
+  font-family: var(--font-app);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-heading,
+[data-tr-plugin='helstare.exp'] .experience-identity,
+[data-tr-plugin='helstare.exp'] .experience-panel-heading,
+[data-tr-plugin='helstare.exp'] .experience-progress-label,
+[data-tr-plugin='helstare.exp'] .experience-journey-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-heading p,
+[data-tr-plugin='helstare.exp'] .experience-identity-copy p,
+[data-tr-plugin='helstare.exp'] .experience-help,
+[data-tr-plugin='helstare.exp'] .experience-journey-heading p,
+[data-tr-plugin='helstare.exp'] .experience-stages p {
+  margin: 0.5rem 0 0;
+  color: var(--tr-color-text-muted);
+  overflow-wrap: anywhere;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-overview,
+[data-tr-plugin='helstare.exp'] .experience-panel,
+[data-tr-plugin='helstare.exp'] .experience-journey {
+  min-width: 0;
+  padding: 1.5rem;
+  border: 1px solid var(--tr-color-border);
+  border-radius: var(--radius-surface);
+  background: var(--tr-color-surface);
+}
+
+[data-tr-plugin='helstare.exp'] .experience-identity {
+  justify-content: flex-start;
+  gap: 1.5rem;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-emblem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  gap: 0.375rem;
+  width: 7rem;
+  height: 7rem;
+  border: 1px solid var(--tr-color-accent);
+  border-radius: var(--radius-surface);
+  background: var(--tr-color-surface-muted);
+  color: var(--tr-color-accent);
+}
+
+[data-tr-plugin='helstare.exp'] .experience-emblem > span {
+  color: var(--tr-color-text);
+  font-size: 2.5rem;
+  font-weight: 600;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-emblem small {
+  margin-inline-end: 0.25rem;
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-eyebrow,
+[data-tr-plugin='helstare.exp'] .experience-stats dt {
+  color: var(--tr-color-text-muted);
+  font-size: 0.875rem;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-identity-copy h2 {
+  margin: 0.375rem 0 0;
+  font-size: 1.5rem;
+  line-height: 1.5;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-access-label,
+[data-tr-plugin='helstare.exp'] .experience-locked-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--tr-color-accent);
+  font-size: 0.875rem;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-access-label {
+  margin-inline-start: auto;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--tr-color-border);
+  border-radius: var(--radius-control);
+  background: var(--tr-color-surface-muted);
+}
+
+[data-tr-plugin='helstare.exp'] .experience-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin: 1.5rem 0 0;
+  padding: 1.5rem 0 0;
+  border-top: 1px solid var(--tr-color-border);
+}
+
+[data-tr-plugin='helstare.exp'] .experience-level-progress {
+  margin-top: 1.5rem;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-stats > div + div {
+  padding-inline-start: 1.5rem;
+  border-inline-start: 1px solid var(--tr-color-border);
+}
+
+[data-tr-plugin='helstare.exp'] .experience-stats dd {
+  margin: 0.375rem 0 0;
+  font-size: 2rem;
+  font-weight: 500;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-stats small {
+  margin-inline-start: 0.5rem;
+  color: var(--tr-color-text-muted);
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-benefit {
+  grid-column: 1 / -1;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-panel-heading {
+  justify-content: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-control);
+  background: var(--tr-color-surface-muted);
+  color: var(--tr-color-accent);
+}
+
+[data-tr-plugin='helstare.exp'] .experience-panel h2,
+[data-tr-plugin='helstare.exp'] .experience-journey h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-point {
+  margin-inline-start: auto;
+  color: var(--tr-color-accent);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-goal {
+  margin: 1.25rem 0 1rem;
+  font-size: 1.125rem;
+  font-weight: 500;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-progress-label {
+  width: 100%;
+  margin-bottom: 0.75rem;
+  color: var(--tr-color-text-muted);
+  font-size: 0.875rem;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-progress-label strong {
+  color: var(--tr-color-accent);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-progress {
+  display: block;
+  width: 100%;
+  height: 0.5rem;
+  overflow: hidden;
+  appearance: none;
+  border: 0;
+  border-radius: var(--radius-compact);
+  background: var(--tr-color-surface-muted);
+  color: var(--tr-color-accent);
+}
+
+[data-tr-plugin='helstare.exp'] .experience-progress::-webkit-progress-bar {
+  background: var(--tr-color-surface-muted);
+}
+
+[data-tr-plugin='helstare.exp'] .experience-progress::-webkit-progress-value {
+  border-radius: var(--radius-compact);
+  background: var(--tr-color-accent);
+}
+
+[data-tr-plugin='helstare.exp'] .experience-progress::-moz-progress-bar {
+  border-radius: var(--radius-compact);
+  background: var(--tr-color-accent);
+}
+
+[data-tr-plugin='helstare.exp'] .experience-panel > .btn,
+[data-tr-plugin='helstare.exp'] .experience-locked-note {
+  margin-top: 1.5rem;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-benefit > .experience-help {
+  flex-grow: 1;
+  margin-top: 0;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-stages {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-stages li {
+  position: relative;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--tr-color-border);
+  border-radius: var(--radius-control);
+}
+
+[data-tr-plugin='helstare.exp'] .experience-stages li.is-current {
+  border-color: var(--tr-color-accent);
+  background: var(--tr-color-surface-muted);
+}
+
+[data-tr-plugin='helstare.exp'] .experience-stage-marker {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-bottom: 0.75rem;
+  border-radius: var(--radius-control);
+  background: var(--tr-color-surface-muted);
+  color: var(--tr-color-text-muted);
+}
+
+[data-tr-plugin='helstare.exp'] .is-reached .experience-stage-marker,
+[data-tr-plugin='helstare.exp'] .is-current .experience-stage-level {
+  color: var(--tr-color-accent);
+}
+
+[data-tr-plugin='helstare.exp'] .experience-stage-level {
+  color: var(--tr-color-text-muted);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-stages h3 {
+  margin: 0.375rem 0 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-stages p {
+  font-size: 0.75rem;
+}
+
+[data-tr-plugin='helstare.exp'] .experience-error {
+  margin: 0;
+  color: var(--tr-color-danger);
+}
+
+@media (max-width: 1023px) {
+  [data-tr-plugin='helstare.exp'] .experience-access-label {
+    margin-inline-start: 0;
+  }
+
+  [data-tr-plugin='helstare.exp'] .experience-identity {
+    flex-wrap: wrap;
+  }
+
+  [data-tr-plugin='helstare.exp'] .experience-stages {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 639px) {
+  [data-tr-plugin='helstare.exp'] .experience-heading,
+  [data-tr-plugin='helstare.exp'] .experience-journey-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  [data-tr-plugin='helstare.exp'] .experience-details {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  [data-tr-plugin='helstare.exp'] .experience-stages {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  [data-tr-plugin='helstare.exp'] .experience-overview,
+  [data-tr-plugin='helstare.exp'] .experience-panel,
+  [data-tr-plugin='helstare.exp'] .experience-journey {
+    padding: 1rem;
+  }
+
+  [data-tr-plugin='helstare.exp'] .experience-stats {
+    gap: 0.75rem;
+  }
+
+  [data-tr-plugin='helstare.exp'] .experience-stats > div + div {
+    padding-inline-start: 0.75rem;
+  }
+
+  [data-tr-plugin='helstare.exp'] .experience-stats dd {
+    font-size: 1.5rem;
+  }
+
+  [data-tr-plugin='helstare.exp'] .experience-stats small {
+    display: block;
+    margin: 0.375rem 0 0;
+  }
+}
 
 [data-tr-plugin='helstare.exp'] .exp-page {
   display: grid;

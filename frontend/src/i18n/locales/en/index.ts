@@ -9,6 +9,7 @@ import requests from './requests'
 import plugins from './plugins'
 import support from './support'
 import monitoring from './monitoring'
+import experience from './experience'
 import chat from './chat'
 import quality from './quality'
 import taskHistory from './taskHistory'
@@ -30,6 +31,7 @@ export default {
   chat,
   support,
   monitoring,
+  experience,
   plugins,
   requests,
   legal: {

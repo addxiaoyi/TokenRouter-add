@@ -91,8 +91,8 @@ type User struct {
 	// exclusive grant.
 	DisabledPublicGroups []int64
 	// CheckinRestrictedGroups contains transient free-group restrictions derived
-	// from completed check-in history. Administrator updates persist only the
-	// separate DisabledPublicGroups field, allowing earned access to unlock automatically.
+	// from completed check-ins and accumulated invitations. Administrator updates
+	// persist only DisabledPublicGroups, allowing earned access to unlock automatically.
 	CheckinRestrictedGroups []int64
 	// GroupRestrictionsLoaded distinguishes loaded permissions from missing lookup
 	// data. Free-group authentication refreshes check-in restrictions independently

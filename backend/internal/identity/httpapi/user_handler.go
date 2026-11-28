@@ -15,7 +15,7 @@ import (
 )
 
 // user_handler.go handles current-account profile changes, identity binding,
-// and notification recipient management.
+// experience progress, and notification recipient management.
 // Current-account profile writes keep ordinary display edits separate from
 // sign-in email binding. Email field presence is rejected by profile update,
 // while preferred locale uses raw JSON to distinguish an omitted field from a
@@ -28,8 +28,8 @@ import (
 // Compatibility binding maps share one map, and username, display-name, and
 // nickname source labels share the same inferred pointer.
 
-// UserHandler serves current-account profiles, sign-in identity binding, and
-// notification recipients.
+// UserHandler serves current-account profiles, experience progress, sign-in
+// identity binding, and notification recipients.
 type UserHandler struct {
 	userService  *identity.UserService             // account profile and binding service
 	authService  *identity.AuthService             // sign-in email and session service
@@ -183,6 +183,23 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 	}
 
 	response.Success(c, profileResp)
+}
+
+// GetExperience writes the authenticated account's cumulative growth and next
+// level progress. The user service applies the shared experience policy, and
+// storage failures retain their normal panel error response.
+func (h *UserHandler) GetExperience(c *gin.Context) {
+	subject, ok := authctx.GetAuthSubjectFromContext(c)
+	if !ok {
+		response.Unauthorized(c, "User not authenticated")
+		return
+	}
+	progress, err := h.userService.GetExperience(c.Request.Context(), subject.UserID)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+	response.Success(c, progress)
 }
 
 // ChangePassword validates current and replacement password input for the

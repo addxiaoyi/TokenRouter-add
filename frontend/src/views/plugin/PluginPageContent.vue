@@ -123,7 +123,13 @@ async function loadPage(): Promise<void> {
       definition = await loadPlugin(selected.plugin)
     }
     if (current !== generation) return
-    const registered = definition.pages[selected.page.id]
+    const registered =
+      selected.plugin.id === 'helstare.exp' &&
+      selected.page.id === 'home' &&
+      selected.page.audience === 'user'
+        ? (await import('./ExperiencePage.vue')).default
+        : definition.pages[selected.page.id]
+    if (current !== generation) return
     if (!registered) throw new Error(t('plugins.componentMissing'))
     // The shared adapter preserves functional rendering and legacy lazy imports;
     // its bounded async wrapper reports loader failures through this page's error boundary.

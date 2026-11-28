@@ -26,6 +26,8 @@
 //   - user*.go and risk_status.go contain account values, repository
 //     interfaces, profile operations, custom attributes, and risk-status
 //     participation.
+//   - experience.go combines completed check-ins and accumulated invitations
+//     into level progress under the shared free-group unlock threshold.
 //   - session_*.go, refresh_token_cache.go, and clock.go define credential
 //     lifecycle, request binding, cache operations, and clock observations.
 //   - pending*.go and oauth_*.go describe browser state, account choice,
